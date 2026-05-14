@@ -35,4 +35,4 @@ The **PHINMA UI Teacher Management Portal** is a high-performance web applicatio
 ### Installation
 1. **Clone the repository**:
    ```bash
-   git clone [https://github.com/mark-12-fr/phinma-ui-teacher-portal.git](https://github.com/mark-12-fr/phinma-ui-teacher-portal.git)
+   git clone [https://github.com/mark-12-fr/teacher-panel.git](https://github.com/mark-12-fr/phinma-ui-teacher-portal.git)
