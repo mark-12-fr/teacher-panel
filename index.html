@@ -189,9 +189,11 @@
             .sidebar { transform: translateX(-100%); } .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
             .main-content { margin-left: 0; padding: 20px 20px 100px 20px; } .stat-card { grid-column: span 4; } 
             .main-chart, .side-list, .bottom-card-lg, .bottom-card-sm, .notes-card { grid-column: span 8; }
-            .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; min-height: 40px; }
-            .menu-toggle { display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
-            .topbar-title { text-align: center; }
+            
+            /* CENTERING FIX - Centers the title but prevents overlap with the menu */
+            .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; min-height: 40px; width: 100%; }
+            .menu-toggle { display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; padding: 10px; }
+            .topbar-title { text-align: center; width: 100%; padding: 0 45px; } /* Added padding to protect it from the menu icon */
         }
         @media (max-width: 768px) {
             .dashboard-grid { gap: 15px; } .div-banner { flex-direction: column; text-align: center; gap: 20px; padding: 25px 15px; }
