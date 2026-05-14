@@ -157,14 +157,14 @@
         .search-container input:focus { border-color: var(--accent-blue); background: var(--card-bg); }
         .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; }
 
-        /* TABLE STYLING */
+        /* TABLE STYLING - UPDATED FOR MOBILE */
         .table-responsive { 
             overflow-x: auto; 
             width: 100%; 
             -webkit-overflow-scrolling: touch; 
             border-bottom: 1px solid var(--border-color); 
             border-right: 1px solid var(--border-color); 
-            display: block;
+            display: block; /* Enables proper mobile scrolling */
         }
         table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2400px; background: var(--card-bg); }
         
@@ -243,7 +243,7 @@
             .dashboard-wrapper { grid-template-columns: 1fr 1fr; }
         }
 
-        /* 📱 RESPONSIVE FIXES FOR MOBILE TABLE SCROLLING */
+        /* 📱 RESPONSIVE FIXES FOR MOBILE TABLE SCROLLING - ADJUSTED FOR 4 COLUMNS */
         @media (max-width: 640px) {
             .main-content { padding: 15px 5px 100px 5px; }
             .class-record-container { padding: 15px 5px; }
@@ -253,20 +253,20 @@
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 90px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
 
-            /* Gin-gamyan ang Width sang Sticky Columns kag Padding para maka-igo ang 4 ka columns */
-            th, td { padding: 6px 2px; font-size: 12px; }
-            .editable-score { min-width: 25px; padding: 6px 2px; }
+            /* Gin-gamyan gid naton ang Padding kag Font Size para maka-igo gid ang 4-5 ka columns */
+            th, td { padding: 4px 1px; font-size: 11px; }
+            .editable-score { min-width: 22px; padding: 4px 1px; }
 
-            .sticky-col:nth-child(1) { width: 28px; min-width: 28px; padding: 6px 2px; }
+            .sticky-col:nth-child(1) { width: 22px; min-width: 22px; padding: 4px 1px; }
             .sticky-col:nth-child(2) { 
-                left: 28px; 
-                min-width: 85px; 
-                max-width: 85px; 
-                font-size: 0.75rem; 
+                left: 22px; 
+                min-width: 75px;  /* Gin-gamyan pa gid ang Student Name column */
+                max-width: 75px; 
+                font-size: 0.7rem; 
                 white-space: nowrap; 
                 overflow: hidden; 
                 text-overflow: ellipsis; 
-                padding-left: 6px !important;
+                padding-left: 4px !important;
             }
             th.sticky-col { font-size: 0.65rem; }
         }
@@ -566,7 +566,7 @@
             tr.className = 'student-data-row';
             const rec = allRecords ? allRecords.find(r => r.student_id === student.id) : null;
             
-            let html = `<td class="sticky-col">${index}</td><td class="sticky-col text-left group-divider search-target"><strong>${student.full_name}</strong></td>`;
+            let html = `<td class="sticky-col">${index}</td><td class="sticky-col text-left group-divider search-target" title="${student.full_name}"><strong>${student.full_name}</strong></td>`;
             
             // For Modules (1-25)
             for(let i=1; i<=25; i++) {
@@ -987,7 +987,7 @@
                 return res;
             }
             else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
-                return `You currently handle a total of <strong>${students.length} students</strong> distributed across <strong>${sections.length} active sections</strong>.`;s
+                return `You currently handle a total of <strong>${students.length} students</strong> distributed across <strong>${sections.length} active sections</strong>.`;
             }
             else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
                 let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
