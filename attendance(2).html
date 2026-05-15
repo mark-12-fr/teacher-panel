@@ -135,7 +135,7 @@
         .dat-box { background-color: var(--card-bg); padding: 20px 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); display: flex; flex-direction: column; justify-content: center; border: 1px solid var(--border-color); transition: background 0.3s, box-shadow 0.3s; }
         .dat-box h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 0 0 8px 0; text-transform: uppercase; }
         .dat-box p { font-size: 26px; font-weight: 700; margin: 0; }
-        .txt-total { color: var(--text-dark); } .txt-present { color: #16a34a; } .txt-absent { color: #dc2626; } .txt-late { color: #d97706; }
+        .txt-total { color: var(--text-dark); } .txt-present { color: #16a34a; } .txt-absent { color: #dc2626; } .txt-late { color: #ca8a04; }
 
         .attendance-table-container { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); padding: 25px 30px; width: 100%; transition: background 0.3s, box-shadow 0.3s; }
         .table-header { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
@@ -161,10 +161,11 @@
         .gender-row td { background-color: var(--hover-bg); font-weight: 700; font-size: 0.8rem; color: var(--text-dark); text-align: left; padding-left: 20px; }
         .gender-row .sticky-col-1, .gender-row .sticky-col-2 { background-color: var(--hover-bg); }
 
-        .mark-p { color: #16a34a; font-weight: bold; }
-        .mark-a { color: #dc2626; font-weight: bold; }
-        .mark-l { color: #d97706; font-weight: bold; }
-        .mark-e { color: #7e22ce; font-weight: bold; }
+        /* 🔥 UPDATED COLORS AS REQUESTED 🔥 */
+        .mark-p { color: #16a34a; font-weight: bold; } /* Green */
+        .mark-a { color: #dc2626; font-weight: bold; } /* Red */
+        .mark-l { color: #ca8a04; font-weight: bold; } /* Yellow/Gold */
+        .mark-e { color: #7e22ce; font-weight: bold; } /* Purple */
         .mark-none { color: var(--text-muted); opacity: 0.5; }
 
         /* ADDED EDITABLE CELL STYLES */
@@ -318,7 +319,7 @@
                 <div style="margin-left: auto; display: flex; gap: 15px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
                     <span><span style="color:#16a34a">P</span> = Present</span>
                     <span><span style="color:#dc2626">A</span> = Absent</span>
-                    <span><span style="color:#d97706">L</span> = Late</span>
+                    <span><span style="color:#ca8a04">L</span> = Late</span>
                     <span><span style="color:#7e22ce">E</span> = Excused</span>
                 </div>
             </div>
@@ -452,9 +453,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         } catch (error) { console.error("Error loading profile:", error); }
     }
 
-    /* =========================================
-       UPLOAD AVATAR WITH CANVAS COMPRESSION
-       ========================================= */
     function uploadAvatar(event) {
         const file = event.target.files[0]; if (!file) return;
         const userId = localStorage.getItem('user_id');
@@ -820,7 +818,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
     }
 
-    /* 🌟 MODIFIED TO SUPPORT CLICK AND TYPING 🌟 */
     function createStudentRow(student, index, allAttendance, daysInMonth) {
         const tr = document.createElement('tr');
         tr.className = 'student-data-row';
@@ -841,7 +838,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 else if(record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
             }
             
-            // Added editable-cell class and data attributes
             html += `<td class="editable-cell ${markClass}" tabindex="0" 
                         data-student-id="${student.id_no || ''}" 
                         data-student-name="${student.full_name}" 
@@ -879,7 +875,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         });
     });
 
-    // EXPORT CSV LOGIC
     function exportAttendanceToCSV() {
         let csv = [];
         let rows = document.querySelectorAll("#attendanceRecordTable tr");
@@ -909,10 +904,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     /* =========================================
-       🌟 NEW: INTERACTIVE ATTENDANCE UPDATE LOGIC 🌟
+       🔥 FIXED: INTERACTIVE ATTENDANCE (OPTIMISTIC UI & SPAM-CLICK LOCK) 🔥
        ========================================= */
 
-    // Re-calculate the summary without needing to fetch from database again
     function recalculateSummaryUI() {
         let p = 0, a = 0, l = 0;
         document.querySelectorAll('.editable-cell').forEach(cell => {
@@ -926,33 +920,41 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         document.getElementById('summaryLate').innerText = l;
     }
 
-    // Handles saving the clicked or typed attendance to Supabase
     async function handleAttendanceUpdate(cellElement, status) {
+        // LOCK: If the cell is still updating, ignore new clicks to prevent bugs
+        if (cellElement.getAttribute('data-updating') === 'true') return;
+        
+        // SET LOCK
+        cellElement.setAttribute('data-updating', 'true');
+        
         const studentIdNo = cellElement.getAttribute('data-student-id');
         const studentName = cellElement.getAttribute('data-student-name');
         const dateStr = cellElement.getAttribute('data-date');
         
-        // Save current state incase of error
+        // Save previous state incase database connection fails
         const previousHTML = cellElement.innerHTML;
         const previousClass = cellElement.className;
         
-        // Show loading spinner
-        cellElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:10px; color: var(--text-muted);"></i>';
-        cellElement.className = 'editable-cell';
+        // INSTANT UI UPDATE (Optimistic UI - Change immediately for smooth feel)
+        let mark = '-', markClass = 'mark-none';
+        if(status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
+        else if(status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
+        else if(status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
+        else if(status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
+        
+        cellElement.innerHTML = mark;
+        cellElement.className = `editable-cell ${markClass}`;
+        recalculateSummaryUI(); 
         
         try {
+            // DATABASE SAVE IN BACKGROUND
             if (status === 'None') {
-                // Delete record if back to '-'
                 await supabaseClient.from('attendance')
                     .delete()
                     .eq('student_name', studentName)
                     .eq('date', dateStr)
                     .eq('section', currentSectionTitle);
-                
-                cellElement.innerHTML = '-';
-                cellElement.className = 'editable-cell mark-none';
             } else {
-                // Check if existing record
                 const { data: existing } = await supabaseClient.from('attendance')
                     .select('id')
                     .eq('student_name', studentName)
@@ -971,31 +973,29 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                         section: currentSectionTitle
                     });
                 }
-                
-                let mark = '', markClass = '';
-                if(status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
-                else if(status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
-                else if(status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
-                else if(status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
-                
-                cellElement.innerHTML = mark;
-                cellElement.className = `editable-cell ${markClass}`;
             }
-            
-            recalculateSummaryUI();
-            
         } catch (err) {
             console.error("Error updating attendance:", err);
+            // REVERT UI IF DATABASE FAILS
             cellElement.innerHTML = previousHTML;
             cellElement.className = previousClass;
+            recalculateSummaryUI();
             showNotification("Error saving attendance", "error");
+        } finally {
+            // REMOVE LOCK SO TEACHER CAN CLICK AGAIN
+            cellElement.removeAttribute('data-updating');
         }
     }
 
-    // Keyboard Event Listener (Maka-type)
     document.getElementById('attendanceTableBody').addEventListener('keydown', function(e) {
         const cell = e.target;
         if (!cell.classList.contains('editable-cell')) return;
+
+        // Prevent action if still saving
+        if (cell.getAttribute('data-updating') === 'true') {
+            e.preventDefault();
+            return;
+        }
 
         const key = e.key.toUpperCase();
         let status = null;
@@ -1007,21 +1007,21 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         else if (key === 'BACKSPACE' || key === 'DELETE' || key === '-' || key === ' ') status = 'None';
 
         if (status !== null) {
-            e.preventDefault(); // Prevent default typing behavior
+            e.preventDefault(); 
             handleAttendanceUpdate(cell, status);
         }
     });
 
-    // Mouse Click Event Listener (Maka-click)
     document.getElementById('attendanceTableBody').addEventListener('click', function(e) {
-        // Find closest editable cell in case user clicked on the icon inside it
         const cell = e.target.closest('.editable-cell');
         if (!cell) return;
         
+        // Prevent spam-click action if currently saving
+        if (cell.getAttribute('data-updating') === 'true') return;
+
         const currentMark = cell.innerText.trim();
-        let nextStatus = 'Present'; // Default first click is Present
+        let nextStatus = 'Present'; 
         
-        // Cycle logic: - -> P -> A -> L -> E -> -
         if (currentMark === 'P') nextStatus = 'Absent';
         else if (currentMark === 'A') nextStatus = 'Late';
         else if (currentMark === 'L') nextStatus = 'Excused';
