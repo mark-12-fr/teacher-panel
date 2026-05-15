@@ -152,6 +152,8 @@
         .record-table { width: 100%; border-collapse: collapse; min-width: 1200px; white-space: nowrap; }
         .record-table th, .record-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center; vertical-align: middle; }
         .record-table th { background: var(--table-header); color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Set base color for normal cells */
         .record-table td { color: var(--text-dark); font-size: 13px; font-weight: 500; }
 
         .sticky-col-1 { position: sticky; left: 0; background: var(--card-bg); z-index: 2; width: 40px; }
@@ -161,12 +163,12 @@
         .gender-row td { background-color: var(--hover-bg); font-weight: 700; font-size: 0.8rem; color: var(--text-dark); text-align: left; padding-left: 20px; }
         .gender-row .sticky-col-1, .gender-row .sticky-col-2 { background-color: var(--hover-bg); }
 
-        /* 🔥 UPDATED COLORS AS REQUESTED 🔥 */
-        .mark-p { color: #16a34a; font-weight: bold; } /* Green */
-        .mark-a { color: #dc2626; font-weight: bold; } /* Red */
-        .mark-l { color: #ca8a04; font-weight: bold; } /* Yellow/Gold */
-        .mark-e { color: #7e22ce; font-weight: bold; } /* Purple */
-        .mark-none { color: var(--text-muted); opacity: 0.5; }
+        /* 🔥 FIXED COLORS: Using !important to override .record-table td 🔥 */
+        .mark-p { color: #16a34a !important; font-weight: bold !important; } /* Green */
+        .mark-a { color: #dc2626 !important; font-weight: bold !important; } /* Red */
+        .mark-l { color: #ca8a04 !important; font-weight: bold !important; } /* Yellow/Gold */
+        .mark-e { color: #7e22ce !important; font-weight: bold !important; } /* Purple */
+        .mark-none { color: var(--text-muted) !important; opacity: 0.5; font-weight: 500 !important; }
 
         /* ADDED EDITABLE CELL STYLES */
         .editable-cell { cursor: pointer; transition: background-color 0.2s, transform 0.1s; user-select: none; }
@@ -921,21 +923,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     async function handleAttendanceUpdate(cellElement, status) {
-        // LOCK: If the cell is still updating, ignore new clicks to prevent bugs
         if (cellElement.getAttribute('data-updating') === 'true') return;
         
-        // SET LOCK
         cellElement.setAttribute('data-updating', 'true');
         
         const studentIdNo = cellElement.getAttribute('data-student-id');
         const studentName = cellElement.getAttribute('data-student-name');
         const dateStr = cellElement.getAttribute('data-date');
         
-        // Save previous state incase database connection fails
         const previousHTML = cellElement.innerHTML;
         const previousClass = cellElement.className;
         
-        // INSTANT UI UPDATE (Optimistic UI - Change immediately for smooth feel)
         let mark = '-', markClass = 'mark-none';
         if(status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
         else if(status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
@@ -947,7 +945,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         recalculateSummaryUI(); 
         
         try {
-            // DATABASE SAVE IN BACKGROUND
             if (status === 'None') {
                 await supabaseClient.from('attendance')
                     .delete()
@@ -976,13 +973,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             }
         } catch (err) {
             console.error("Error updating attendance:", err);
-            // REVERT UI IF DATABASE FAILS
             cellElement.innerHTML = previousHTML;
             cellElement.className = previousClass;
             recalculateSummaryUI();
             showNotification("Error saving attendance", "error");
         } finally {
-            // REMOVE LOCK SO TEACHER CAN CLICK AGAIN
             cellElement.removeAttribute('data-updating');
         }
     }
@@ -991,7 +986,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const cell = e.target;
         if (!cell.classList.contains('editable-cell')) return;
 
-        // Prevent action if still saving
         if (cell.getAttribute('data-updating') === 'true') {
             e.preventDefault();
             return;
@@ -1016,7 +1010,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const cell = e.target.closest('.editable-cell');
         if (!cell) return;
         
-        // Prevent spam-click action if currently saving
         if (cell.getAttribute('data-updating') === 'true') return;
 
         const currentMark = cell.innerText.trim();
