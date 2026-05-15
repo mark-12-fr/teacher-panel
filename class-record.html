@@ -8,6 +8,7 @@
     <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="apple-touch-icon" href="logo.jpg">
     <meta name="theme-color" content="#3b82f6">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -99,11 +100,9 @@
 
         /* MAIN CONTENT - ANIMATION */
         .main-content { 
-            margin-left: 260px; flex-grow: 1; padding: 30px 30px 100px 30px; 
-            display: flex; flex-direction: column; min-width: 0; width: 100%; 
-            transition: margin-left 0.3s ease-in-out; 
-            opacity: 0; 
-            animation: fadeInContent 0.25s ease-out forwards; 
+            margin-left: 260px; flex-grow: 1; min-width: 0; padding: 30px 30px 100px 30px; 
+            display: flex; flex-direction: column; transition: margin-left 0.3s ease-in-out; 
+            opacity: 0; animation: fadeInContent 0.25s ease-out forwards; 
         }
 
         @keyframes fadeInContent {
@@ -117,8 +116,8 @@
             transition: opacity 0.15s ease-out, transform 0.15s ease-out;
         }
 
-        .topbar { margin-bottom: 30px; }
-        .topbar-header { display: flex; align-items: center; }
+        .topbar { margin-bottom: 30px; width: 100%; display: flex; align-items: center; }
+        .topbar-header { display: flex; align-items: center; width: 100%; }
         .menu-toggle { display: none; background: none; border: none; font-size: 1.8rem; color: var(--text-dark); cursor: pointer; margin-right: 15px; }
 
         /* SEARCH BAR */
@@ -127,26 +126,79 @@
         .search-container input:focus { border-color: var(--accent-blue); background: var(--card-bg); }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 
-        /* SECTION CARDS */
-        .section-card { background: var(--card-bg); border-radius: 12px; padding: 25px 30px; margin-bottom: 20px; border-left: 6px solid var(--accent-blue); box-shadow: 0 4px 6px -1px var(--shadow-color); display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s, box-shadow 0.2s, background 0.3s; }
-        .section-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px var(--shadow-color); }
+        /* 🌟 NEW: 3 COLUMN GRID WRAPPER */
+        .sections-wrapper {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            width: 100%;
+        }
+
+        /* 🌟 NO MATCH FOUND MESSAGE */
+        .no-match-message {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-muted);
+            padding: 50px 20px;
+            grid-column: 1 / -1;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px dashed var(--border-color);
+        }
+        .no-match-message svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 15px;
+            opacity: 0.6;
+        }
+
+        /* SECTION CARDS - ADJUSTED FOR GRID */
+        .section-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px 30px;
+            border-left: 6px solid var(--accent-blue);
+            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            display: flex;
+            flex-direction: column; /* Updated */
+            justify-content: space-between;
+            align-items: flex-start; /* Updated */
+            gap: 20px; /* Added gap */
+            height: 100%; /* Ensure cards match height in grid row */
+            transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+        }
+        .section-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px var(--shadow-color); }
         .section-title { font-size: 1.6rem; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
-        .section-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px; }
+        .section-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px; line-height: 1.4; }
         
         /* TAGS */
-        .tags-wrapper { display: flex; gap: 12px; flex-wrap: wrap; }
-        .tag { padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .tags-wrapper { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tag { padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
         .tag-students { background: #dcfce7; color: #166534; }
         .tag-room { background: #fef9c3; color: #b45309; }
         .tag-sem { background: #e0e7ff; color: #3730a3; }
 
-        /* ACTION BUTTONS & THREE DOT MENU */
-        .card-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
-        .menu-container { position: relative; display: flex; justify-content: flex-end; width: 100%; }
+        /* ACTION BUTTONS & THREE DOT MENU - ADJUSTED FOR GRID */
+        .card-actions {
+            display: flex;
+            flex-direction: row; /* Updated */
+            width: 100%; /* Span full width of card */
+            justify-content: space-between; /* Space out the menu and view button */
+            align-items: center;
+            margin-top: auto; /* Push to the bottom */
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .menu-container { position: relative; display: flex; justify-content: flex-start; }
         .three-dots-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s, color 0.2s; display: flex; align-items: center; justify-content: center; }
         .three-dots-btn:hover { background: var(--hover-bg); color: var(--text-dark); }
         
-        .dropdown-menu { display: none; position: absolute; right: 0; top: 40px; background: var(--card-bg); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 140px; z-index: 10; border: 1px solid var(--border-color); overflow: hidden; transition: background 0.3s; }
+        .dropdown-menu { display: none; position: absolute; left: 0; top: 40px; background: var(--card-bg); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 140px; z-index: 10; border: 1px solid var(--border-color); overflow: hidden; transition: background 0.3s; }
         .dropdown-menu.show { display: block; animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -157,7 +209,7 @@
         .dropdown-item.delete:hover { background: #fef2f2; color: #dc2626; }
         [data-theme="dark"] .dropdown-item.delete:hover { background: #451a1a; color: #ef4444; }
 
-        .view-btn { background: var(--accent-blue); color: white; border: none; padding: 10px 35px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .view-btn { background: var(--accent-blue); color: white; border: none; padding: 8px 25px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .view-btn:hover { background: #2563eb; }
 
         /* FLOATING ACTION BUTTON (Add Section) */
@@ -187,7 +239,11 @@
         .ai-chat-input-area input { flex-grow: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.9rem; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); }
         .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
-        /* RESPONSIVE MEDIA QUERIES */
+        /* 🌟 RESPONSIVE MEDIA QUERIES FOR GRID 🌟 */
+        @media (max-width: 1200px) {
+            .sections-wrapper { grid-template-columns: repeat(2, 1fr); }
+        }
+
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
@@ -197,10 +253,7 @@
         }
 
         @media (max-width: 768px) {
-            .section-card { flex-direction: column; align-items: flex-start; gap: 20px; }
-            .card-actions { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
-            .menu-container { width: auto; justify-content: flex-start; }
-            .dropdown-menu { right: auto; left: 0; } 
+            .sections-wrapper { grid-template-columns: 1fr; } /* Stack on small tablet/mobile */
             .fab-add-btn { bottom: 20px; right: 20px; }
             .ai-floating-btn { bottom: 90px; right: 20px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 160px; }
@@ -230,7 +283,6 @@
             <div class="sidebar-username" id="userName">&nbsp;</div>
         </div>
 
-        <!-- 🌟 ANTI-FLASH PROFILE SCRIPT 🌟 -->
         <script>
             (function() {
                 const cachedName = localStorage.getItem('cached_user_name');
@@ -281,18 +333,21 @@
         </div>
 
         <div class="sections-wrapper" id="sectionsWrapper">
-            <!-- Dynamic Sections Load Here -->
+            </div>
+
+        <div id="noMatchMessage" class="no-match-message">
+            <i data-lucide="search-x"></i>
+            <h3 style="color: var(--text-dark); margin-bottom: 5px;">No match found</h3>
+            <p>We couldn't find any section matching your search.</p>
         </div>
 
     </main>
 </div>
 
-<!-- FLOATING ADD BUTTON -->
 <button class="fab-add-btn" title="Add New Section" onclick="openAddModal()">
     <i class="fa-solid fa-plus" style="font-size: 22px;"></i>
 </button>
 
-<!-- ADD/EDIT SECTION MODAL -->
 <div id="sectionModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <h4 id="modalTitle" style="margin-bottom:20px; color: var(--text-dark);">Add New Section</h4>
@@ -314,13 +369,11 @@
     </div>
 </div>
 
-<!-- TOAST NOTIFICATION -->
 <div id="customToast" class="toast-notification">
     <i class="fa-solid fa-circle-check"></i>
     <span id="toastMessage">Success</span>
 </div>
 
-<!-- CUSTOM SMART VIRTUAL TEACHING ASSISTANT -->
 <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
     <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
 </button>
@@ -568,7 +621,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // 1. Kuhaon anay ang sections nga iya sang naka-login nga teacher
+        // 1. Get sections owned by the logged-in teacher
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
@@ -577,7 +630,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const sectionIds = sections.map(s => s.id);
         const sectionTitles = sections.map(s => s.title);
 
-        // 2. Fetch data nga NAKA-FILTER base sa section kag teacher ID
+        // 2. Fetch data FILTERED by sectionIds and teacherId (SECURITY UPDATE)
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
@@ -720,6 +773,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         if (!userId) return;
 
         sectionsWrapper.innerHTML = ''; 
+        document.getElementById('noMatchMessage').style.display = 'none';
 
         // NAKA-FILTER NA INI DAAN PARA SA TEACHER_ID
         const { data: savedSections, error } = await supabaseClient
@@ -735,7 +789,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
 
         if (!savedSections || savedSections.length === 0) {
-            sectionsWrapper.innerHTML = '<p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 20px;">No sections added yet. Click the + button to add one.</p>';
+            sectionsWrapper.innerHTML = '<p style="color: var(--text-muted); font-size: 0.95rem; grid-column: 1 / -1; text-align: center; margin-top: 20px;">No sections added yet. Click the + button to add one.</p>';
             return;
         }
 
@@ -767,7 +821,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                             <button class="dropdown-item delete" onclick="deleteSection('${sec.id}')"><i data-lucide="trash-2"></i> Delete</button>
                         </div>
                     </div>
-                    <!-- REDIRECTS TO CLASS RECORD LIST PAGE -->
                     <button class="view-btn" onclick="viewSection('${sec.id}')">View</button>
                 </div>
             `;
@@ -794,10 +847,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         });
     });
 
-    // SEARCH BAR LOGIC
+    // 🌟 SEARCH BAR LOGIC WITH "NO MATCH FOUND" 🌟
     document.getElementById('searchInput').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const cards = document.querySelectorAll('.section-card');
+        let visibleCount = 0;
         
         cards.forEach(card => {
             const title = card.querySelector('.section-title').textContent.toLowerCase();
@@ -805,10 +859,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             
             if (title.includes(term) || subject.includes(term)) {
                 card.style.display = 'flex';
+                visibleCount++;
             } else {
                 card.style.display = 'none';
             }
         });
+
+        // Show "No match found" message if all cards are hidden
+        const noMatchMsg = document.getElementById('noMatchMessage');
+        if (noMatchMsg) {
+            noMatchMsg.style.display = (visibleCount === 0 && cards.length > 0) ? 'flex' : 'none';
+        }
     });
 
     function toggleSectionModal() {
