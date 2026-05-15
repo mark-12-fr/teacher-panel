@@ -488,7 +488,34 @@
 
             await loadSectionDetails();
             await loadClassRecordData();
+            
+            // TINAWAG NGA REALTIME LISTENER FUNCTION
+            listenForRecordUpdates();
         };
+
+        /* =========================================
+           REALTIME LISTENER SANG FACILITATOR UPDATES
+           ========================================= */
+        function listenForRecordUpdates() {
+            supabaseClient
+                .channel('public:class_records')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'class_records' },
+                    (payload) => {
+                        console.log('Data updated by facilitator!', payload);
+                        
+                        // Kung ang gin-update nga record is sa current section, i-reload ang data
+                        if(payload.new && payload.new.section_id === currentSectionId || 
+                           payload.old && payload.old.section_id === currentSectionId) {
+                            
+                            loadClassRecordData(); // I-reload ang table para mag-reflect dayon ang score
+                            showNotification("Records have been updated by a Facilitator!", "success");
+                        }
+                    }
+                )
+                .subscribe();
+        }
 
         /* =========================================
            TOAST NOTIFICATION FUNCTION
