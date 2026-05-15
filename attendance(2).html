@@ -126,9 +126,9 @@
         .export-btn:hover { background: var(--hover-bg); border-color: var(--accent-blue); }
 
         .dashboard-wrapper { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card-bg); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); margin-bottom: 25px; width: 100%; align-items: center; gap: 15px; transition: background 0.3s, box-shadow 0.3s; }
+        .dash-wrap { text-align: left; }
         .dash-wrap h3 { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
         .dash-wrap h4 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-dark); word-wrap: break-word; }
-        .dash-wrap:last-child { text-align: center; }
         .badge { display: inline-block; background: var(--input-bg); color: var(--accent-blue); padding: 5px 15px; border-radius: 8px; font-weight: 700; }
 
         .inf-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
@@ -153,7 +153,6 @@
         .record-table th, .record-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center; vertical-align: middle; }
         .record-table th { background: var(--table-header); color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* Set base color for normal cells */
         .record-table td { color: var(--text-dark); font-size: 13px; font-weight: 500; }
 
         .sticky-col-1 { position: sticky; left: 0; background: var(--card-bg); z-index: 2; width: 40px; }
@@ -163,21 +162,18 @@
         .gender-row td { background-color: var(--hover-bg); font-weight: 700; font-size: 0.8rem; color: var(--text-dark); text-align: left; padding-left: 20px; }
         .gender-row .sticky-col-1, .gender-row .sticky-col-2 { background-color: var(--hover-bg); }
 
-        /* 🔥 FIXED COLORS: Using !important to override .record-table td 🔥 */
-        .mark-p { color: #16a34a !important; font-weight: bold !important; } /* Green */
-        .mark-a { color: #dc2626 !important; font-weight: bold !important; } /* Red */
-        .mark-l { color: #ca8a04 !important; font-weight: bold !important; } /* Yellow/Gold */
-        .mark-e { color: #7e22ce !important; font-weight: bold !important; } /* Purple */
+        .mark-p { color: #16a34a !important; font-weight: bold !important; } 
+        .mark-a { color: #dc2626 !important; font-weight: bold !important; } 
+        .mark-l { color: #ca8a04 !important; font-weight: bold !important; } 
+        .mark-e { color: #7e22ce !important; font-weight: bold !important; } 
         .mark-none { color: var(--text-muted) !important; opacity: 0.5; font-weight: 500 !important; }
 
-        /* ADDED EDITABLE CELL STYLES */
         .editable-cell { cursor: pointer; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .editable-cell:hover, .editable-cell:focus { background-color: var(--hover-bg); outline: 2px solid var(--accent-blue); outline-offset: -2px; transform: scale(1.1); z-index: 10; position: relative; }
 
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
-        /* AI ASSISTANT STYLES */
         .ai-floating-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .ai-floating-btn:hover { transform: scale(1.1); }
         .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 350px; height: 450px; background: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 25px var(--shadow-color); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s, background 0.3s; overflow: hidden; border: 1px solid var(--border-color); }
@@ -200,11 +196,15 @@
             .inf-summary { grid-template-columns: 1fr 1fr; }
         }
 
+        /* 🔥 MOBILE ALIGNMENT FIX 🔥 */
         @media (max-width: 640px) {
             .topbar-left h1 { position: absolute; left: 50%; transform: translateX(-50%); font-size: 1.5rem; }
             .export-text { display: none; } .export-btn { padding: 8px 12px; }
-            .dashboard-wrapper { grid-template-columns: 1fr; padding: 20px 15px; text-align: center; }
-            .dash-wrap { text-align: center; margin-bottom: 15px; } .dash-wrap:last-child { margin-bottom: 0; }
+            
+            /* Changed to 2 columns and aligned left for clean look */
+            .dashboard-wrapper { grid-template-columns: 1fr 1fr; padding: 20px 15px; text-align: left; gap: 15px; }
+            .dash-wrap { text-align: left; margin-bottom: 0; } 
+            
             .inf-summary { grid-template-columns: 1fr 1fr; gap: 15px; }
             .attendance-table-container { padding: 20px 15px; }
             .table-header { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -362,9 +362,6 @@
 </div>
 
 <script>
-    /* =========================================
-       THEME TOGGLE LOGIC (ANTI-JUMP)
-       ========================================= */
     function toggleTheme(event) {
         if (event) event.preventDefault(); 
         const root = document.documentElement;
@@ -390,9 +387,6 @@
 
     lucide.createIcons();
 
-    /* =========================================
-       SUPABASE CONFIGURATION
-       ========================================= */
     const API_URL ='http://127.0.0.1:5000'; 
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
@@ -406,9 +400,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 });
 
-    /* =========================================
-       USER AUTHENTICATION & PROFILE
-       ========================================= */
     async function checkAuthAndLoadProfile() {
         const userId = localStorage.getItem('user_id');
         const accessToken = localStorage.getItem('access_token');
@@ -517,9 +508,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
     function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
 
-    /* =========================================
-       CUSTOM SMART VIRTUAL ASSISTANT
-       ========================================= */
     function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
     async function sendAIMessage() {
@@ -702,9 +690,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 💬 <em>"Give me a class summary."</em>`;
     }
 
-    /* =========================================
-       DYNAMIC SPREADSHEET ATTENDANCE LOGIC
-       ========================================= */
     const urlParams = new URLSearchParams(window.location.search);
     const currentSectionId = urlParams.get('id');
     let currentSectionTitle = "";
@@ -905,10 +890,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         showNotification("Attendance exported successfully!");
     }
 
-    /* =========================================
-       🔥 FIXED: INTERACTIVE ATTENDANCE (OPTIMISTIC UI & SPAM-CLICK LOCK) 🔥
-       ========================================= */
-
     function recalculateSummaryUI() {
         let p = 0, a = 0, l = 0;
         document.querySelectorAll('.editable-cell').forEach(cell => {
@@ -1023,9 +1004,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         handleAttendanceUpdate(cell, nextStatus);
     });
 
-    /* =========================================
-       SMOOTH PAGE TRANSITION
-       ========================================= */
     document.addEventListener("DOMContentLoaded", () => {
         const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
         sidebarLinks.forEach(link => {
