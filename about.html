@@ -36,6 +36,7 @@
             --input-bg: #f8faff;
             --shadow-color: rgba(0, 0, 0, 0.05);
             --icon-bg: #eff6ff;
+            --hover-bg: #f3f4f6;
         }
 
         /* DARK MODE VARIABLES */
@@ -49,6 +50,7 @@
             --input-bg: #374151;
             --shadow-color: rgba(0, 0, 0, 0.3);
             --icon-bg: rgba(59, 130, 246, 0.15);
+            --hover-bg: #374151;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -166,21 +168,16 @@
         }
         .sidebar-overlay.active { display: block; opacity: 1; }
 
-        /* MAIN CONTENT - ANIMATION */
+        /* MAIN CONTENT - STANDARDIZED */
         .main-content { 
-            margin-left: 260px; 
-            flex-grow: 1; 
-            padding: 30px 30px 100px 30px; 
-            display: flex; 
-            flex-direction: column; 
-            min-width: 0; 
-            width: 100%;
-            transition: margin-left 0.3s ease-in-out;
+            margin-left: 260px; flex-grow: 1; padding: 30px 30px 100px 30px; 
+            display: flex; flex-direction: column; min-width: 0; width: 100%; 
+            transition: margin-left 0.3s ease-in-out; 
             opacity: 0; 
-            animation: fadeInMain 0.25s ease-out forwards;
+            animation: fadeInContent 0.25s ease-out forwards; 
         }
 
-        @keyframes fadeInMain {
+        @keyframes fadeInContent {
             0% { opacity: 0; transform: translateY(10px); }
             100% { opacity: 1; transform: translateY(0); }
         }
@@ -191,32 +188,11 @@
             transition: opacity 0.15s ease-out, transform 0.15s ease-out;
         }
 
-        /* TOPBAR / PAGE HEADER */
-        .topbar { 
-            display: flex; 
-            align-items: center; 
-            position: relative; 
-            margin-bottom: 25px;
-            width: 100%;
-        }
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .menu-toggle { 
-            display: none; 
-            background: none; 
-            border: none; 
-            font-size: 1.6rem; 
-            color: var(--text-dark); 
-            cursor: pointer; 
-            padding: 0; 
-            z-index: 10;
-            line-height: 1;
-        }
-        
-        .topbar-left h1 { font-size: 1.8rem; font-weight: 700; margin: 0; color: var(--text-dark); line-height: 1; white-space: nowrap; }
+        /* TOPBAR / PAGE HEADER - STANDARDIZED */
+        .topbar { margin-bottom: 30px; width: 100%; display: flex; align-items: center; }
+        .topbar-header { display: flex; align-items: center; width: 100%; position: relative; }
+        .menu-toggle { display: none; background: none; border: none; font-size: 1.8rem; color: var(--text-dark); cursor: pointer; margin-right: 15px; }
+        .topbar-title { font-size: 2rem; font-weight: 700; color: var(--text-dark); margin: 0; }
 
         /* ABOUT CARD PROFESSIONAL STYLE */
         .about-card {
@@ -367,34 +343,34 @@
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
             
-            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100vw; }
-            .menu-toggle { display: block; }
-            .topbar { position: relative; margin-bottom: 20px; }
+            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100%; }
+            
+            /* Align header smoothly like other pages */
             .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; }
+            .menu-toggle { display: block; position: absolute; left: 0; }
+            .about-card { padding: 25px 35px; } 
         }
 
         @media (max-width: 640px) {
-            .about-card { padding: 15px 25px; }
+            .main-content { padding: 15px 15px 100px 15px; }
+            .about-card { padding: 20px 20px; }
             
-            .topbar-left h1 { 
-                position: absolute;
-                left: 50%;
-                transform: translateX(-50%);
-                font-size: 1.5rem; 
-            }
+            .topbar-title { font-size: 1.5rem; white-space: nowrap; }
             
             .section-title { font-size: 1.1rem; gap: 12px; }
             .icon-box { width: 36px; height: 36px; }
             .icon-box svg { width: 18px; height: 18px; }
             
+            /* Remove left margin on mobile to utilize space efficiently */
             .section-text { 
                 font-size: 0.9rem; 
                 margin: 0; 
                 margin-top: 10px;
+                line-height: 1.6;
             }
-            .about-section { padding: 25px 0; }
+            .about-section { padding: 20px 0; }
 
-            .ai-floating-btn { bottom: 20px; right: 20px; }
+            .ai-floating-btn { bottom: 20px; right: 20px; width: 55px; height: 55px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 90px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
         }
@@ -403,7 +379,6 @@
 
 <body>
  <div class="layout">
-        
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
         <aside class="sidebar" id="mySidebar">
@@ -422,7 +397,6 @@
                 <div class="sidebar-username" id="userName">&nbsp;</div>
             </div>
 
-            <!-- 🌟 ANTI-FLASH PROFILE SCRIPT 🌟 -->
             <script>
                 (function() {
                     const cachedName = localStorage.getItem('cached_user_name');
@@ -457,9 +431,11 @@
     <main class="main-content">
         
         <div class="topbar">
-            <div class="topbar-left">
-                <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
-                <h1>About the System</h1>
+            <div class="topbar-header">
+                <button class="menu-toggle" onclick="openSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h1 class="topbar-title">About the System</h1>
             </div>
         </div>
 
@@ -542,8 +518,7 @@
     /* =========================================
        THEME TOGGLE LOGIC (ANTI-JUMP)
        ========================================= */
-    function toggleTheme(event) {
-        if (event) event.preventDefault(); 
+    function toggleTheme() {
         const root = document.documentElement;
         const icon = document.getElementById('themeIcon');
         const text = document.getElementById('themeText');
@@ -621,19 +596,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         try {
             let googleAvatar = null; let tokenName = null; 
             try {
-                if(accessToken) {
-                    const base64Url = accessToken.split('.')[1];
-                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-                    const payload = JSON.parse(jsonPayload);
-                    googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
-                    tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name; 
-                }
+                const base64Url = accessToken.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                const payload = JSON.parse(jsonPayload);
+                googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
+                tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name; 
             } catch (e) { console.error("Error decoding token"); }
 
             const { data: profile } = await supabaseClient.from('profiles').select('full_name, avatar_url').eq('id', userId).single();
-            let fullName = 'Teacher';
             
+            let fullName = 'Teacher';
             if (profile && profile.full_name) fullName = profile.full_name;
             else if (tokenName) fullName = tokenName;
             else {
@@ -654,7 +627,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
             let finalAvatarSrc = profile?.avatar_url || googleAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=3b82f6&color=fff&size=128`;
             const uAvatarEl = document.getElementById('userAvatar');
-            if (uAvatarEl) uAvatarEl.src = finalAvatarSrc;
+            if(uAvatarEl) uAvatarEl.src = finalAvatarSrc;
             localStorage.setItem('cached_user_avatar', finalAvatarSrc); 
 
         } catch (error) { console.error("Error loading profile:", error); }
@@ -681,7 +654,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
                 try {
@@ -706,8 +678,16 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     /* =========================================
        SIDEBAR
        ========================================= */
-    function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
-    function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
+    function openSidebar() {
+        document.getElementById('mySidebar').classList.add('active');
+        document.getElementById('sidebarOverlay').classList.add('active');
+    }
+    function closeSidebar() {
+        if(window.innerWidth <= 1024) {
+            document.getElementById('mySidebar').classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+    }
 
     /* =========================================
        CUSTOM SMART VIRTUAL ASSISTANT (SECURED DATA FETCH)
@@ -757,7 +737,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // SECURITY UPDATE: Filter by Teacher ID
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
@@ -898,7 +877,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     /* =========================================
-       SMOOTH PAGE TRANSITION
+       SMOOTH PAGE TRANSITION (MAIN CONTENT ONLY)
        ========================================= */
     document.addEventListener("DOMContentLoaded", () => {
         const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
