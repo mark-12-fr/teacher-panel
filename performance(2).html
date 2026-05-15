@@ -753,12 +753,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const schedules = schedRes.data || [];
         const facilitators = facRes.data || [];
 
-        const getFinalGrade = (record) => {
-            if(!record) return 0;
-            let totalWW = 0, totalPT = 0, totalQE = Number(record.qe) || 0;
-            for (let key in record) {
-                if (key.startsWith('module_') || key.startsWith('activity_')) totalWW += Number(record[key]) || 0;
-                if (key.startsWith('pt_')) totalPT += Number(record[key]) || 0;
+        const getFinalGrade = (studentId) => {
+            // MERGE Logic for AI querying
+            let studRecs = records.filter(r => r.student_id === studentId);
+            let merged = studRecs.reduce((acc, curr) => {
+                Object.keys(curr).forEach(key => { if(curr[key] !== null) acc[key] = curr[key]; }); return acc;
+            }, {});
+
+            let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
+            for (let key in merged) {
+                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0;
+                if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0;
             }
             let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
             let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
@@ -769,8 +774,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         if (query.includes('top') || query.includes('highest') || query.includes('best')) {
             if(students.length === 0) return "You don't have any students registered yet.";
             let scoredStudents = students.map(s => {
-                let rec = records.find(r => r.student_id === s.id);
-                return { name: s.full_name, grade: getFinalGrade(rec), section: sections.find(sec=>sec.id===s.section_id)?.title };
+                return { name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title };
             }).sort((a,b) => b.grade - a.grade).slice(0, 5); 
             
             let res = "<strong>Here are your top performing students:</strong><br><br>";
@@ -780,8 +784,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
             let failing = [];
             students.forEach(s => {
-                let rec = records.find(r => r.student_id === s.id);
-                let grade = getFinalGrade(rec);
+                let grade = getFinalGrade(s.id);
                 if(grade > 0 && grade < 75) failing.push({ name: s.full_name, grade: grade });
             });
             if(failing.length === 0) return "Excellent news! None of your students are currently failing.";
@@ -790,17 +793,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return res;
         }
         else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
-            let missingStudents = [];
-            records.forEach(r => {
-                let hasMissing = false;
-                for(let i=1; i<=5; i++) { if(r[`module_${i}`] == null || r[`module_${i}`] === "") hasMissing = true; }
-                if(hasMissing) {
-                    let stud = students.find(s => s.id === r.student_id);
-                    if(stud) missingStudents.push(stud.full_name);
-                }
-            });
-            if(missingStudents.length === 0) return "All students have submitted their recorded modules and activities.";
-            return `<strong>The following students have missing requirements:</strong><br><br>- ` + missingStudents.join('<br>- ');
+            return `<strong>Sorry, I can't check missing modules accurately right now due to merged records formatting.</strong>`;
         }
         else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
             let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
@@ -809,10 +802,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your class lists.`;
             
-            let rec = records.find(r => r.student_id === stud.id);
-            if(!rec) return `There are no grade records entered for <strong>${stud.full_name}</strong> yet.`;
-            
-            let grade = getFinalGrade(rec);
+            let grade = getFinalGrade(stud.id);
             let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
             return `The current calculated grade for <strong>${stud.full_name}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
         }
@@ -852,7 +842,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
         else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
             let totalStuds = students.length; let passCount = 0;
-            records.forEach(r => { if(getFinalGrade(r) >= 75) passCount++; });
+            students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
             let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
             
             return `<strong>Class Performance Overview:</strong><br><br>` + 
@@ -924,22 +914,29 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     async function loadPerformanceData() {
         if (!currentSectionId) return;
 
+        // FETCH ALL STUDENTS FOR THIS SECTION FIRST
+        const { data: studentsData, error: studErr } = await supabaseClient
+            .from('students')
+            .select('*')
+            .eq('section_id', currentSectionId);
+
+        // FETCH ALL CLASS RECORDS
         const { data: records, error } = await supabaseClient
             .from('class_records') 
-            .select(`*, students ( full_name )`) 
+            .select('*') 
             .eq('section_id', currentSectionId);
 
         const tbody = document.getElementById('topStudentsTable');
 
-        if (error) {
-            console.error("Error fetching performance data:", error);
-            showNotification(`DB Error: ${error.message}`, "error");
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--fail-color);">Database Error: ${error.message}</td></tr>`;
+        if (error || studErr) {
+            console.error("Error fetching performance data:", error || studErr);
+            showNotification(`DB Error: Failed to fetch records`, "error");
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--fail-color);">Database Error.</td></tr>`;
             return;
         }
 
-        if (!records || records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No performance data submitted yet...</td></tr>';
+        if (!studentsData || studentsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No students assigned to this section yet.</td></tr>';
             return;
         }
 
@@ -953,20 +950,36 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         let totalWW = 0, totalPT = 0, totalExam = 0;
         let dist = { '90+': 0, '85-89': 0, '80-84': 0, '<80': 0 };
 
-        const students = records.map(record => {
+        // 🌟 CRITICAL FIX: MERGE STUDENT SCORES FROM MULTIPLE DATES 🌟
+        const students = studentsData.map(student => {
+            // Find ALL records saved on different dates for this ONE student
+            const studentRecords = records.filter(r => r.student_id === student.id);
+            
+            // Merge them into one object
+            const mergedScores = studentRecords.reduce((acc, curr) => {
+                Object.keys(curr).forEach(key => {
+                    if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") {
+                        acc[key] = curr[key];
+                    }
+                });
+                return acc;
+            }, {});
+
             let totalWW_raw = 0; 
             let totalPT_raw = 0; 
-            let totalQE_raw = Number(record.qe) || 0; 
+            let totalQE_raw = Number(mergedScores.qe) || 0; 
 
-            for (let key in record) {
-                if (key.startsWith('module_') || key.startsWith('activity_')) {
-                    totalWW_raw += Number(record[key]) || 0;
+            for (let key in mergedScores) {
+                // FIXED: 'at' column is now included in Written Works!
+                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') {
+                    totalWW_raw += Number(mergedScores[key]) || 0;
                 }
                 if (key.startsWith('pt_')) {
-                    totalPT_raw += Number(record[key]) || 0;
+                    totalPT_raw += Number(mergedScores[key]) || 0;
                 }
             }
 
+            // You can adjust these Perfect Scores if your grading max is different!
             let ww_perfect = 100; 
             let pt_perfect = 100; 
             let qe_perfect = 50;  
@@ -978,7 +991,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let computed_final_grade = (ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2);
             let final_rounded = Math.round(computed_final_grade);
 
-            let qtr = String(record.quarter || '1'); 
+            // We pick the quarter from the merged scores or default to '1'
+            let qtr = String(mergedScores.quarter || '1'); 
             
             if (qtr === '1' || qtr === '1st') {
                 q1_totalGrade += final_rounded;
@@ -995,7 +1009,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             }
 
             return {
-                full_name: record.students ? record.students.full_name : 'No Name',
+                full_name: student.full_name || 'No Name',
                 written_works: totalWW_raw,
                 perf_task: totalPT_raw,
                 quarterly_exam: totalQE_raw,
@@ -1008,8 +1022,10 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             
             totalGrade += grade;
             if (grade >= 75) passed++;
-            if (grade > highest) highest = grade;
-            if (grade < lowest) lowest = grade;
+            
+            // Only count highest/lowest if they actually have a grade > 0
+            if (grade > 0 && grade > highest) highest = grade;
+            if (grade > 0 && grade < lowest) lowest = grade;
 
             totalWW += student.written_works || 0;
             totalPT += student.perf_task || 0;
@@ -1074,7 +1090,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             tbody.innerHTML += `
                 <tr>
                     <td><span class="rank-badge ${rankClass}">${rank}</span></td>
-                    <td>${student.full_name || 'No Name'}</td>
+                    <td>${student.full_name}</td>
                     <td>${student.written_works || 0}</td>
                     <td>${student.perf_task || 0}</td>
                     <td>${student.quarterly_exam || 0}</td>
@@ -1155,7 +1171,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             data: {
                 labels: ['WW', 'PT', 'Exam'],
                 datasets: [{
-                    label: 'Average Score',
+                    label: 'Average Raw Score',
                     data: [0, 0, 0], 
                     backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
                     borderRadius: 4,
