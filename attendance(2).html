@@ -167,6 +167,10 @@
         .mark-e { color: #7e22ce; font-weight: bold; }
         .mark-none { color: var(--text-muted); opacity: 0.5; }
 
+        /* ADDED EDITABLE CELL STYLES */
+        .editable-cell { cursor: pointer; transition: background-color 0.2s, transform 0.1s; user-select: none; }
+        .editable-cell:hover, .editable-cell:focus { background-color: var(--hover-bg); outline: 2px solid var(--accent-blue); outline-offset: -2px; transform: scale(1.1); z-index: 10; position: relative; }
+
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
@@ -230,7 +234,6 @@
                 <div class="sidebar-username" id="userName">&nbsp;</div>
             </div>
 
-            <!-- 🌟 ANTI-FLASH PROFILE SCRIPT 🌟 -->
             <script>
                 (function() {
                     const cachedName = localStorage.getItem('cached_user_name');
@@ -269,7 +272,6 @@
                 <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
                 <h1>Attendance</h1>
             </div>
-            <!-- GINHIMO NGA FUNCTIONAL ANG EXPORT BUTTON -->
             <button class="export-btn" onclick="exportAttendanceToCSV()"><i class="fa-solid fa-download"></i> <span class="export-text">Export CSV</span></button>
         </div>
             
@@ -341,7 +343,6 @@
 
 <div id="customToast" class="toast-notification"><i class="fa-solid fa-circle-check"></i><span id="toastMessage">Success</span></div>
 
-<!-- CUSTOM SMART VIRTUAL TEACHING ASSISTANT -->
 <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant"><i data-lucide="brain" style="width: 28px; height: 28px;"></i></button>
 <div class="ai-chat-widget" id="aiChatWidget">
     <div class="ai-chat-header">
@@ -702,7 +703,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     /* =========================================
-       DYNAMIC SPREADSHEET ATTENDANCE LOGIC (SECURITY UPDATED)
+       DYNAMIC SPREADSHEET ATTENDANCE LOGIC
        ========================================= */
     const urlParams = new URLSearchParams(window.location.search);
     const currentSectionId = urlParams.get('id');
@@ -743,7 +744,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
     async function loadSectionDetails() {
         const userId = localStorage.getItem('user_id');
-        // SECURITY UPDATE: Gina-check naton kon ang nag-login nga user gid ang tag-iya
         const { data: secData, error } = await supabaseClient
             .from('sections')
             .select('*')
@@ -820,6 +820,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
     }
 
+    /* 🌟 MODIFIED TO SUPPORT CLICK AND TYPING 🌟 */
     function createStudentRow(student, index, allAttendance, daysInMonth) {
         const tr = document.createElement('tr');
         tr.className = 'student-data-row';
@@ -832,16 +833,20 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
             const record = allAttendance ? allAttendance.find(a => (a.student_id_no === student.id_no || a.student_name === student.full_name) && a.date === targetDate) : null;
 
+            let mark = '-'; let markClass = 'mark-none';
             if (record) {
-                let mark = '-'; let markClass = 'mark-none';
                 if(record.status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
                 else if(record.status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
                 else if(record.status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
                 else if(record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
-                html += `<td class="${markClass}" title="${record.remarks || ''}">${mark}</td>`;
-            } else {
-                html += `<td class="mark-none">-</td>`;
             }
+            
+            // Added editable-cell class and data attributes
+            html += `<td class="editable-cell ${markClass}" tabindex="0" 
+                        data-student-id="${student.id_no || ''}" 
+                        data-student-name="${student.full_name}" 
+                        data-date="${targetDate}" 
+                        title="Click to cycle or Type P, A, L, E">${mark}</td>`;
         }
         tr.innerHTML = html;
         return tr;
@@ -874,7 +879,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         });
     });
 
-    // ACTUAL CSV EXPORT LOGIC FOR ATTENDANCE
+    // EXPORT CSV LOGIC
     function exportAttendanceToCSV() {
         let csv = [];
         let rows = document.querySelectorAll("#attendanceRecordTable tr");
@@ -902,6 +907,128 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         document.body.removeChild(downloadLink);
         showNotification("Attendance exported successfully!");
     }
+
+    /* =========================================
+       🌟 NEW: INTERACTIVE ATTENDANCE UPDATE LOGIC 🌟
+       ========================================= */
+
+    // Re-calculate the summary without needing to fetch from database again
+    function recalculateSummaryUI() {
+        let p = 0, a = 0, l = 0;
+        document.querySelectorAll('.editable-cell').forEach(cell => {
+            const mark = cell.innerText.trim();
+            if (mark === 'P') p++;
+            else if (mark === 'A') a++;
+            else if (mark === 'L') l++;
+        });
+        document.getElementById('summaryPresent').innerText = p;
+        document.getElementById('summaryAbsent').innerText = a;
+        document.getElementById('summaryLate').innerText = l;
+    }
+
+    // Handles saving the clicked or typed attendance to Supabase
+    async function handleAttendanceUpdate(cellElement, status) {
+        const studentIdNo = cellElement.getAttribute('data-student-id');
+        const studentName = cellElement.getAttribute('data-student-name');
+        const dateStr = cellElement.getAttribute('data-date');
+        
+        // Save current state incase of error
+        const previousHTML = cellElement.innerHTML;
+        const previousClass = cellElement.className;
+        
+        // Show loading spinner
+        cellElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:10px; color: var(--text-muted);"></i>';
+        cellElement.className = 'editable-cell';
+        
+        try {
+            if (status === 'None') {
+                // Delete record if back to '-'
+                await supabaseClient.from('attendance')
+                    .delete()
+                    .eq('student_name', studentName)
+                    .eq('date', dateStr)
+                    .eq('section', currentSectionTitle);
+                
+                cellElement.innerHTML = '-';
+                cellElement.className = 'editable-cell mark-none';
+            } else {
+                // Check if existing record
+                const { data: existing } = await supabaseClient.from('attendance')
+                    .select('id')
+                    .eq('student_name', studentName)
+                    .eq('date', dateStr)
+                    .eq('section', currentSectionTitle)
+                    .maybeSingle();
+                
+                if (existing) {
+                    await supabaseClient.from('attendance').update({ status: status }).eq('id', existing.id);
+                } else {
+                    await supabaseClient.from('attendance').insert({
+                        student_id_no: studentIdNo,
+                        student_name: studentName,
+                        date: dateStr,
+                        status: status,
+                        section: currentSectionTitle
+                    });
+                }
+                
+                let mark = '', markClass = '';
+                if(status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
+                else if(status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
+                else if(status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
+                else if(status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
+                
+                cellElement.innerHTML = mark;
+                cellElement.className = `editable-cell ${markClass}`;
+            }
+            
+            recalculateSummaryUI();
+            
+        } catch (err) {
+            console.error("Error updating attendance:", err);
+            cellElement.innerHTML = previousHTML;
+            cellElement.className = previousClass;
+            showNotification("Error saving attendance", "error");
+        }
+    }
+
+    // Keyboard Event Listener (Maka-type)
+    document.getElementById('attendanceTableBody').addEventListener('keydown', function(e) {
+        const cell = e.target;
+        if (!cell.classList.contains('editable-cell')) return;
+
+        const key = e.key.toUpperCase();
+        let status = null;
+
+        if (key === 'P') status = 'Present';
+        else if (key === 'A') status = 'Absent';
+        else if (key === 'L') status = 'Late';
+        else if (key === 'E') status = 'Excused';
+        else if (key === 'BACKSPACE' || key === 'DELETE' || key === '-' || key === ' ') status = 'None';
+
+        if (status !== null) {
+            e.preventDefault(); // Prevent default typing behavior
+            handleAttendanceUpdate(cell, status);
+        }
+    });
+
+    // Mouse Click Event Listener (Maka-click)
+    document.getElementById('attendanceTableBody').addEventListener('click', function(e) {
+        // Find closest editable cell in case user clicked on the icon inside it
+        const cell = e.target.closest('.editable-cell');
+        if (!cell) return;
+        
+        const currentMark = cell.innerText.trim();
+        let nextStatus = 'Present'; // Default first click is Present
+        
+        // Cycle logic: - -> P -> A -> L -> E -> -
+        if (currentMark === 'P') nextStatus = 'Absent';
+        else if (currentMark === 'A') nextStatus = 'Late';
+        else if (currentMark === 'L') nextStatus = 'Excused';
+        else if (currentMark === 'E') nextStatus = 'None';
+
+        handleAttendanceUpdate(cell, nextStatus);
+    });
 
     /* =========================================
        SMOOTH PAGE TRANSITION
