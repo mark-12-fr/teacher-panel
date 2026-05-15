@@ -140,6 +140,7 @@
         }
         .dash-wrap h3 { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
         .dash-wrap h4 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-dark); }
+        .dash-wrap:last-child { text-align: center; }
         .badge { display: inline-block; background: var(--input-bg); color: var(--accent-blue); padding: 5px 15px; border-radius: 8px; font-weight: 700; }
 
         /* TABLE CONTAINER */
@@ -235,12 +236,33 @@
         .ai-chat-input-area input { flex-grow: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.9rem; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); }
         .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
+        /* RESPONSIVE MEDIA QUERIES */
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0; padding: 20px; width: 100vw; }
+            .sidebar.active { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
+            
+            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100vw; }
             .menu-toggle { display: block; }
-            .dashboard-wrapper { grid-template-columns: 1fr 1fr; }
+            
+            /* Fix Dashboard Grid for Tablet */
+            .dashboard-wrapper { grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
+            .dash-wrap { text-align: left; margin-bottom: 5px; } 
+            .dash-wrap:last-child { text-align: left; }
+            
+            .class-record-container { padding: 20px; }
+            .search-container { max-width: 100%; }
+        }
+
+        /* Added specific breakpoint for Portrait Tablets (e.g. iPad Portrait) */
+        @media (max-width: 768px) {
+            .dashboard-wrapper { grid-template-columns: 1fr; padding: 15px; }
+            .dash-wrap { text-align: center; margin-bottom: 15px; }
+            .dash-wrap:last-child { text-align: center; margin-bottom: 0; }
+            
+            /* Stack header items for better space usage */
+            .topbar { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .topbar-left { width: 100%; justify-content: flex-start; }
+            .export-btn { width: 100%; justify-content: center; }
         }
 
         /* 📱 RESPONSIVE FIXES FOR MOBILE TABLE SCROLLING - ADJUSTED FOR 4 COLUMNS */
@@ -248,8 +270,9 @@
             .main-content { padding: 15px 5px 100px 5px; }
             .class-record-container { padding: 15px 5px; }
             .dashboard-wrapper { grid-template-columns: 1fr; padding: 15px; }
-            .topbar h1 { font-size: 1.4rem; }
-            .ai-floating-btn { bottom: 20px; right: 20px; }
+            .topbar-left h1 { font-size: 1.4rem; }
+            
+            .ai-floating-btn { bottom: 20px; right: 20px; width: 55px; height: 55px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 90px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
 
@@ -294,7 +317,6 @@
                 <div class="sidebar-username" id="userName">&nbsp;</div>
             </div>
 
-            <!-- 🌟 ANTI-FLASH PROFILE SCRIPT 🌟 -->
             <script>
                 (function() {
                     const cachedName = localStorage.getItem('cached_user_name');
@@ -332,7 +354,6 @@
                     <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
                     <h1>Class Record</h1>
                 </div>
-                <!-- EXPORT BUTTON -->
                 <button class="export-btn" onclick="exportToCSV()"><i class="fa-solid fa-download"></i> Export CSV</button>
             </div>
                 
@@ -379,13 +400,11 @@
         </main>
     </div>
 
-    <!-- TOAST NOTIFICATION -->
     <div id="customToast" class="toast-notification">
         <i class="fa-solid fa-circle-check"></i>
         <span id="toastMessage">Success</span>
     </div>
 
-    <!-- CUSTOM SMART VIRTUAL TEACHING ASSISTANT -->
     <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
         <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
     </button>
