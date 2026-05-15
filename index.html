@@ -221,7 +221,6 @@
             <div class="sidebar-username" id="userName">&nbsp;</div>
         </div>
 
-        <!-- 🌟 ANTI-FLASH PROFILE SCRIPT 🌟 -->
         <script>
             (function() {
                 const cachedName = localStorage.getItem('cached_user_name');
@@ -365,7 +364,6 @@
     </div>
 </div>  
 
-<!-- CUSTOM SMART VIRTUAL ASSISTANT (Professional English) -->
 <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
     <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
 </button>
@@ -597,12 +595,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const schedules = schedRes.data || [];
         const facilitators = facRes.data || [];
 
-        const getFinalGrade = (record) => {
-            if(!record) return 0;
-            let totalWW = 0, totalPT = 0, totalQE = Number(record.qe) || 0;
-            for (let key in record) {
-                if (key.startsWith('module_') || key.startsWith('activity_')) totalWW += Number(record[key]) || 0;
-                if (key.startsWith('pt_')) totalPT += Number(record[key]) || 0;
+        const getFinalGrade = (studentId) => {
+            // MERGE Logic for AI querying
+            let studRecs = records.filter(r => r.student_id === studentId);
+            let merged = studRecs.reduce((acc, curr) => {
+                Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc;
+            }, {});
+
+            let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
+            for (let key in merged) {
+                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0;
+                if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0;
             }
             let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
             let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
@@ -613,8 +616,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         if (query.includes('top') || query.includes('highest') || query.includes('best')) {
             if(students.length === 0) return "You don't have any students registered yet.";
             let scoredStudents = students.map(s => {
-                let rec = records.find(r => r.student_id === s.id);
-                return { name: s.full_name, grade: getFinalGrade(rec), section: sections.find(sec=>sec.id===s.section_id)?.title };
+                return { name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title };
             }).sort((a,b) => b.grade - a.grade).slice(0, 5); 
             
             let res = "<strong>Here are your top performing students:</strong><br><br>";
@@ -624,8 +626,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
             let failing = [];
             students.forEach(s => {
-                let rec = records.find(r => r.student_id === s.id);
-                let grade = getFinalGrade(rec);
+                let grade = getFinalGrade(s.id);
                 if(grade > 0 && grade < 75) failing.push({ name: s.full_name, grade: grade });
             });
             if(failing.length === 0) return "Excellent news! None of your students are currently failing.";
@@ -634,17 +635,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return res;
         }
         else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
-            let missingStudents = [];
-            records.forEach(r => {
-                let hasMissing = false;
-                for(let i=1; i<=5; i++) { if(r[`module_${i}`] == null || r[`module_${i}`] === "") hasMissing = true; }
-                if(hasMissing) {
-                    let stud = students.find(s => s.id === r.student_id);
-                    if(stud) missingStudents.push(stud.full_name);
-                }
-            });
-            if(missingStudents.length === 0) return "All students have submitted their recorded modules and activities.";
-            return `<strong>The following students have missing requirements:</strong><br><br>- ` + missingStudents.join('<br>- ');
+            return `<strong>Sorry, I can't check missing modules accurately right now due to merged records formatting.</strong>`;
         }
         else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
             let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
@@ -653,10 +644,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your class lists.`;
             
-            let rec = records.find(r => r.student_id === stud.id);
-            if(!rec) return `There are no grade records entered for <strong>${stud.full_name}</strong> yet.`;
-            
-            let grade = getFinalGrade(rec);
+            let grade = getFinalGrade(stud.id);
             let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
             return `The current calculated grade for <strong>${stud.full_name}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
         }
@@ -696,7 +684,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
         else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
             let totalStuds = students.length; let passCount = 0;
-            records.forEach(r => { if(getFinalGrade(r) >= 75) passCount++; });
+            students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
             let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
             
             return `<strong>Class Performance Overview:</strong><br><br>` + 
@@ -788,18 +776,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
     setInterval(updateTime, 1000); updateTime();
 
-    document.addEventListener("DOMContentLoaded", () => {
-        document.querySelectorAll('.sidebar-menu a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const targetHref = this.getAttribute('href');
-                if (targetHref && !targetHref.startsWith('#') && !targetHref.startsWith('javascript')) {
-                    e.preventDefault(); document.querySelector('.main-content').classList.add('page-leave');
-                    setTimeout(() => { window.location.href = targetHref; }, 150); 
-                }
-            });
-        });
-    });
-
     function initDashboardChart(dataArray) {
         const ctx = document.getElementById('dashboardBarChart').getContext('2d');
         if(window.dashBarChart) window.dashBarChart.destroy();
@@ -811,45 +787,99 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     async function loadDashboardStats() {
-        let teacherId = localStorage.getItem('user_id'); if (!teacherId) return; teacherId = teacherId.replace(/['"]+/g, '');
+        let teacherId = localStorage.getItem('user_id'); 
+        if (!teacherId) return; 
+        teacherId = teacherId.replace(/['"]+/g, '');
+        
         try {
             const { data: sections } = await supabaseClient.from('sections').select('id, title').eq('teacher_id', teacherId);
-            let totalSections = sections ? sections.length : 0; let sectionTitles = []; let sectionMap = {}; 
+            let totalSections = sections ? sections.length : 0; 
+            let sectionTitles = []; let sectionMap = {}; 
             let totalStudents = 0; let present = 0; let absentOrLate = 0;
             
             if (totalSections > 0) {
                 sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; });
                 const sectionIds = sections.map(s => s.id);
-                const { data: students } = await supabaseClient.from('students').select('id').in('section_id', sectionIds);
+                
+                // Fetch Students to get accurate matching
+                const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
                 totalStudents = students ? students.length : 0;
 
+                // Fetch Today's Attendance
                 const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`; 
                 const { data: attData } = await supabaseClient.from('attendance').select('status').in('section', sectionTitles).eq('date', exactTodayDate); 
                 if (attData) attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; });
                 
-                const { data: records } = await supabaseClient.from('class_records').select(`*, students ( full_name )`).in('section_id', sectionIds);
-                let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; let allStudentsScores = [];
+                // 🌟 FIXED MERGE LOGIC FOR PERFORMANCE CHART & TOP STUDENTS 🌟
+                const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
+                let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; 
+                let allStudentsScores = [];
 
-                if (records) {
-                    records.forEach(r => {
-                        let totalWW = 0, totalPT = 0, totalQE = Number(r.qe) || 0;
-                        for (let key in r) { if (key.startsWith('module_') || key.startsWith('activity_')) totalWW += Number(r[key]) || 0; if (key.startsWith('pt_')) totalPT += Number(r[key]) || 0; }
-                        let grade = Math.round((Math.min((totalWW/100)*100,100)*0.3) + (Math.min((totalPT/100)*100,100)*0.5) + (Math.min((totalQE/50)*100,100)*0.2));
-                        let qtr = String(r.quarter || '1');
-                        if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; } else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; } else if (qtr === '3' || qtr === '3rd') { q3_t += grade; q3_c++; } else if (qtr === '4' || qtr === '4th') { q4_t += grade; q4_c++; }
-                        allStudentsScores.push({ name: r.students?.full_name || 'No Name', section: sectionMap[r.section_id], grade: grade });
+                if (students && records) {
+                    students.forEach(student => {
+                        const studentRecords = records.filter(r => r.student_id === student.id);
+                        if (studentRecords.length === 0) return; // Skip if no records yet
+
+                        // Merge all daily records of this student
+                        const mergedScores = studentRecords.reduce((acc, curr) => {
+                            Object.keys(curr).forEach(key => {
+                                if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key];
+                            });
+                            return acc;
+                        }, {});
+
+                        let totalWW = 0, totalPT = 0, totalQE = Number(mergedScores.qe) || 0;
+                        for (let key in mergedScores) { 
+                            if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(mergedScores[key]) || 0; 
+                            if (key.startsWith('pt_')) totalPT += Number(mergedScores[key]) || 0; 
+                        }
+                        
+                        let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
+                        let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
+                        let qe_score = Math.min((totalQE / 50) * 100, 100) || 0;
+                        let grade = Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
+                        
+                        let qtr = String(mergedScores.quarter || '1');
+                        if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; } 
+                        else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; } 
+                        else if (qtr === '3' || qtr === '3rd') { q3_t += grade; q3_c++; } 
+                        else if (qtr === '4' || qtr === '4th') { q4_t += grade; q4_c++; }
+                        
+                        allStudentsScores.push({ 
+                            name: student.full_name || 'No Name', 
+                            section: sectionMap[student.section_id], 
+                            grade: grade 
+                        });
                     });
                 }
+                
                 initDashboardChart([q1_c>0?(q1_t/q1_c):0, q2_c>0?(q2_t/q2_c):0, q3_c>0?(q3_t/q3_c):0, q4_c>0?(q4_t/q4_c):0]);
-                const topList = document.getElementById('topPerformersList'); allStudentsScores.sort((a, b) => b.grade - a.grade); 
+                
+                const topList = document.getElementById('topPerformersList'); 
+                allStudentsScores.sort((a, b) => b.grade - a.grade); 
                 topList.innerHTML = '';
-                if (allStudentsScores.length > 0) allStudentsScores.slice(0,5).forEach(s => { topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${s.name} <small style="color:var(--text-muted);">(${s.section})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; });
-                else topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`;
-            } else { initDashboardChart([0,0,0,0]); }
+                
+                if (allStudentsScores.length > 0) {
+                    allStudentsScores.slice(0,5).forEach(s => { 
+                        topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${s.name} <small style="color:var(--text-muted);">(${s.section})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; 
+                    });
+                } else {
+                    topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`;
+                }
 
-            document.getElementById('val-total-sections').textContent = totalSections; document.getElementById('val-total-students').textContent = totalStudents;
-            document.getElementById('val-todays-present').textContent = present; document.getElementById('val-todays-absent').textContent = absentOrLate;
-        } catch (error) { console.error(error); initDashboardChart([0,0,0,0]); }
+            } else { 
+                initDashboardChart([0,0,0,0]); 
+            }
+
+            document.getElementById('val-total-sections').textContent = totalSections; 
+            document.getElementById('val-total-students').textContent = totalStudents;
+            document.getElementById('val-todays-present').textContent = present; 
+            document.getElementById('val-todays-absent').textContent = absentOrLate;
+            
+        } catch (error) { 
+            console.error(error); 
+            initDashboardChart([0,0,0,0]); 
+        }
     }
 
     window.onload = () => { handleOAuthRedirect(); checkAuthAndLoadProfile(); loadNotes(); loadSchedules(); loadNotices(); loadDashboardStats(); };
