@@ -447,33 +447,39 @@
         /* RESPONSIVE MEDIA QUERIES */
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
+            .sidebar.active { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
             
             .main-content { margin-left: 0; padding: 20px 20px 100px 20px; }
-            .dashboard-wrapper { grid-template-columns: 1fr 1fr; gap: 15px; }
-
+            
+            .dashboard-wrapper { grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
+            .dash-wrap { text-align: left; margin-bottom: 5px; } 
+            .dash-wrap:last-child { text-align: left; }
+            
             .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; min-height: 40px; }
             .menu-toggle { display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
-            .topbar-title { text-align: center; }
+            .topbar-title h1 { font-size: 1.6rem !important; }
+            
+            .class-list-box { padding: 20px; }
+            .search-container { max-width: 100%; }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-wrapper { grid-template-columns: 1fr; padding: 15px; }
+            .dash-wrap { text-align: center; margin-bottom: 15px; }
+            .dash-wrap:last-child { text-align: center; margin-bottom: 0; }
         }
 
         @media (max-width: 640px) {
-            .dashboard-wrapper { 
-                grid-template-columns: 1fr; 
-                padding: 20px 15px;
-            }
-            .dash-wrap { text-align: center; margin-bottom: 15px; }
-            .dash-wrap:last-child { margin-bottom: 0; }
-            .class-list-box {
-                padding: 20px 15px; 
-            }
-            #openModal {
-                right: 20px; bottom: 20px;
-                width: 55px; height: 55px;
-            }
+            .main-content { padding: 15px 15px 100px 15px; }
+            .class-list-box { padding: 15px; }
+            
+            #openModal { right: 20px; bottom: 20px; width: 55px; height: 55px; }
             .ai-floating-btn { bottom: 90px; right: 20px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 160px; }
+            
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
+            
+            th, td { padding: 12px 10px; font-size: 0.85rem; }
         }
     </style>
 </head>
@@ -499,7 +505,6 @@
                 <div class="sidebar-username" id="userName">&nbsp;</div>
             </div>
 
-            <!-- 🌟 ANTI-FLASH PROFILE SCRIPT 🌟 -->
             <script>
                 (function() {
                     const cachedName = localStorage.getItem('cached_user_name');
@@ -611,13 +616,11 @@
     </main>
 </div>
 
-<!-- TOAST NOTIFICATION -->
 <div id="customToast" class="toast-notification">
     <i class="fa-solid fa-circle-check"></i>
     <span id="toastMessage">Success</span>
 </div>
 
-<!-- CUSTOM SMART VIRTUAL TEACHING ASSISTANT -->
 <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
     <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
 </button>
