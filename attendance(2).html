@@ -98,7 +98,7 @@
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; }
         .sidebar-overlay.active { display: block; opacity: 1; }
 
-        /* MAIN CONTENT - ANIMATION */
+        /* MAIN CONTENT */
         .main-content { 
             margin-left: 260px; flex-grow: 1; padding: 30px 30px 100px 30px; 
             display: flex; flex-direction: column; min-width: 0; width: 100%; 
@@ -125,11 +125,12 @@
         .export-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark); padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px var(--shadow-color); transition: 0.2s; white-space: nowrap; }
         .export-btn:hover { background: var(--hover-bg); border-color: var(--accent-blue); }
 
-        .dashboard-wrapper { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card-bg); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); margin-bottom: 25px; width: 100%; align-items: center; gap: 15px; transition: background 0.3s, box-shadow 0.3s; }
+        /* DASHBOARD WRAPPER - RESPONSIVE FIXES */
+        .dashboard-wrapper { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card-bg); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); margin-bottom: 25px; width: 100%; align-items: start; gap: 15px; transition: background 0.3s, box-shadow 0.3s; }
         .dash-wrap { text-align: left; }
         .dash-wrap h3 { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
         .dash-wrap h4 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-dark); word-wrap: break-word; }
-        .dash-wrap:last-child { text-align: right; } /* Aligned right for desktop */
+        .dash-wrap:last-child { text-align: right; } /* Default desktop alignment */
         .badge { display: inline-block; background: var(--input-bg); color: var(--accent-blue); padding: 5px 15px; border-radius: 8px; font-weight: 700; }
 
         .inf-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
@@ -138,16 +139,21 @@
         .dat-box p { font-size: 26px; font-weight: 700; margin: 0; }
         .txt-total { color: var(--text-dark); } .txt-present { color: #16a34a; } .txt-absent { color: #dc2626; } .txt-late { color: #ca8a04; }
 
+        /* TABLE CONTAINER & HEADER FIXES */
         .attendance-table-container { background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); padding: 25px 30px; width: 100%; transition: background 0.3s, box-shadow 0.3s; }
-        .table-header { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-
-        .search-container { position: relative; max-width: 300px; width: 100%; }
+        
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        
+        .search-container { position: relative; max-width: 300px; width: 100%; flex: 1; min-width: 250px; }
         .search-container input { width: 100%; padding: 10px 15px 10px 40px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 0.9rem; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); transition: 0.3s; }
         .search-container input:focus { border-color: var(--accent-blue); background: var(--card-bg); }
         .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; height: 18px; }
 
+        .month-controls { display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; min-width: 200px; }
         .month-nav-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark); border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
         .month-nav-btn:hover { background: var(--hover-bg); border-color: var(--accent-blue); color: var(--accent-blue); }
+
+        .legend-controls { display: flex; justify-content: flex-end; gap: 15px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; flex: 1; min-width: 300px; flex-wrap: wrap; }
 
         .table-responsive { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; display: block; border: 1px solid var(--border-color); border-radius: 8px; }
         .record-table { width: 100%; border-collapse: collapse; min-width: 1200px; white-space: nowrap; }
@@ -175,6 +181,7 @@
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
+        /* AI ASSISTANT STYLES */
         .ai-floating-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .ai-floating-btn:hover { transform: scale(1.1); }
         .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 350px; height: 450px; background: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 25px var(--shadow-color); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s, background 0.3s; overflow: hidden; border: 1px solid var(--border-color); }
@@ -188,27 +195,38 @@
         .ai-chat-input-area input { flex-grow: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.9rem; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); }
         .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
+        /* 🔥 RESPONSIVE FIXES 🔥 */
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
             .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100vw; }
             .menu-toggle { display: flex; align-items: center; justify-content: center; } 
-            .dashboard-wrapper { grid-template-columns: 1fr 1fr; gap: 15px; }
+            
+            /* Tablet/Smaller Desktop: 2x2 Grid for Dashboard Wrapper */
+            .dashboard-wrapper { grid-template-columns: 1fr 1fr; gap: 20px; }
+            .dash-wrap:nth-child(odd) { text-align: left !important; }
+            .dash-wrap:nth-child(even) { text-align: right !important; }
+            
             .inf-summary { grid-template-columns: 1fr 1fr; }
         }
 
-        /* 🔥 MOBILE ALIGNMENT FIX (1 COLUMN, CENTERED) 🔥 */
         @media (max-width: 640px) {
             .topbar-left h1 { position: absolute; left: 50%; transform: translateX(-50%); font-size: 1.5rem; }
             .export-text { display: none; } .export-btn { padding: 8px 12px; }
             
-            /* Changed to 1 column, centered text for mobile phone look exactly like your picture */
-            .dashboard-wrapper { grid-template-columns: 1fr; padding: 25px 20px; gap: 20px; }
-            .dash-wrap, .dash-wrap:last-child { text-align: center; margin-bottom: 0; } 
-            
+            /* Mobile: Keep 2x2 Grid so Section aligns with Subject */
+            .dashboard-wrapper { padding: 20px 15px; gap: 15px; }
+            .dash-wrap h4 { font-size: 1rem; } /* Slightly smaller to prevent breaking */
+
             .inf-summary { grid-template-columns: 1fr 1fr; gap: 15px; }
+            
+            /* Center the Search, Month, and Legend neatly */
             .attendance-table-container { padding: 20px 15px; }
-            .table-header { flex-direction: column; align-items: stretch; gap: 10px; }
+            .table-header { flex-direction: column; align-items: center; gap: 15px; }
+            .search-container { max-width: 100%; width: 100%; margin: 0; }
+            .month-controls { justify-content: center; width: 100%; }
+            .legend-controls { justify-content: center; width: 100%; }
+
             .ai-floating-btn { bottom: 20px; right: 20px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 90px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
@@ -308,18 +326,18 @@
         <div class="attendance-table-container">
             
             <div class="table-header">
-                <div class="search-container" style="margin-bottom: 0;">
+                <div class="search-container">
                     <i data-lucide="search" class="search-icon"></i>
                     <input type="text" id="searchInput" placeholder="Search student name...">
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 10px; margin-left: 20px;">
+                <div class="month-controls">
                     <button onclick="changeMonth(-1)" class="month-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
                     <span id="currentMonthLabel" style="font-weight: 700; width: 130px; text-align: center; color: var(--text-dark);">MAY 2026</span>
                     <button onclick="changeMonth(1)" class="month-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
 
-                <div style="margin-left: auto; display: flex; gap: 15px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
+                <div class="legend-controls">
                     <span><span style="color:#16a34a">P</span> = Present</span>
                     <span><span style="color:#dc2626">A</span> = Absent</span>
                     <span><span style="color:#ca8a04">L</span> = Late</span>
