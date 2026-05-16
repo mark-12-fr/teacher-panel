@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login | Management System</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- ADDED FONTAWESOME FOR PROFESSIONAL SPINNERS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <!-- PWA MANIFEST & FAVICON -->
 <link rel="manifest" href="manifest.json">
@@ -335,8 +337,8 @@ body{
             <img src="logo.jpg" alt="Logo">
         </div>
         <h1 class="splash-title">Management System</h1>
-        <p class="splash-subtitle">MJR Vertex</p>
-        <div class="splash-loader"></div>
+        <p class="splash-subtitle" id="splashSubtitle">MJR Vertex</p>
+        <div class="splash-loader" id="splashLoaderEl"></div>
     </div>
 </div>
 
@@ -415,15 +417,6 @@ body{
 </div>
 
 <script>
-    // 🌟 SPLASH SCREEN LOGIC 🌟
-    window.addEventListener('load', function() {
-        const splashScreen = document.getElementById('splashScreen');
-        setTimeout(() => {
-            splashScreen.style.opacity = '0';
-            splashScreen.style.visibility = 'hidden';
-        }, 1500); 
-    });
-
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
 
@@ -434,6 +427,46 @@ body{
             headers: {
                 Authorization: accessToken ? `Bearer ${accessToken}` : ''
             }
+        }
+    });
+
+    // 🌟 INSTANT AUTO-LOGIN CHECK 🌟
+    window.addEventListener('DOMContentLoaded', () => {
+        const currentToken = localStorage.getItem('access_token');
+        const currentUserId = localStorage.getItem('user_id');
+
+        if (currentToken && currentUserId) {
+            // Kon naka-login na ang teacher, skip the login form
+            const loader = document.getElementById('splashLoaderEl');
+            if (loader) loader.style.display = 'none';
+            
+            const subtitle = document.getElementById('splashSubtitle');
+            if (subtitle) subtitle.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading your workspace...';
+            
+            // Redirect smoothly to dashboard
+            setTimeout(() => {
+                window.location.href = 'index.html'; 
+            }, 800);
+            return; // Stop execution
+        }
+
+        // Normal Load: Handle Remember Me fields
+        const savedEmail = localStorage.getItem('remembered_email');
+        if (savedEmail) {
+            document.getElementById('email').value = savedEmail;
+            document.getElementById('rememberMe').checked = true;
+        }
+    });
+
+    // 🌟 SPLASH SCREEN LOGIC 🌟
+    window.addEventListener('load', function() {
+        // Only hide splash if NOT auto-redirecting
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            const splashScreen = document.getElementById('splashScreen');
+            setTimeout(() => {
+                splashScreen.style.opacity = '0';
+                splashScreen.style.visibility = 'hidden';
+            }, 1500); 
         }
     });
 
@@ -460,19 +493,10 @@ body{
         setTimeout(() => { toast.classList.remove("show"); }, 3000);
     }
 
-    // Pag-load sang page, i-check ang Remember Me
-    window.onload = () => {
-        const savedEmail = localStorage.getItem('remembered_email');
-        if (savedEmail) {
-            document.getElementById('email').value = savedEmail;
-            document.getElementById('rememberMe').checked = true;
-        }
-    };
-
     /* GOOGLE LOGIN */
     async function loginWithGoogle() {
         const btn = document.getElementById('googleBtn');
-        btn.innerText = "Logging in...";
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
         
         try {
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
@@ -488,7 +512,7 @@ body{
             if (error) throw error;
         } catch (error) {
             console.error("Google login error:", error);
-            showToast("Cannot connect to Google.", "error");
+            showToast("Connection failed. Please check your internet.", "error");
             btn.innerHTML = `<img src="https://www.svgrepo.com/show/475656/google-color.svg" width="18"> Continue with Google`;
         }
     }
@@ -497,13 +521,14 @@ body{
     async function handleLogin(event) {
         event.preventDefault();
         
-        const emailInput = document.getElementById('email').value;
-        const passInput = document.getElementById('password').value;
+        const emailInput = document.getElementById('email').value.trim();
+        const passInput = document.getElementById('password').value.trim();
         const rememberChecked = document.getElementById('rememberMe').checked;
         const btn = document.getElementById("loginBtn");
 
         btn.disabled = true;
-        btn.innerText = "Logging in...";
+        // PROFESSIONAL SPINNER
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
 
         // Handle Remember Me
         if (rememberChecked) {
@@ -518,14 +543,20 @@ body{
         });
 
         if (error) {
-            showToast("Invalid email or password", "error");
+            showToast("Incorrect email or password. Please try again.", "error");
             btn.disabled = false;
             btn.innerText = "Login";
         } else {
+            // SUCCESS - Store tokens and clear Faci tokens just in case
+            localStorage.removeItem('faci_id');
             localStorage.setItem('access_token', data.session.access_token);
             localStorage.setItem('user_id', data.user.id);
 
-            showToast("Login successful! Redirecting...");
+            showToast("Login successful. Redirecting...");
+            
+            // Success Button Style
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Authentication Successful';
+            btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
             
             setTimeout(() => {
                 window.location.href = "index.html"; 
@@ -542,14 +573,14 @@ body{
 
     /* FORGOT PASSWORD SEND LOGIC */
     async function sendResetLink() {
-        const resetEmail = document.getElementById('resetEmail').value;
+        const resetEmail = document.getElementById('resetEmail').value.trim();
         if (!resetEmail) {
             showToast("Please enter an email address", "error");
             return;
         }
 
         const btn = document.getElementById('resetBtn');
-        btn.innerText = "Sending...";
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
         btn.disabled = true;
 
         const { data, error } = await supabaseClient.auth.resetPasswordForEmail(resetEmail, {
