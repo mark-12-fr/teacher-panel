@@ -151,6 +151,13 @@
 
         .editable-cell { cursor: pointer; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .editable-cell:hover, .editable-cell:focus { background-color: var(--hover-bg); outline: 2px solid var(--accent-blue); outline-offset: -2px; transform: scale(1.1); z-index: 10; position: relative; }
+        
+        /* Flash animation for live updates */
+        .live-update-flash { animation: flashCell 1.5s ease-out; }
+        @keyframes flashCell {
+            0% { background-color: rgba(59, 130, 246, 0.4); transform: scale(1.05); z-index: 11; }
+            100% { background-color: transparent; transform: scale(1); z-index: 10; }
+        }
 
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
@@ -410,14 +417,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             await loadSectionDetails();
             await loadSpreadsheetAttendance();
 
-            // REALTIME LISTENER SANG TEACHER PANEL
+            // 🌟 UPGRADED REALTIME LISTENER 🌟
             listenForAttendanceUpdates();
         } catch(e) {
             console.error(e);
         }
     };
 
-    // --- REALTIME LISTENER FUNCTION ---
+    // --- 🌟 NEW SMART REALTIME LISTENER FUNCTION 🌟 ---
     function listenForAttendanceUpdates() {
         supabaseClient
             .channel('public:attendance_teacher')
@@ -425,16 +432,46 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'attendance' },
                 (payload) => {
-                    console.log('Attendance updated by facilitator!', payload);
-                    
-                    const affectedSection = payload.new?.section || payload.old?.section;
-                    if (affectedSection === currentSectionTitle) {
-                        loadSpreadsheetAttendance();
-                        showNotification("Live Update: Attendance modified by Facilitator.", "success");
-                    }
+                    const record = payload.new || payload.old;
+                    if (!record || record.section !== currentSectionTitle) return;
+
+                    // Update exact cell without reloading the entire table
+                    updateSpecificCellUI(record.student_name, record.date, record.status, payload.eventType);
                 }
             )
             .subscribe();
+    }
+
+    // --- 🌟 TARGETED CELL UPDATE 🌟 ---
+    function updateSpecificCellUI(studentName, dateStr, status, eventType) {
+        // Find the specific cell matching the student and date
+        const cell = document.querySelector(`.editable-cell[data-student-name="${studentName}"][data-date="${dateStr}"]`);
+        if (!cell) return; // If the cell isn't on the current screen (e.g., wrong month), do nothing
+
+        // Prevent updating if this device is the one currently editing the cell
+        if (cell.getAttribute('data-updating') === 'true') return;
+
+        let mark = '-';
+        let markClass = 'mark-none';
+
+        if (eventType !== 'DELETE') {
+            if (status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
+            else if (status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
+            else if (status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
+            else if (status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
+        }
+
+        // Apply changes visually
+        cell.innerText = mark;
+        cell.className = `editable-cell ${markClass}`;
+
+        // Add flash animation to notify the teacher
+        cell.classList.remove('live-update-flash');
+        void cell.offsetWidth; // trigger reflow
+        cell.classList.add('live-update-flash');
+
+        // Update the dashboard counts instantly
+        recalculateSummaryUI();
     }
 
     async function checkAuthAndLoadProfile() {
