@@ -507,16 +507,59 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     function logoutUser() {
-        localStorage.removeItem('access_token'); localStorage.removeItem('user_id');
-        localStorage.removeItem('cached_user_name'); localStorage.removeItem('cached_user_avatar');
+        const userId = localStorage.getItem('user_id');
+        if (userId) {
+            localStorage.removeItem(`cached_facilitators_${userId}`); // Clear the new cache
+        }
+        
+        localStorage.removeItem('access_token'); 
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('cached_user_name'); 
+        localStorage.removeItem('cached_user_avatar');
         window.location.href = 'login.html';
     }
 
     /* =========================================
-       FACILITATOR CRUD LOGIC (SECURITY UPDATED)
+       FACILITATOR CRUD LOGIC (WITH CACHING)
        ========================================= */
     const facilitatorList = document.getElementById('facilitatorList');
     let editingFacId = null; 
+
+    // Helper function to render the table instantly
+    function renderFacilitatorTable(savedFacilitators) {
+        window.currentFacilitators = savedFacilitators;
+        const totalFacilitatorsEl = document.getElementById('totalFacilitators');
+        const activeSectionsEl = document.getElementById('activeSections');
+        
+        if (totalFacilitatorsEl) totalFacilitatorsEl.textContent = savedFacilitators.length;
+        if (activeSectionsEl) activeSectionsEl.textContent = [...new Set(savedFacilitators.map(f => f.section))].length;
+
+        facilitatorList.innerHTML = '';
+
+        if (savedFacilitators.length === 0) {
+            facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">No assigned facilitators found. Click the + button to assign one.</td></tr>';
+            return;
+        }
+
+        savedFacilitators.forEach((fac) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${fac.full_name}</strong></td>
+                <td><span class="badge-section">${fac.section}</span></td>
+                <td>${fac.subject}</td>
+                <td><span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span></td>
+                <td>
+                    <div class="action-btns">
+                        <button class="action-btn edit" onclick="editFacilitator('${fac.id}')">Edit</button>
+                        <button class="action-btn delete" onclick="deleteFacilitator('${fac.id}')">Delete</button>
+                    </div>
+                </td>
+            `;
+            facilitatorList.appendChild(tr);
+        });
+
+        if (window.lucide) lucide.createIcons();
+    }
 
     async function loadAvailableSections() {
         const sectionSelect = document.getElementById('facSection');
@@ -563,43 +606,35 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const userId = localStorage.getItem('user_id');
         if (!userId) return;
 
+        // 1. INSTANT LOAD: Check for cached data and show it immediately
+        const cachedData = localStorage.getItem(`cached_facilitators_${userId}`);
+        if (cachedData) {
+            try {
+                renderFacilitatorTable(JSON.parse(cachedData));
+            } catch (e) {
+                console.error("Cache parsing error", e);
+            }
+        } else {
+            // Show a nice loading spinner if there is no cache yet
+            facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading facilitators...</td></tr>';
+        }
+
+        // 2. BACKGROUND FETCH: Get the freshest data from the Render API
         try {
-            // SECURITY: Pass teacher_id as query param to Flask API
             const response = await fetch(`${API_URL}/api/facilitators?teacher_id=${userId}`);
             const result = await response.json();
             let savedFacilitators = result.data || [];
-            
-            window.currentFacilitators = savedFacilitators;
 
-            document.getElementById('totalFacilitators').textContent = savedFacilitators.length;
-            document.getElementById('activeSections').textContent = [...new Set(savedFacilitators.map(f => f.section))].length;
+            // 3. UPDATE CACHE & UI: Save fresh data for next time and update the table seamlessly
+            localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
+            renderFacilitatorTable(savedFacilitators);
 
-            facilitatorList.innerHTML = '';
-
-            if (savedFacilitators.length === 0) {
-                facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">No assigned facilitators found. Click the + button to assign one.</td></tr>';
-                return;
+        } catch (error) {
+            console.error("Error fetching facilitators:", error);
+            if (!cachedData) {
+                facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#ef4444;">Failed to connect to the server. Please check your connection.</td></tr>';
             }
-
-            savedFacilitators.forEach((fac) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${fac.full_name}</strong></td>
-                    <td><span class="badge-section">${fac.section}</span></td>
-                    <td>${fac.subject}</td>
-                    <td><span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span></td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="action-btn edit" onclick="editFacilitator('${fac.id}')">Edit</button>
-                            <button class="action-btn delete" onclick="deleteFacilitator('${fac.id}')">Delete</button>
-                        </div>
-                    </td>
-                `;
-                facilitatorList.appendChild(tr);
-            });
-
-            lucide.createIcons();
-        } catch (error) { console.error(error); }
+        }
     }
 
     function filterTable() {
@@ -914,10 +949,10 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 💬 <em>"Give me a class summary."</em>`;
     }
 
-    window.onload = () => {
+    document.addEventListener("DOMContentLoaded", () => {
         checkAuthAndLoadProfile(); 
         loadFacilitators();
-    }
+    });
 </script>
 
 </body>
