@@ -498,23 +498,26 @@
            ========================================= */
         function listenForRecordUpdates() {
             supabaseClient
-                .channel('public:class_records')
+                .channel('custom-class-records-channel') // FIXED: Custom string name para sa channel
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'class_records' },
                     (payload) => {
                         console.log('Data updated by facilitator!', payload);
                         
-                        // Kung ang gin-update nga record is sa current section, i-reload ang data
-                        if(payload.new && payload.new.section_id === currentSectionId || 
-                           payload.old && payload.old.section_id === currentSectionId) {
-                            
+                        // FIXED: Gamit ang '==' imbes nga '===' kay ang currentSectionId 
+                        // halin sa URL isa ka String (text), kag basi Number ang sa database.
+                        let updatedSectionId = payload.new ? payload.new.section_id : payload.old.section_id;
+
+                        if (updatedSectionId == currentSectionId) {
                             loadClassRecordData(); // I-reload ang table para mag-reflect dayon ang score
                             showNotification("Records have been updated by a Facilitator!", "success");
                         }
                     }
                 )
-                .subscribe();
+                .subscribe((status) => {
+                    console.log("Supabase Realtime Status:", status); // FIXED: Added status log para ma-check
+                });
         }
 
         /* =========================================
