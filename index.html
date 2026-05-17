@@ -801,17 +801,21 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; });
                 const sectionIds = sections.map(s => s.id);
                 
-                // Fetch Students to get accurate matching
-                const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
-                totalStudents = students ? students.length : 0;
+                const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`;
+                const [studentsRes, attRes, recordsRes] = await Promise.all([
+                    supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds),
+                    supabaseClient.from('attendance').select('status').in('section', sectionTitles).eq('date', exactTodayDate),
+                    supabaseClient.from('class_records').select('*').in('section_id', sectionIds)
+                ]);
 
-                // Fetch Today's Attendance
-                const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`; 
-                const { data: attData } = await supabaseClient.from('attendance').select('status').in('section', sectionTitles).eq('date', exactTodayDate); 
+                const students = studentsRes.data || [];
+                totalStudents = students.length;
+
+                const attData = attRes.data || [];
                 if (attData) attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; });
                 
                 // 🌟 FIXED MERGE LOGIC FOR PERFORMANCE CHART & TOP STUDENTS 🌟
-                const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
+                const records = recordsRes.data || [];
                 let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; 
                 let allStudentsScores = [];
 

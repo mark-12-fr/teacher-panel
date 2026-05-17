@@ -447,10 +447,7 @@ body{
             const subtitle = document.getElementById('splashSubtitle');
             if (subtitle) subtitle.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading your workspace...';
             
-            // Redirect smoothly to dashboard
-            setTimeout(() => {
-                window.location.href = 'index.html'; 
-            }, 800);
+            requestAnimationFrame(() => window.location.replace('index.html'));
             return; // Stop execution
         }
 
@@ -470,7 +467,7 @@ body{
             setTimeout(() => {
                 splashScreen.style.opacity = '0';
                 splashScreen.style.visibility = 'hidden';
-            }, 1500); 
+            }, 300);
         }
     });
 
@@ -562,9 +559,7 @@ body{
             btn.innerHTML = '<i class="fa-solid fa-check"></i> Authentication Successful';
             btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
             
-            setTimeout(() => {
-                window.location.href = "index.html"; 
-            }, 1000);
+            requestAnimationFrame(() => window.location.replace("index.html"));
         }
     }
 

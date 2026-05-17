@@ -462,8 +462,8 @@ async function handleSignUp(event){
             showToast("Account successfully created! Redirecting to Dashboard...");
             
             setTimeout(() => {
-                window.location.href = "index.html"; 
-            }, 2000);
+                window.location.replace("index.html");
+            }, 300);
         }
 
     } catch (error) {
