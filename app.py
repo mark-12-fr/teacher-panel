@@ -10,14 +10,27 @@ from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_socketio import SocketIO, emit
 from datetime import datetime
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 # --- 1. SECURITY CONFIGURATION ---
-# Gina-allow lang ang imo frontend port (5500)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+DEFAULT_FRONTEND_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "https://teacher-panel-phi.vercel.app",
+]
+FRONTEND_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGINS", ",".join(DEFAULT_FRONTEND_ORIGINS)).split(",")
+    if origin.strip()
+]
+IS_PRODUCTION = os.getenv("FLASK_ENV") == "production" or bool(os.getenv("RENDER"))
+
+CORS(app, resources={r"/api/*": {"origins": FRONTEND_ORIGINS}})
 
 # Rate Limiter para iwas spam/bots
 limiter = Limiter(
@@ -35,11 +48,11 @@ csp = {
         'https://cdn.jsdelivr.net', 'https://ui-avatars.com'
     ]
 }
-Talisman(app, force_https=False, content_security_policy=csp)
+Talisman(app, force_https=IS_PRODUCTION, content_security_policy=csp)
 
 # --- 2. SOCKET.IO & DATABASE SETUP ---
 # Use threading mode so Supabase/httpx requests stay stable on Windows.
-socketio = SocketIO(app, cors_allowed_origins="http://127.0.0.1:5500", async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins=FRONTEND_ORIGINS, async_mode="threading")
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
