@@ -278,6 +278,10 @@ const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co';
 const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0';
 
 const accessToken = localStorage.getItem('access_token');
+const APP_ORIGIN = window.location.origin && window.location.origin !== 'null'
+    ? window.location.origin
+    : 'https://teacher-panel-phi.vercel.app';
+const getRedirectUrl = (path) => `${APP_ORIGIN}/${path.replace(/^\/+/, '')}`;
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
@@ -316,7 +320,7 @@ async function loginWithGoogle() {
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: 'http://127.0.0.1:5500/index.html',
+                redirectTo: getRedirectUrl('index.html'),
                 queryParams: {
                     prompt: 'select_account' // 🌟 GIN-ADD PARA MAG-FORCE PILI ACCOUNT
                 }
