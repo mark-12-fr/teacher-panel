@@ -15,6 +15,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            window.location.replace('login.html');
+        }
+
         // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -594,15 +599,18 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             } catch (e) { console.error("Error decoding token"); }
 
             const { data: profile } = await supabaseClient.from('profiles').select('full_name, avatar_url').eq('id', userId).single();
-            let fullName = 'Teacher';
             
+            let fullName = 'Teacher';
             if (profile && profile.full_name) fullName = profile.full_name;
             else if (tokenName) fullName = tokenName;
             else {
                 try {
                     const res = await fetch(`${API_URL}/api/user/${userId}`);
-                    if (res.ok) { const data = await res.json(); fullName = data.full_name || 'Teacher'; }
-                } catch (e) {}
+                    if (res.ok) {
+                        const data = await res.json();
+                        fullName = data.full_name || 'Teacher';
+                    }
+                } catch (e) { console.error("API fetch failed"); }
             }
 
             document.getElementById('userName').textContent = fullName;
@@ -610,7 +618,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
             const firstName = fullName.split(' ')[0];
             const aiGreetingEl = document.getElementById('aiGreeting');
-            if (aiGreetingEl) {
+            if(aiGreetingEl) {
                 aiGreetingEl.textContent = `Hello Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}! How are you? You can ask me about attendance, absences, quizzes, or your students' modules.`;
             }
             
@@ -618,12 +626,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             const uAvatarEl = document.getElementById('userAvatar');
             if(uAvatarEl) uAvatarEl.src = finalAvatarSrc;
             localStorage.setItem('cached_user_avatar', finalAvatarSrc); 
+
         } catch (error) { console.error("Error loading profile:", error); }
     }
 
-    /* =========================================
-       UPLOAD AVATAR WITH CANVAS COMPRESSION
-       ========================================= */
+    // IMAGE CANVAS COMPRESSION
     function uploadAvatar(event) {
         const file = event.target.files[0]; if (!file) return;
         const userId = localStorage.getItem('user_id');
@@ -631,7 +638,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         if(!imgElement) return;
         
         imgElement.style.opacity = '0.5';
-
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -645,11 +651,10 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
                 try {
-                    const { error } = await supabaseClient.from('profiles').update({ avatar_url: compressedBase64 }).eq('id', userId);
+                    const { error } = await supabaseClient.from('profiles').upsert({ id: userId, avatar_url: compressedBase64 }).select();
                     if (error) throw error;
                     imgElement.src = compressedBase64;
                     localStorage.setItem('cached_user_avatar', compressedBase64); 
@@ -668,21 +673,27 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     /* =========================================
-       SIDEBAR
+       SIDEBAR & PAGE TRANSITION
        ========================================= */
-    function openSidebar() {
-        document.getElementById('mySidebar').classList.add('active');
-        document.getElementById('sidebarOverlay').classList.add('active');
-    }
-    function closeSidebar() {
-        if(window.innerWidth <= 1024) {
-            document.getElementById('mySidebar').classList.remove('active');
-            document.getElementById('sidebarOverlay').classList.remove('active');
-        }
-    }
+    function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
+    function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                const targetHref = this.getAttribute('href');
+                if (targetHref && !targetHref.startsWith('#') && !targetHref.startsWith('javascript')) {
+                    e.preventDefault(); 
+                    document.querySelector('.main-content').classList.add('page-leave');
+                    setTimeout(() => { window.location.href = targetHref; }, 150); 
+                }
+            });
+        });
+    });
 
     /* =========================================
-       CUSTOM SMART VIRTUAL ASSISTANT (SECURED DATA FETCH)
+       CUSTOM SMART VIRTUAL ASSISTANT (SECURED)
        ========================================= */
     function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
@@ -700,7 +711,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
         const typingMsg = document.createElement('div');
         typingMsg.className = 'chat-msg ai'; typingMsg.id = 'ai-typing-indicator';
-        typingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing request...';
+        typingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking Database...';
         chatBody.appendChild(typingMsg); chatBody.scrollTop = chatBody.scrollHeight;
 
         try {
@@ -719,17 +730,17 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
         chatBody.scrollTop = chatBody.scrollHeight;
     }
+
     document.getElementById('aiChatInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendAIMessage(); });
 
     async function processSmartDBQuery(query) {
         let teacherId = localStorage.getItem('user_id');
         if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
 
-        if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
-            return "Hello there! How can I assist you with your classes today?";
+        if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning')) {
+            return "Hello there! How can I assist you with your class records today?";
         }
 
-        // 1. Get sections owned by the logged-in teacher
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
@@ -738,7 +749,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const sectionIds = sections.map(s => s.id);
         const sectionTitles = sections.map(s => s.title);
 
-        // 2. Fetch data FILTERED by sectionIds and teacherId (SECURITY UPDATE)
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
@@ -754,7 +764,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const facilitators = facRes.data || [];
 
         const getFinalGrade = (studentId) => {
-            // MERGE Logic for AI querying
             let studRecs = records.filter(r => r.student_id === studentId);
             let merged = studRecs.reduce((acc, curr) => {
                 Object.keys(curr).forEach(key => { if(curr[key] !== null) acc[key] = curr[key]; }); return acc;
@@ -776,7 +785,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let scoredStudents = students.map(s => {
                 return { name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title };
             }).sort((a,b) => b.grade - a.grade).slice(0, 5); 
-            
             let res = "<strong>Here are your top performing students:</strong><br><br>";
             scoredStudents.forEach((s, i) => { res += `<strong>#${i+1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
             return res;
@@ -835,16 +843,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
             let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
             if(!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
-            
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the database.`;
             return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
         }
         else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
             let totalStuds = students.length; let passCount = 0;
-            students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
+            records.forEach(r => { if(getFinalGrade(r) >= 75) passCount++; });
             let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
-            
             return `<strong>Class Performance Overview:</strong><br><br>` + 
                    `• Total Active Sections: <strong>${sections.length}</strong><br>` +
                    `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
@@ -868,7 +874,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     let currentSemester = '1st Sem'; 
 
     async function loadSectionDetails() {
-        const userId = localStorage.getItem('user_id'); // ADDED userId
+        const userId = localStorage.getItem('user_id');
 
         if (!currentSectionId) {
             showNotification("No section selected! Returning to sections...", "error");
@@ -876,12 +882,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return false;
         }
 
-        // SECURITY UPDATE: Check teacher_id to prevent URL ID guessing
         const { data: secData, error: secError } = await supabaseClient
             .from('sections')
             .select('*') 
             .eq('id', currentSectionId)
-            .eq('teacher_id', userId) // ADDED SECURITY
+            .eq('teacher_id', userId) 
             .single();
 
         if (secError || !secData) {
@@ -914,13 +919,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     async function loadPerformanceData() {
         if (!currentSectionId) return;
 
-        // FETCH ALL STUDENTS FOR THIS SECTION FIRST
         const { data: studentsData, error: studErr } = await supabaseClient
             .from('students')
             .select('*')
             .eq('section_id', currentSectionId);
 
-        // FETCH ALL CLASS RECORDS
         const { data: records, error } = await supabaseClient
             .from('class_records') 
             .select('*') 
@@ -950,12 +953,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         let totalWW = 0, totalPT = 0, totalExam = 0;
         let dist = { '90+': 0, '85-89': 0, '80-84': 0, '<80': 0 };
 
-        // 🌟 CRITICAL FIX: MERGE STUDENT SCORES FROM MULTIPLE DATES 🌟
         const students = studentsData.map(student => {
-            // Find ALL records saved on different dates for this ONE student
             const studentRecords = records.filter(r => r.student_id === student.id);
             
-            // Merge them into one object
             const mergedScores = studentRecords.reduce((acc, curr) => {
                 Object.keys(curr).forEach(key => {
                     if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") {
@@ -970,7 +970,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let totalQE_raw = Number(mergedScores.qe) || 0; 
 
             for (let key in mergedScores) {
-                // FIXED: 'at' column is now included in Written Works!
                 if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') {
                     totalWW_raw += Number(mergedScores[key]) || 0;
                 }
@@ -979,7 +978,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 }
             }
 
-            // You can adjust these Perfect Scores if your grading max is different!
             let ww_perfect = 100; 
             let pt_perfect = 100; 
             let qe_perfect = 50;  
@@ -991,7 +989,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let computed_final_grade = (ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2);
             let final_rounded = Math.round(computed_final_grade);
 
-            // We pick the quarter from the merged scores or default to '1'
             let qtr = String(mergedScores.quarter || '1'); 
             
             if (qtr === '1' || qtr === '1st') {
@@ -1023,7 +1020,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             totalGrade += grade;
             if (grade >= 75) passed++;
             
-            // Only count highest/lowest if they actually have a grade > 0
             if (grade > 0 && grade > highest) highest = grade;
             if (grade > 0 && grade < lowest) lowest = grade;
 
@@ -1060,9 +1056,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             pieChart.update();
         }
 
-        // ==========================================
-        // UPDATE SANG LINE CHART (PERFORMANCE TREND)
-        // ==========================================
         const lineChart = Chart.getChart("lineChart");
         if (lineChart) {
             let q1_avg = q1_count > 0 ? (q1_totalGrade / q1_count).toFixed(2) : null;
@@ -1070,7 +1063,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let q3_avg = q3_count > 0 ? (q3_totalGrade / q3_count).toFixed(2) : null;
             let q4_avg = q4_count > 0 ? (q4_totalGrade / q4_count).toFixed(2) : null;
             
-            // Auto-detect kun 2nd Sem ang naga-display sa page
             if (currentSemester.includes('2nd') || currentSemester.includes('2')) {
                 lineChart.data.datasets[0].data = [q3_avg, q4_avg]; 
             } else {
@@ -1109,7 +1101,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const hasSection = await loadSectionDetails(); 
         if (!hasSection) return; 
 
-        // Auto-change label based on the active semester text
         let lineLabels = (currentSemester.includes('2nd') || currentSemester.includes('2')) ? ['3rd Qtr', '4th Qtr'] : ['1st Qtr', '2nd Qtr'];
 
         const ctxLine = document.getElementById('lineChart').getContext('2d');
@@ -1206,7 +1197,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             });
         });
     });
-
 </script>
 </body>
 </html>
