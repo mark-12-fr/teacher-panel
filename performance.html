@@ -15,6 +15,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            window.location.replace('login.html');
+        }
+
         // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -100,7 +105,7 @@
 
         /* MAIN CONTENT - ANIMATION */
         .main-content { 
-            margin-left: 260px; flex-grow: 1; min-width: 0; padding: 30px 30px 100px 30px; 
+            margin-left: 260px; flex-grow: 1; padding: 30px 30px 100px 30px; 
             display: flex; flex-direction: column; transition: margin-left 0.3s ease-in-out; 
             opacity: 0; animation: fadeInContent 0.25s ease-out forwards; 
         }
@@ -247,7 +252,7 @@
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
-            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100%; }
+            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100vw; }
             .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; }
             .menu-toggle { display: block; position: absolute; left: 0; }
         }
@@ -305,12 +310,12 @@
         </nav>
 
         <div class="sidebar-footer">
-            <a href="javascript:void(0)" onclick="toggleTheme(event)" class="theme-btn" style="margin-bottom: 5px;">
+            <button onclick="toggleTheme()" class="theme-btn" style="margin-bottom: 5px;">
                 <i class="fa-solid fa-moon" id="themeIcon"></i> <span id="themeText">Dark Mode</span>
-            </a>
-            <a href="javascript:void(0)" onclick="logoutUser()" class="logout-btn">
+            </button>
+            <button onclick="logoutUser()" class="logout-btn">
                 <i data-lucide="log-out"></i> Log out
-            </a>
+            </button>
         </div>
     </aside>
 
@@ -481,17 +486,19 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         try {
             let googleAvatar = null; let tokenName = null; 
             try {
-                const base64Url = accessToken.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-                const payload = JSON.parse(jsonPayload);
-                googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
-                tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name; 
+                if(accessToken) {
+                    const base64Url = accessToken.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                    const payload = JSON.parse(jsonPayload);
+                    googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
+                    tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name; 
+                }
             } catch (e) { console.error("Error decoding token"); }
 
             const { data: profile } = await supabaseClient.from('profiles').select('full_name, avatar_url').eq('id', userId).single();
-            
             let fullName = 'Teacher';
+            
             if (profile && profile.full_name) fullName = profile.full_name;
             else if (tokenName) fullName = tokenName;
             else {
@@ -507,7 +514,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             const firstName = fullName.split(' ')[0];
             const aiGreetingEl = document.getElementById('aiGreeting');
             if(aiGreetingEl) {
-                aiGreetingEl.textContent = `Hello Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}! How are you? You can ask me about attendance, absences, quizzes, or your students' modules.`;
+                aiGreetingEl.textContent = `Good day, Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}. I am your AI assistant. You may ask about your sections, students, schedules, notes, notices, attendance, or performance records.`;
             }
 
             let finalAvatarSrc = profile?.avatar_url || googleAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=3b82f6&color=fff&size=128`;
@@ -521,7 +528,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     // UPLOAD AVATAR WITH CANVAS COMPRESSION
     function uploadAvatar(event) {
         const file = event.target.files[0]; if (!file) return;
-        const userId = localStorage.getItem('user_id');
+        const userId = localStorage.getItem('user_id'); const accessToken = localStorage.getItem('access_token'); 
         const imgElement = document.getElementById('userAvatar');
         if(!imgElement) return;
         
@@ -533,11 +540,13 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 const canvas = document.createElement('canvas');
                 const MAX_WIDTH = 150; const MAX_HEIGHT = 150;
                 let width = img.width; let height = img.height;
+
                 if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
                 else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
-                
+
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
                 try {
@@ -562,16 +571,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     /* =========================================
        SIDEBAR
        ========================================= */
-    function openSidebar() {
-        document.getElementById('mySidebar').classList.add('active');
-        document.getElementById('sidebarOverlay').classList.add('active');
-    }
-    function closeSidebar() {
-        if(window.innerWidth <= 1024) {
-            document.getElementById('mySidebar').classList.remove('active');
-            document.getElementById('sidebarOverlay').classList.remove('active');
-        }
-    }
+    function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
+    function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
 
     /* =========================================
        CUSTOM SMART VIRTUAL ASSISTANT (SECURED DATA FETCH)
