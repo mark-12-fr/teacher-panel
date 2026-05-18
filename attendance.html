@@ -15,6 +15,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            window.location.replace('login.html');
+        }
+
         // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -405,7 +410,7 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: var(--accent-blue);
+            background-color: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
@@ -528,8 +533,7 @@
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
-            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; }
-            
+            .main-content { margin-left: 0; padding: 20px 20px 100px 20px; width: 100vw; }
             .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; }
             .menu-toggle { display: block; position: absolute; left: 0; }
         }
