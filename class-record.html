@@ -15,6 +15,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            window.location.replace('login.html');
+        }
+
         // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -621,7 +626,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // 1. Get sections owned by the logged-in teacher
+        // 1. Kuhaon anay ang sections nga iya sang naka-login nga teacher
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
