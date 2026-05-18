@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up</title>
-<link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="apple-touch-icon" href="logo.jpg">
     <meta name="theme-color" content="#3b82f6">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -207,7 +207,6 @@ body{
 }
 </style>
 
-<!-- SUPABASE JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
@@ -264,7 +263,6 @@ body{
     </div>
 </main>
 
-<!-- TOAST BOX -->
 <div id="toastMessage" class="toast-notification">
     <svg id="toastIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
@@ -273,6 +271,12 @@ body{
 </div>
 
 <script>
+// 🔒 REVERSE SECURITY GUARD (Para sa Sign Up / Login)
+// Kon naka-login na ang teacher, indi na sila dapat maghimo account liwat. I-rekta na sila sa dashboard.
+if (localStorage.getItem('user_id')) {
+    window.location.href = 'index.html';
+}
+
 // Supabase Setup
 const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
 const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzU5OTkxOCwiZXhwIjoyMDkzMTc1OTE4fQ.QdbOgLmDoD6rzXsf6_2l9XhqTfEu0_s-Htsq4jslwY0'; 
