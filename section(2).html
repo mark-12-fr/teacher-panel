@@ -16,6 +16,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            window.location.replace('login.html');
+        }
+
         // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -527,7 +532,7 @@
             </nav>
 
             <div class="sidebar-footer">
-                <a href="javascript:void(0)" onclick="toggleTheme()" class="theme-btn" style="margin-bottom: 5px;">
+                <a href="javascript:void(0)" onclick="toggleTheme(event)" class="theme-btn" style="margin-bottom: 5px;">
                     <i class="fa-solid fa-moon" id="themeIcon"></i> <span id="themeText">Dark Mode</span>
                 </a>
                 <a href="javascript:void(0)" onclick="logoutUser()" class="logout-btn">
