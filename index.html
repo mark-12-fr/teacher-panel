@@ -205,6 +205,30 @@
 </head>
 <body>
 
+<script>
+    // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+    // Exception: Gin-allow ta anay kung may "access_token" sa URL (pasabot nag-redirect halin sa Google Login)
+    if (!window.location.hash.includes('access_token') && (!localStorage.getItem('access_token') || !localStorage.getItem('user_id'))) {
+        window.location.href = 'login.html';
+    }
+
+    /* =========================================
+       THEME TOGGLE & ICONS
+       ========================================= */
+    function toggleTheme() {
+        const root = document.documentElement;
+        const icon = document.getElementById('themeIcon');
+        const text = document.getElementById('themeText');
+        if (root.getAttribute('data-theme') === 'dark') {
+            root.removeAttribute('data-theme'); localStorage.setItem('dashboard_theme', 'light');
+            if(icon) icon.className = 'fa-solid fa-moon'; if(text) text.textContent = 'Dark Mode';
+        } else {
+            root.setAttribute('data-theme', 'dark'); localStorage.setItem('dashboard_theme', 'dark');
+            if(icon) icon.className = 'fa-solid fa-sun'; if(text) text.textContent = 'Light Mode';
+        }
+    }
+</script>
+
 <div class="layout">
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -389,21 +413,6 @@
 </div>
 
 <script>
-    /* =========================================
-       THEME TOGGLE & ICONS
-       ========================================= */
-    function toggleTheme() {
-        const root = document.documentElement;
-        const icon = document.getElementById('themeIcon');
-        const text = document.getElementById('themeText');
-        if (root.getAttribute('data-theme') === 'dark') {
-            root.removeAttribute('data-theme'); localStorage.setItem('dashboard_theme', 'light');
-            if(icon) icon.className = 'fa-solid fa-moon'; if(text) text.textContent = 'Dark Mode';
-        } else {
-            root.setAttribute('data-theme', 'dark'); localStorage.setItem('dashboard_theme', 'dark');
-            if(icon) icon.className = 'fa-solid fa-sun'; if(text) text.textContent = 'Light Mode';
-        }
-    }
     const savedTheme = localStorage.getItem('dashboard_theme');
     if (savedTheme === 'dark') {
         document.addEventListener('DOMContentLoaded', () => {
