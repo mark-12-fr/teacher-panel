@@ -1,18 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login | Management System</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<!-- ADDED FONTAWESOME FOR PROFESSIONAL SPINNERS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-<!-- PWA MANIFEST & FAVICON -->
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/jpeg" href="logo.jpg">
-<link rel="apple-touch-icon" href="logo.jpg">
-<meta name="theme-color" content="#3b82f6">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="apple-touch-icon" href="logo.jpg">
+    <meta name="theme-color" content="#3b82f6">
 
 <style>
 *, *::before, *::after{ box-sizing:border-box; }
@@ -324,13 +322,11 @@ body{
 .modal-content { background: white; padding: 30px; border-radius: 18px; width: 100%; max-width: 400px; margin: 20px; text-align: center; }
 </style>
 
-<!-- SUPABASE JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
 
-<!-- 🌟 SPLASH SCREEN INTRO 🌟 -->
 <div id="splashScreen" class="splash-screen">
     <div class="splash-content">
         <div class="splash-logo-container">
@@ -348,7 +344,6 @@ body{
         <h2>Welcome Teacher</h2>
         <p class="login-subtitle">Login to your account</p>
 
-        <!-- GOOGLE LOGIN BUTTON -->
         <button type="button" id="googleBtn" onclick="loginWithGoogle()" class="google-btn">
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="18">
             Continue with Google
@@ -390,7 +385,6 @@ body{
     </div>
 </main>
 
-<!-- TOAST BOX -->
 <div id="toastMessage" class="toast-notification">
     <svg id="toastIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
@@ -398,7 +392,6 @@ body{
     <span id="toastText">Logged in successfully!</span>
 </div>
 
-<!-- Forgot Password Modal -->
 <div id="forgotModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <h3 style="margin-top:0; margin-bottom:10px; font-size: 1.3rem;">Reset Password</h3>
@@ -417,6 +410,21 @@ body{
 </div>
 
 <script>
+    // 🔒 REVERSE SECURITY GUARD SANG PAGE (Para sa Teacher Login)
+    // Kon naka-login na ang teacher, mapakita lang ang splash screen loading tapos redirect.
+    if (localStorage.getItem('access_token') && localStorage.getItem('user_id')) {
+        document.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('splashLoaderEl');
+            if (loader) loader.style.display = 'none';
+            const subtitle = document.getElementById('splashSubtitle');
+            if (subtitle) subtitle.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading your workspace...';
+            
+            setTimeout(() => {
+                window.location.href = 'index.html'; 
+            }, 800);
+        });
+    }
+
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
 
@@ -430,26 +438,7 @@ body{
         }
     });
 
-    // 🌟 INSTANT AUTO-LOGIN CHECK 🌟
     window.addEventListener('DOMContentLoaded', () => {
-        const currentToken = localStorage.getItem('access_token');
-        const currentUserId = localStorage.getItem('user_id');
-
-        if (currentToken && currentUserId) {
-            // Kon naka-login na ang teacher, skip the login form
-            const loader = document.getElementById('splashLoaderEl');
-            if (loader) loader.style.display = 'none';
-            
-            const subtitle = document.getElementById('splashSubtitle');
-            if (subtitle) subtitle.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading your workspace...';
-            
-            // Redirect smoothly to dashboard
-            setTimeout(() => {
-                window.location.href = 'index.html'; 
-            }, 800);
-            return; // Stop execution
-        }
-
         // Normal Load: Handle Remember Me fields
         const savedEmail = localStorage.getItem('remembered_email');
         if (savedEmail) {
