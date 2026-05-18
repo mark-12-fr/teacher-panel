@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +15,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
+        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+            window.location.replace('login.html');
+        }
+
+        // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
@@ -23,6 +28,7 @@
 
     <style>
         :root {
+            /* ORIGINAL COLORS & LIGHT MODE VARIABLES */
             --sidebar-bg: #111827;
             --main-bg: #eef2ff;
             --accent-blue: #3b82f6;
@@ -424,7 +430,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
     };
 
-    // --- 🌟 NEW SMART REALTIME LISTENER FUNCTION 🌟 ---
+    // --- 🌟 NEW SMART REALTIME LISTENER FUNCTION ---
     function listenForAttendanceUpdates() {
         supabaseClient
             .channel('public:attendance_teacher')
@@ -442,7 +448,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             .subscribe();
     }
 
-    // --- 🌟 TARGETED CELL UPDATE 🌟 ---
+    // --- 🌟 TARGETED CELL UPDATE ---
     function updateSpecificCellUI(studentName, dateStr, status, eventType) {
         // Find the specific cell matching the student and date
         const cell = document.querySelector(`.editable-cell[data-student-name="${studentName}"][data-date="${dateStr}"]`);
@@ -522,7 +528,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
     function uploadAvatar(event) {
         const file = event.target.files[0]; if (!file) return;
-        const userId = localStorage.getItem('user_id');
+        const userId = localStorage.getItem('user_id'); const accessToken = localStorage.getItem('access_token'); 
         const imgElement = document.getElementById('userAvatar');
         if(!imgElement) return;
         
@@ -545,32 +551,16 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
                 try {
-                    const { error } = await supabaseClient.from('profiles').update({ avatar_url: compressedBase64 }).eq('id', userId);
+                    const { error } = await supabaseClient.from('profiles').upsert({ id: userId, avatar_url: compressedBase64 }).select(); 
                     if (error) throw error;
                     imgElement.src = compressedBase64;
                     localStorage.setItem('cached_user_avatar', compressedBase64); 
-                    showNotification("Profile picture updated successfully!");
+                    showNotification("Your profile picture has been updated successfully.");
                 } catch (err) {
                     console.error("Upload error:", err); showNotification("Error updating picture.", "error");
                 } finally { imgElement.style.opacity = '1'; }
             }; img.src = e.target.result;
         }; reader.readAsDataURL(file);
-    }
-
-    function showNotification(message, type = 'success') {
-        const toast = document.getElementById('customToast');
-        const textElement = document.getElementById('toastMessage');
-        const iconElement = toast.querySelector('i');
-        if(!toast || !textElement || !iconElement) return;
-        
-        textElement.textContent = message;
-        if(type === 'success') {
-            toast.style.backgroundColor = '#10b981'; iconElement.className = 'fa-solid fa-circle-check';
-        } else {
-            toast.style.backgroundColor = '#ef4444'; iconElement.className = 'fa-solid fa-circle-exclamation';
-        }
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 4000);
     }
 
     function logoutUser() {
@@ -627,23 +617,25 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        const [secRes, studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
-            supabaseClient.from('sections').select('*').eq('teacher_id', teacherId),
-            supabaseClient.from('students').select('*'),
-            supabaseClient.from('class_records').select('*'),
-            supabaseClient.from('attendance').select('*'),
+        const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
+        const sections = secRes || [];
+        
+        if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
+        
+        const sectionIds = sections.map(s => s.id);
+        const sectionTitles = sections.map(s => s.title);
+
+        const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
+            supabaseClient.from('students').select('*').in('section_id', sectionIds),
+            supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
+            supabaseClient.from('attendance').select('*').in('section', sectionTitles),
             supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
             supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
         ]);
 
-        const sections = secRes.data || [];
-        if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
-        const sectionIds = sections.map(s => s.id);
-        const sectionTitles = sections.map(s => s.title);
-
-        const students = (studRes.data || []).filter(s => sectionIds.includes(s.section_id));
-        const records = (recRes.data || []).filter(r => sectionIds.includes(r.section_id));
-        const attendance = (attRes.data || []).filter(a => sectionTitles.includes(a.section));
+        const students = studRes.data || [];
+        const records = recRes.data || [];
+        const attendance = attRes.data || [];
         const schedules = schedRes.data || [];
         const facilitators = facRes.data || [];
 
@@ -739,7 +731,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
             let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
             if(!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
-            
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the database.`;
             return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
@@ -748,14 +739,13 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let totalStuds = students.length; let passCount = 0;
             records.forEach(r => { if(getFinalGrade(r) >= 75) passCount++; });
             let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
-            
             return `<strong>Class Performance Overview:</strong><br><br>` + 
                    `• Total Active Sections: <strong>${sections.length}</strong><br>` +
                    `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
                    `• Overall Passing Rate: <strong>${passRate}%</strong><br><br>` +
                    `<em>Tip: You can ask me to list down the top students or those who are failing.</em>`;
         }
-        return `I am your AI Assistant. Here are some things I can help you with:<br><br>
+        return `I am your Virtual Teaching Assistant. Here are some things I can help you with:<br><br>
                 💬 <em>"Who are the top students?"</em><br>
                 💬 <em>"What is the grade of [Student Name]?"</em><br>
                 💬 <em>"Who has missing modules?"</em><br>
