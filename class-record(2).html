@@ -170,7 +170,7 @@
             -webkit-overflow-scrolling: touch; 
             border-bottom: 1px solid var(--border-color); 
             border-right: 1px solid var(--border-color); 
-            display: block; /* Enables proper mobile scrolling */
+            display: block;
         }
         table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2400px; background: var(--card-bg); }
         
@@ -223,11 +223,70 @@
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
-        /* AI ASSISTANT STYLES */
-        .ai-floating-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
+        /* ========================================================= */
+        /* ✨ FIXED FLOATING BUTTONS (PLUS ICON & AI ASSISTANT) ✨ */
+        /* ========================================================= */
+
+        /* PLUS BUTTON (Sa idalom gid dampi) */
+        .add-floating-btn { 
+            position: fixed; 
+            bottom: 40px; 
+            right: 40px; 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            background-color: var(--accent-blue); 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); 
+            cursor: pointer; 
+            z-index: 9998; 
+            transition: transform 0.3s; 
+            border: none; 
+        }
+        .add-floating-btn:hover { transform: scale(1.1); }
+
+        /* AI BUTTON (Ginbutang sa ibabaw sang Plus Button) */
+        .ai-floating-btn { 
+            position: fixed; 
+            bottom: 115px; /* Gin-adjust ko para indi magsapaw */
+            right: 40px; 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            background-color: var(--accent-blue); 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); 
+            cursor: pointer; 
+            z-index: 9998; 
+            transition: transform 0.3s; 
+            border: none; 
+        }
         .ai-floating-btn:hover { transform: scale(1.1); }
         
-        .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 350px; height: 450px; background: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 25px var(--shadow-color); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s; overflow: hidden; border: 1px solid var(--border-color); }
+        .ai-chat-widget { 
+            position: fixed; 
+            bottom: 185px; /* Gin-adjust ko pataas ang chat window */
+            right: 40px; 
+            width: 350px; 
+            height: 450px; 
+            background: var(--card-bg); 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px var(--shadow-color); 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 9999; 
+            transform: scale(0); 
+            transform-origin: bottom right; 
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s; 
+            overflow: hidden; 
+            border: 1px solid var(--border-color); 
+        }
         .ai-chat-widget.active { transform: scale(1); }
         
         .ai-chat-header { background: linear-gradient(-45deg, #3b82f6, #6366f1); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
@@ -270,15 +329,18 @@
             .export-btn { width: 100%; justify-content: center; }
         }
 
-        /* 📱 RESPONSIVE FIXES FOR MOBILE TABLE SCROLLING - ADJUSTED FOR 4 COLUMNS */
+        /* 📱 RESPONSIVE FIXES FOR MOBILE */
         @media (max-width: 640px) {
             .main-content { padding: 15px 5px 100px 5px; }
             .class-record-container { padding: 15px 5px; }
             .dashboard-wrapper { grid-template-columns: 1fr; padding: 15px; }
             .topbar-left h1 { font-size: 1.4rem; }
             
-            .ai-floating-btn { bottom: 20px; right: 20px; width: 55px; height: 55px; }
-            .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 90px; }
+            /* Adjusted Floating Buttons for Mobile */
+            .add-floating-btn { bottom: 20px; right: 20px; width: 55px; height: 55px; }
+            .ai-floating-btn { bottom: 85px; right: 20px; width: 55px; height: 55px; }
+            .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 150px; }
+            
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
 
             /* Gin-gamyan gid naton ang Padding kag Font Size para maka-igo gid ang 4-5 ka columns */
@@ -288,7 +350,7 @@
             .sticky-col:nth-child(1) { width: 22px; min-width: 22px; padding: 4px 1px; }
             .sticky-col:nth-child(2) { 
                 left: 22px; 
-                min-width: 75px;  /* Gin-gamyan pa gid ang Student Name column */
+                min-width: 75px; 
                 max-width: 75px; 
                 font-size: 0.7rem; 
                 white-space: nowrap; 
@@ -409,6 +471,10 @@
         <i class="fa-solid fa-circle-check"></i>
         <span id="toastMessage">Success</span>
     </div>
+
+    <button class="add-floating-btn" title="Add New Item">
+        <i class="fa-solid fa-plus" style="font-size: 20px;"></i>
+    </button>
 
     <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
         <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
