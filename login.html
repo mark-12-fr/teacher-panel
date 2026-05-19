@@ -411,7 +411,6 @@ body{
 
 <script>
     // 🔒 REVERSE SECURITY GUARD SANG PAGE (Para sa Teacher Login)
-    // Kon naka-login na ang teacher, mapakita lang ang splash screen loading tapos redirect.
     if (localStorage.getItem('access_token') && localStorage.getItem('user_id')) {
         document.addEventListener('DOMContentLoaded', () => {
             const loader = document.getElementById('splashLoaderEl');
@@ -428,15 +427,8 @@ body{
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
 
-    const accessToken = localStorage.getItem('access_token');
-
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: {
-            headers: {
-                Authorization: accessToken ? `Bearer ${accessToken}` : ''
-            }
-        }
-    });
+    // FIXED: Removed global headers for auto-refresh to work!
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     window.addEventListener('DOMContentLoaded', () => {
         // Normal Load: Handle Remember Me fields
@@ -449,7 +441,6 @@ body{
 
     // 🌟 SPLASH SCREEN LOGIC 🌟
     window.addEventListener('load', function() {
-        // Only hide splash if NOT auto-redirecting
         if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
             const splashScreen = document.getElementById('splashScreen');
             setTimeout(() => {
@@ -516,10 +507,8 @@ body{
         const btn = document.getElementById("loginBtn");
 
         btn.disabled = true;
-        // PROFESSIONAL SPINNER
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
 
-        // Handle Remember Me
         if (rememberChecked) {
             localStorage.setItem('remembered_email', emailInput);
         } else {
@@ -536,14 +525,12 @@ body{
             btn.disabled = false;
             btn.innerText = "Login";
         } else {
-            // SUCCESS - Store tokens and clear Faci tokens just in case
             localStorage.removeItem('faci_id');
             localStorage.setItem('access_token', data.session.access_token);
             localStorage.setItem('user_id', data.user.id);
 
             showToast("Login successful. Redirecting...");
             
-            // Success Button Style
             btn.innerHTML = '<i class="fa-solid fa-check"></i> Authentication Successful';
             btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
             
