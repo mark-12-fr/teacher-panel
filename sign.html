@@ -272,7 +272,6 @@ body{
 
 <script>
 // 🔒 REVERSE SECURITY GUARD (Para sa Sign Up / Login)
-// Kon naka-login na ang teacher, indi na sila dapat maghimo account liwat. I-rekta na sila sa dashboard.
 if (localStorage.getItem('user_id')) {
     window.location.href = 'index.html';
 }
@@ -281,15 +280,8 @@ if (localStorage.getItem('user_id')) {
 const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
 const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzU5OTkxOCwiZXhwIjoyMDkzMTc1OTE4fQ.QdbOgLmDoD6rzXsf6_2l9XhqTfEu0_s-Htsq4jslwY0'; 
 
-const accessToken = localStorage.getItem('access_token');
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-        headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : ''
-        }
-    }
-});
+// FIXED: Removed global headers for auto-refresh to work!
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* TOAST FUNCTION */
 function showToast(message, isError = false) {
@@ -322,7 +314,7 @@ async function loginWithGoogle() {
             options: {
                 redirectTo: 'http://127.0.0.1:5500/index.html',
                 queryParams: {
-                    prompt: 'select_account' // 🌟 GIN-ADD PARA MAG-FORCE PILI ACCOUNT
+                    prompt: 'select_account'
                 }
             }
         });
@@ -371,7 +363,6 @@ function checkMatch(){
 
 let emailExists=false;
 
-/* Check email directly on Supabase profiles table */
 async function checkEmail(){
     const email=document.getElementById("email").value;
     const msg=document.getElementById("emailMsg");
@@ -399,7 +390,6 @@ async function checkEmail(){
     }
 }
 
-/* FIX: Supabase Registration with Custom User Metadata */
 async function handleSignUp(event){
     event.preventDefault(); 
     
@@ -424,13 +414,12 @@ async function handleSignUp(event){
     submitBtn.disabled = true;
 
     try {
-        // 1. Sign up the user kag i-pasa ang full_name sa metadata
         const { data: authData, error: authError } = await supabaseClient.auth.signUp({
             email: email,
             password: pass,
             options: {
                 data: {
-                    full_name: fullName // <-- Ari ang rason para indi mag "Teacher"
+                    full_name: fullName 
                 }
             }
         });
@@ -443,7 +432,6 @@ async function handleSignUp(event){
         }
 
         if (authData.user) {
-            // 2. Gamiton ang upsert para e-update dayon ang pangalan if nag trigger na sa backend
             const { error: profileError } = await supabaseClient.from('profiles').upsert([
                 { id: authData.user.id, full_name: fullName, email: email }
             ]);
@@ -452,7 +440,6 @@ async function handleSignUp(event){
                 console.error("Profile insert warning:", profileError);
             }
 
-            // 3. Save to LocalStorage para automatic login and quick load
             if(authData.session) {
                 localStorage.setItem('access_token', authData.session.access_token);
             }
