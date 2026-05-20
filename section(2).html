@@ -584,7 +584,9 @@
         </div>
 
     </main>
-</div> <button id="openModal" title="Add New Student"><i class="fas fa-plus"></i></button>
+</div> 
+
+<button id="openModal" title="Add New Student"><i class="fas fa-plus"></i></button>
 
 <div id="modal2" class="modal">
     <div class="modal-content">
@@ -751,7 +753,7 @@
                     googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
                     tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name;
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Error decoding token"); }
 
             const { data: profile } = await supabaseClient.from('profiles').select('full_name, avatar_url').eq('id', userId).single();
             let fullName = 'Teacher';
