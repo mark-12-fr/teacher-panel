@@ -1132,7 +1132,7 @@
     closeEditX.onclick = () => { editModal.style.display = "none"; currentEditId = null; };
     cancelEdit.onclick = () => { editModal.style.display = "none"; currentEditId = null; };
     openAddBtn.onclick = () => addModal.style.display = "flex";
-    cancelAdd.onclick = () => addModal.style.display = "flex";
+    cancelAdd.onclick = () => addModal.style.display = "none";
 
     window.onclick = (e) => {
         if (e.target === editModal) { editModal.style.display = "none"; currentEditId = null; }
