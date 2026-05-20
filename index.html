@@ -306,12 +306,12 @@
                 <div><span class="stat-title">TOTAL SECTIONS</span><div class="stat-value" id="val-total-sections">0</div></div>
             </div>
 
-            <div class="dash-card stat-card">
+            <div class="dash-card stat-card" onclick="showAttendanceDetails('absent')" style="cursor: pointer;" title="Click to view details">
                 <div class="stat-icon-wrapper stat-icon-yellow"><i data-lucide="user-x"></i></div>
                 <div><span class="stat-title">TODAY'S ABSENT & LATE</span><div class="stat-value" id="val-todays-absent">0</div></div>
             </div>
 
-            <div class="dash-card stat-card">
+            <div class="dash-card stat-card" onclick="showAttendanceDetails('present')" style="cursor: pointer;" title="Click to view details">
                 <div class="stat-icon-wrapper stat-icon-purple"><i data-lucide="user-check"></i></div>
                 <div><span class="stat-title">TODAY'S PRESENT</span><div class="stat-value" id="val-todays-present">0</div></div>
             </div>
@@ -387,6 +387,17 @@
     </div>
 </div>  
 
+<div id="attendanceModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 450px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 id="attendanceModalTitle">Attendance Details</h4>
+            <button onclick="toggleAttendanceModal()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted);"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <ul id="attendanceModalList" class="list-container" style="max-height: 300px; overflow-y: auto; padding: 0;">
+            </ul>
+    </div>
+</div>
+
 <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
     <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
 </button>
@@ -428,11 +439,10 @@
     const SUPABASE_URL = 'https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
 
-    // Important: We still read accessToken here because your code uses it later to extract the Google Avatar
     const accessToken = localStorage.getItem('access_token');
-
-    // FIXED: Removed global headers for auto-refresh to work!
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let todayAttendanceData = []; // GLOBAL VARIABLE PARA MA-STORE ANG ATTENDANCE
 
     function showNotification(message, type = 'success') {
         const toast = document.getElementById('customToast');
@@ -529,7 +539,7 @@
     function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
 
     /* =========================================
-       CUSTOM SMART VIRTUAL ASSISTANT (Professional English)
+       CUSTOM SMART VIRTUAL ASSISTANT
        ========================================= */
     function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
@@ -576,7 +586,6 @@
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // 1. Kuhaon anay ang sections nga iya sang naka-login nga teacher
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
@@ -585,13 +594,12 @@
         const sectionIds = sections.map(s => s.id);
         const sectionTitles = sections.map(s => s.title);
 
-        // 2. MAG-FETCH SANG DATA NGA NAKA-FILTER NA GID BASE SA SECTIONS KAG TEACHER ID (SECURITY UPDATE)
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
             supabaseClient.from('attendance').select('*').in('section', sectionTitles),
             supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
-            supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId) // Naka-filter na sa teacher_id
+            supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
         ]);
 
         const students = studRes.data || [];
@@ -601,7 +609,6 @@
         const facilitators = facRes.data || [];
 
         const getFinalGrade = (studentId) => {
-            // MERGE Logic for AI querying
             let studRecs = records.filter(r => r.student_id === studentId);
             let merged = studRecs.reduce((acc, curr) => {
                 Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc;
@@ -708,7 +715,7 @@
     }
 
     /* =========================================
-       DYNAMIC COMPONENT SCRIPTS (Notes, Notices, Scheds, Charts)
+       DYNAMIC COMPONENT SCRIPTS 
        ========================================= */
     const noteInput = document.getElementById('noteInput'); const notesList = document.getElementById('notesList');
     async function loadNotes() {
@@ -806,16 +813,17 @@
                 sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; });
                 const sectionIds = sections.map(s => s.id);
                 
-                // Fetch Students to get accurate matching
                 const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
                 totalStudents = students ? students.length : 0;
 
-                // Fetch Today's Attendance
+                // UPDATED FETCH: Added status, student_name, and section
                 const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`; 
-                const { data: attData } = await supabaseClient.from('attendance').select('status').in('section', sectionTitles).eq('date', exactTodayDate); 
-                if (attData) attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; });
+                const { data: attData } = await supabaseClient.from('attendance').select('status, student_name, section').in('section', sectionTitles).eq('date', exactTodayDate); 
+                if (attData) {
+                    todayAttendanceData = attData; // STORE SA GLOBAL VARIABLE
+                    attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; });
+                }
                 
-                // 🌟 FIXED MERGE LOGIC FOR PERFORMANCE CHART & TOP STUDENTS 🌟
                 const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
                 let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; 
                 let allStudentsScores = [];
@@ -823,9 +831,8 @@
                 if (students && records) {
                     students.forEach(student => {
                         const studentRecords = records.filter(r => r.student_id === student.id);
-                        if (studentRecords.length === 0) return; // Skip if no records yet
+                        if (studentRecords.length === 0) return; 
 
-                        // Merge all daily records of this student
                         const mergedScores = studentRecords.reduce((acc, curr) => {
                             Object.keys(curr).forEach(key => {
                                 if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key];
@@ -885,6 +892,52 @@
             console.error(error); 
             initDashboardChart([0,0,0,0]); 
         }
+    }
+
+    /* =========================================
+       ATTENDANCE MODAL FUNCTIONS
+       ========================================= */
+    function toggleAttendanceModal() { 
+        const m = document.getElementById('attendanceModal'); 
+        m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; 
+    }
+
+    function showAttendanceDetails(type) {
+        const listContainer = document.getElementById('attendanceModalList');
+        const title = document.getElementById('attendanceModalTitle');
+        listContainer.innerHTML = '';
+
+        let filteredStudents = [];
+        
+        if (type === 'present') {
+            title.innerHTML = '<i class="fa-solid fa-user-check" style="color: #22c55e;"></i> Today\'s Present Students';
+            filteredStudents = todayAttendanceData.filter(r => r.status === 'Present');
+        } else {
+            title.innerHTML = '<i class="fa-solid fa-user-x" style="color: #f59e0b;"></i> Today\'s Absent & Late Students';
+            filteredStudents = todayAttendanceData.filter(r => r.status !== 'Present'); // Absent kag Late
+        }
+
+        if (filteredStudents.length === 0) {
+            listContainer.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No students found in this category.</li>';
+        } else {
+            // Sort by section alphabetically para manami basahon
+            filteredStudents.sort((a, b) => a.section.localeCompare(b.section));
+            
+            filteredStudents.forEach(student => {
+                let statusColor = student.status === 'Present' ? '#22c55e' : (student.status === 'Late' ? '#f59e0b' : '#ef4444');
+                const li = document.createElement('li');
+                li.className = 'item-row';
+                li.innerHTML = `
+                    <div style="display: flex; flex-direction: column;">
+                        <strong style="color: var(--text-dark); font-size: 0.95rem;">${student.student_name}</strong>
+                        <small style="color: var(--text-muted);">${student.section} - <span style="font-weight: 600; color: ${statusColor};">${student.status}</span></small>
+                    </div>
+                `;
+                listContainer.appendChild(li);
+            });
+        }
+
+        toggleAttendanceModal();
     }
 
     window.onload = () => { handleOAuthRedirect(); checkAuthAndLoadProfile(); loadNotes(); loadSchedules(); loadNotices(); loadDashboardStats(); };
