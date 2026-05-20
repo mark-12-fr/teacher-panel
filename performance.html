@@ -28,7 +28,6 @@
 
     <style>
         :root {
-            /* ORIGINAL COLORS & LIGHT MODE VARIABLES */
             --sidebar-bg: #111827;
             --main-bg: #eef2ff;
             --accent-blue: #3b82f6;
@@ -42,7 +41,6 @@
             --hover-bg: #f3f4f6;
         }
 
-        /* DARK MODE VARIABLES */
         [data-theme="dark"] {
             --sidebar-bg: #0b0f19;
             --main-bg: #111827;
@@ -58,7 +56,6 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* GINKUHA ANG ANIMATION SA BODY PARA INDI MAG-FLASH ANG SIDEBAR */
         html { background-color: var(--main-bg); transition: background-color 0.3s; }
         body { 
             font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-dark); 
@@ -67,7 +64,6 @@
 
         .layout { display: flex; min-height: 100vh; width: 100%; }
         
-        /* SIDEBAR STYLES */
         .sidebar {
             width: 260px; background-color: var(--sidebar-bg); color: white; padding: 25px 0; 
             position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 1001; 
@@ -76,7 +72,6 @@
 
         .sidebar-top { padding: 0 20px 30px; text-align: center; }
 
-        /* PROFILE PICTURE STYLES */
         .sidebar-profile { display: flex; justify-content: center; margin-bottom: 15px; }
         .profile-container { position: relative; display: inline-block; cursor: pointer; }
         .profile-overlay { position: absolute; top: 3px; left: 3px; right: 3px; bottom: 3px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; font-size: 0.75rem; font-weight: 600; }
@@ -99,13 +94,11 @@
         .logout-btn:hover, .theme-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
         .logout-btn svg, .theme-btn i { width: 20px; margin-right: 15px; font-size: 1.1rem; }
 
-        /* OVERLAY */
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; }
         .sidebar-overlay.active { display: block; opacity: 1; }
 
-        /* MAIN CONTENT - ANIMATION */
         .main-content { 
-            margin-left: 260px; flex-grow: 1; padding: 30px 30px 100px 30px; 
+            margin-left: 260px; flex-grow: 1; min-width: 0; padding: 30px 30px 100px 30px; 
             display: flex; flex-direction: column; transition: margin-left 0.3s ease-in-out; 
             opacity: 0; animation: fadeInContent 0.25s ease-out forwards; 
         }
@@ -125,13 +118,11 @@
         .topbar-header { display: flex; align-items: center; width: 100%; }
         .menu-toggle { display: none; background: none; border: none; font-size: 1.8rem; color: var(--text-dark); cursor: pointer; margin-right: 15px; }
 
-        /* SEARCH BAR */
         .search-container { position: relative; max-width: 450px; margin-bottom: 30px; }
         .search-container input { width: 100%; padding: 14px 15px 14px 45px; border: 1px solid var(--border-color); border-radius: 10px; outline: none; font-size: 0.95rem; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); box-shadow: 0 2px 4px var(--shadow-color); transition: background 0.3s, color 0.3s, border 0.3s; }
         .search-container input:focus { border-color: var(--accent-blue); background: var(--card-bg); }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 
-        /* 🌟 NEW: 3 COLUMN GRID WRAPPER */
         .sections-wrapper {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -139,7 +130,6 @@
             width: 100%;
         }
 
-        /* 🌟 NO MATCH FOUND MESSAGE */
         .no-match-message {
             display: none;
             flex-direction: column;
@@ -161,7 +151,6 @@
             opacity: 0.6;
         }
 
-        /* SECTION CARDS - ADJUSTED FOR GRID */
         .section-card {
             background: var(--card-bg);
             border-radius: 12px;
@@ -169,32 +158,30 @@
             border-left: 6px solid var(--accent-blue);
             box-shadow: 0 4px 6px -1px var(--shadow-color);
             display: flex;
-            flex-direction: column; /* Updated */
+            flex-direction: column;
             justify-content: space-between;
-            align-items: flex-start; /* Updated */
-            gap: 20px; /* Added gap */
-            height: 100%; /* Ensure cards match height in grid row */
+            align-items: flex-start;
+            gap: 20px;
+            height: 100%;
             transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
         }
         .section-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px var(--shadow-color); }
         .section-title { font-size: 1.6rem; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
         .section-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 15px; line-height: 1.4; }
         
-        /* TAGS */
         .tags-wrapper { display: flex; gap: 8px; flex-wrap: wrap; }
         .tag { padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
         .tag-students { background: #dcfce7; color: #166534; }
         .tag-room { background: #fef9c3; color: #b45309; }
         .tag-sem { background: #e0e7ff; color: #3730a3; }
 
-        /* ACTION BUTTONS & THREE DOT MENU - ADJUSTED FOR GRID */
         .card-actions {
             display: flex;
-            flex-direction: row; /* Updated */
-            width: 100%; /* Span full width of card */
-            justify-content: space-between; /* Space out the menu and view button */
+            flex-direction: row;
+            width: 100%;
+            justify-content: space-between;
             align-items: center;
-            margin-top: auto; /* Push to the bottom */
+            margin-top: auto;
             padding-top: 15px;
             border-top: 1px solid var(--border-color);
         }
@@ -217,20 +204,16 @@
         .view-btn { background: var(--accent-blue); color: white; border: none; padding: 8px 25px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .view-btn:hover { background: #2563eb; }
 
-        /* FLOATING ACTION BUTTON (Add Section) */
         .fab-add-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .fab-add-btn:hover { transform: scale(1.1); }
 
-        /* MODAL STYLES */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .modal-content { background: var(--card-bg); color: var(--text-dark); padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); transition: background 0.3s; }
         .modal-input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--modal-border); border-radius: 8px; outline: none; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); }
 
-        /* TOAST NOTIFICATION STYLES */
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
-        /* AI ASSISTANT STYLES */
         .ai-floating-btn { position: fixed; bottom: 120px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .ai-floating-btn:hover { transform: scale(1.1); }
         .ai-chat-widget { position: fixed; bottom: 190px; right: 40px; width: 350px; height: 450px; background: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 25px var(--shadow-color); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s; overflow: hidden; border: 1px solid var(--border-color); }
@@ -244,7 +227,6 @@
         .ai-chat-input-area input { flex-grow: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.9rem; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-dark); }
         .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
-        /* 🌟 RESPONSIVE MEDIA QUERIES FOR GRID 🌟 */
         @media (max-width: 1200px) {
             .sections-wrapper { grid-template-columns: repeat(2, 1fr); }
         }
@@ -258,7 +240,7 @@
         }
 
         @media (max-width: 768px) {
-            .sections-wrapper { grid-template-columns: 1fr; } /* Stack on small tablet/mobile */
+            .sections-wrapper { grid-template-columns: 1fr; }
             .fab-add-btn { bottom: 20px; right: 20px; }
             .ai-floating-btn { bottom: 90px; right: 20px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 160px; }
@@ -405,48 +387,51 @@
 
 <script>
     /* =========================================
-       THEME TOGGLE LOGIC (ANTI-JUMP)
+       THEME TOGGLE LOGIC
        ========================================= */
-    function toggleTheme(event) {
-        if (event) event.preventDefault(); 
+    function toggleTheme() {
         const root = document.documentElement;
         const icon = document.getElementById('themeIcon');
         const text = document.getElementById('themeText');
         
         if (root.getAttribute('data-theme') === 'dark') {
-            root.removeAttribute('data-theme'); localStorage.setItem('dashboard_theme', 'light');
-            if(icon) icon.className = 'fa-solid fa-moon'; if(text) text.textContent = 'Dark Mode';
+            root.removeAttribute('data-theme');
+            localStorage.setItem('dashboard_theme', 'light');
+            if(icon) icon.className = 'fa-solid fa-moon';
+            if(text) text.textContent = 'Dark Mode';
         } else {
-            root.setAttribute('data-theme', 'dark'); localStorage.setItem('dashboard_theme', 'dark');
-            if(icon) icon.className = 'fa-solid fa-sun'; if(text) text.textContent = 'Light Mode';
+            root.setAttribute('data-theme', 'dark');
+            localStorage.setItem('dashboard_theme', 'dark');
+            if(icon) icon.className = 'fa-solid fa-sun';
+            if(text) text.textContent = 'Light Mode';
         }
     }
 
     const savedTheme = localStorage.getItem('dashboard_theme');
     if (savedTheme === 'dark') {
         document.addEventListener('DOMContentLoaded', () => {
-            const icon = document.getElementById('themeIcon'); const text = document.getElementById('themeText');
-            if(icon && text) { icon.className = 'fa-solid fa-sun'; text.textContent = 'Light Mode'; }
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if(icon && text) {
+                icon.className = 'fa-solid fa-sun';
+                text.textContent = 'Light Mode';
+            }
         });
     }
 
     lucide.createIcons();
 
     /* =========================================
-       SUPABASE CONFIGURATION
+       SUPABASE CONFIGURATION (MATCHED WITH ATTENDANCE)
        ========================================= */
-    const API_URL ='http://127.0.0.1:5000'; 
-    const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
-    const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
-    const accessToken = localStorage.getItem('access_token');
+    const API_URL = 'http://127.0.0.1:5000'; 
+    const SUPABASE_URL = 'https://njzvuwkepaasnsvuujgx.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
+    const accessToken = localStorage.getItem('access_token'); 
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-        headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : ''
-        }
-    }
-});
+    // ✅ UPDATED: Gin-tanggal ang global headers para consistent sa attendance page
+    // Ang Supabase client naga-handle na sang session automatically
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     /* =========================================
        TOAST NOTIFICATION FUNCTION
@@ -464,27 +449,24 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             toast.style.backgroundColor = '#ef4444'; iconElement.className = 'fa-solid fa-circle-exclamation';
         }
         toast.classList.add('show');
-        setTimeout(() => { toast.classList.remove('show'); }, 4000);
+        setTimeout(() => { toast.classList.remove('show'); }, 4000); 
     }
 
     /* =========================================
-       AUTHENTICATION & PROFILE
+       USER AUTHENTICATION & PROFILE (MATCHED WITH ATTENDANCE)
        ========================================= */
-    const checkUserId = localStorage.getItem('user_id');
-    const checkToken = localStorage.getItem('access_token');
-    const isOAuthLogin = window.location.hash.includes("access_token");
-    
-    if ((!checkUserId || !checkToken) && !isOAuthLogin) {
-        window.location.replace("login.html"); 
-    }
-
     async function checkAuthAndLoadProfile() {
         const userId = localStorage.getItem('user_id');
         const accessToken = localStorage.getItem('access_token');
-        if (!userId || !accessToken) return;
+        
+        if (!userId) {
+            window.location.href = 'login.html';
+            return;
+        }
 
         try {
-            let googleAvatar = null; let tokenName = null; 
+            let googleAvatar = null;
+            let googleName = null;
             try {
                 if(accessToken) {
                     const base64Url = accessToken.split('.')[1];
@@ -492,87 +474,117 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                     const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
                     const payload = JSON.parse(jsonPayload);
                     googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
-                    tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name; 
+                    googleName = payload.user_metadata?.full_name || payload.user_metadata?.name;
                 }
             } catch (e) { console.error("Error decoding token"); }
 
-            const { data: profile } = await supabaseClient.from('profiles').select('full_name, avatar_url').eq('id', userId).single();
-            let fullName = 'Teacher';
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', userId)
+                .single();
             
-            if (profile && profile.full_name) fullName = profile.full_name;
-            else if (tokenName) fullName = tokenName;
-            else {
-                try {
-                    const res = await fetch(`${API_URL}/api/user/${userId}`);
-                    if (res.ok) { const data = await res.json(); fullName = data.full_name || 'Teacher'; }
-                } catch (e) { console.error("API fetch failed"); }
-            }
-
+            let fullName = profile?.full_name || googleName || 'Teacher';
+            
             document.getElementById('userName').textContent = fullName;
             localStorage.setItem('cached_user_name', fullName); 
-
+            
             const firstName = fullName.split(' ')[0];
             const aiGreetingEl = document.getElementById('aiGreeting');
             if(aiGreetingEl) {
                 aiGreetingEl.textContent = `Good day, Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}. I am your AI assistant. You may ask about your sections, students, schedules, notes, notices, attendance, or performance records.`;
             }
-
+            
             let finalAvatarSrc = profile?.avatar_url || googleAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=3b82f6&color=fff&size=128`;
             const uAvatarEl = document.getElementById('userAvatar');
-            if (uAvatarEl) uAvatarEl.src = finalAvatarSrc;
+            if(uAvatarEl) uAvatarEl.src = finalAvatarSrc;
             localStorage.setItem('cached_user_avatar', finalAvatarSrc); 
 
-        } catch (error) { console.error("Error loading profile:", error); }
+        } catch (error) {
+            console.error("Error loading profile:", error);
+        }
     }
 
-    // UPLOAD AVATAR WITH CANVAS COMPRESSION
+    // ✅ UPDATED: UPLOAD AVATAR WITH CANVAS COMPRESSION (upsert para safer, consistent sa attendance)
     function uploadAvatar(event) {
-        const file = event.target.files[0]; if (!file) return;
-        const userId = localStorage.getItem('user_id'); const accessToken = localStorage.getItem('access_token'); 
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const userId = localStorage.getItem('user_id');
         const imgElement = document.getElementById('userAvatar');
         if(!imgElement) return;
         
         imgElement.style.opacity = '0.5';
+
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
             img.onload = async function() {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 150; const MAX_HEIGHT = 150;
-                let width = img.width; let height = img.height;
+                const MAX_WIDTH = 150;
+                const MAX_HEIGHT = 150;
+                let width = img.width;
+                let height = img.height;
 
-                if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
-                else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                if (width > height) {
+                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                } else {
+                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                }
 
-                canvas.width = width; canvas.height = height;
-                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
 
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
                 try {
-                    const { error } = await supabaseClient.from('profiles').update({ avatar_url: compressedBase64 }).eq('id', userId);
+                    // ✅ CHANGED: update → upsert (handles missing profile row, same as attendance)
+                    const { error } = await supabaseClient
+                        .from('profiles')
+                        .upsert({ id: userId, avatar_url: compressedBase64 })
+                        .select(); 
+
                     if (error) throw error;
+
                     imgElement.src = compressedBase64;
                     localStorage.setItem('cached_user_avatar', compressedBase64); 
-                    showNotification("Profile picture updated successfully!");
+                    showNotification("Your profile picture has been updated successfully.");
                 } catch (err) {
-                    console.error("Upload error:", err); showNotification("Error updating picture.", "error");
-                } finally { imgElement.style.opacity = '1'; }
-            }; img.src = e.target.result;
-        }; reader.readAsDataURL(file);
+                    console.error("Upload error:", err);
+                    showNotification("Error updating picture.", "error");
+                } finally {
+                    imgElement.style.opacity = '1';
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
     function logoutUser() {
-        localStorage.removeItem('access_token'); localStorage.removeItem('user_id');
-        localStorage.removeItem('cached_user_name'); localStorage.removeItem('cached_user_avatar');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('cached_user_name');
+        localStorage.removeItem('cached_user_avatar');
         window.location.href = 'login.html';
     }
 
     /* =========================================
-       SIDEBAR
+       SIDEBAR & AI CHAT
        ========================================= */
-    function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
-    function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
+    function openSidebar() {
+        document.getElementById('mySidebar').classList.add('active');
+        document.getElementById('sidebarOverlay').classList.add('active');
+    }
+
+    function closeSidebar() {
+        if(window.innerWidth <= 1024) {
+            document.getElementById('mySidebar').classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+    }
 
     /* =========================================
        CUSTOM SMART VIRTUAL ASSISTANT (SECURED DATA FETCH)
@@ -622,7 +634,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // 1. Get sections owned by the logged-in teacher
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
@@ -631,7 +642,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const sectionIds = sections.map(s => s.id);
         const sectionTitles = sections.map(s => s.title);
 
-        // 2. Fetch data FILTERED by sectionIds and teacherId (SECURITY UPDATE)
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
@@ -776,7 +786,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         sectionsWrapper.innerHTML = ''; 
         document.getElementById('noMatchMessage').style.display = 'none';
 
-        // NAKA-FILTER NA INI DAAN PARA SA TEACHER_ID
         const { data: savedSections, error } = await supabaseClient
             .from('sections')
             .select('*, students(count)') 
@@ -848,7 +857,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         });
     });
 
-    // 🌟 SEARCH BAR LOGIC WITH "NO MATCH FOUND" 🌟
     document.getElementById('searchInput').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const cards = document.querySelectorAll('.section-card');
@@ -866,7 +874,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             }
         });
 
-        // Show "No match found" message if all cards are hidden
         const noMatchMsg = document.getElementById('noMatchMessage');
         if (noMatchMsg) {
             noMatchMsg.style.display = (visibleCount === 0 && cards.length > 0) ? 'flex' : 'none';
