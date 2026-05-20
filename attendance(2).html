@@ -32,10 +32,9 @@
             --sidebar-bg: #111827;
             --main-bg: #eef2ff;
             --accent-blue: #3b82f6;
-            --white: #ffffff;
+            --card-bg: #ffffff;
             --text-dark: #1f2937;
             --text-muted: #6b7280;
-            --card-bg: #ffffff;
             --border-color: #e5e7eb;
             --input-bg: #f9fafb;
             --hover-bg: #f1f5f9;
@@ -60,10 +59,11 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* GINKUHA ANG ANIMATION SA BODY PARA INDI MAG-FLASH ANG SIDEBAR */
         html { background-color: var(--main-bg); transition: background-color 0.3s; }
         body { font-family: 'Inter', sans-serif; background-color: var(--main-bg); color: var(--text-dark); overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
 
-        .layout { display: flex; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; width: 100%; }
         
         .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; padding: 25px 0; position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 1001; transition: transform 0.3s ease-in-out, background-color 0.3s; }
         .sidebar-top { padding: 0 20px 30px; text-align: center; }
@@ -79,7 +79,7 @@
         .sidebar-menu li { margin-bottom: 5px; }
         .sidebar-menu a { display: flex; align-items: center; color: #9ca3af; text-decoration: none; padding: 12px 15px; border-radius: 8px; font-size: 0.9rem; transition: all 0.3s; }
         .sidebar-menu a i, .sidebar-menu a svg { width: 18px; height: 18px; margin-right: 12px; }
-        .sidebar-menu a:hover { background: rgba(255, 255, 255, 0.05); color: white; }
+        .sidebar-menu a:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: white; }
         .sidebar-menu a.active { background-color: var(--accent-blue); color: white; }
         .sidebar-footer { padding: 0 15px; }
         .logout-btn, .theme-btn { display: flex; align-items: center; color: var(--text-muted); text-decoration: none; padding: 12px 15px; border-radius: 10px; font-size: 0.95rem; transition: 0.2s; cursor: pointer; border: none; background: none; width: 100%; }
@@ -389,18 +389,16 @@
 
     lucide.createIcons();
 
+    /* =========================================
+       SUPABASE CONFIGURATION (FIXED SESSION)
+       ========================================= */
     const API_URL ='http://127.0.0.1:5000'; 
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
     const accessToken = localStorage.getItem('access_token');
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-        headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : ''
-        }
-    }
-});
+    // Gindula ang global headers para mag-auto refresh ang Supabase token sa background
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const urlParams = new URLSearchParams(window.location.search);
     const currentSectionId = urlParams.get('id');
@@ -528,7 +526,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
     function uploadAvatar(event) {
         const file = event.target.files[0]; if (!file) return;
-        const userId = localStorage.getItem('user_id'); const accessToken = localStorage.getItem('access_token'); 
+        const userId = localStorage.getItem('user_id');
         const imgElement = document.getElementById('userAvatar');
         if(!imgElement) return;
         
@@ -731,6 +729,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
             let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
             if(!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
+            
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the database.`;
             return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
@@ -739,6 +738,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             let totalStuds = students.length; let passCount = 0;
             records.forEach(r => { if(getFinalGrade(r) >= 75) passCount++; });
             let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
+            
             return `<strong>Class Performance Overview:</strong><br><br>` + 
                    `• Total Active Sections: <strong>${sections.length}</strong><br>` +
                    `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
