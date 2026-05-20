@@ -225,13 +225,25 @@
         .chart-container { position: relative; width: 100%; flex-grow: 1; min-height: 250px; }
         .pie-container { min-height: 280px; }
 
-        /* TOP STUDENTS TABLE */
+        /* ALL STUDENTS TABLE */
         .table-card { 
             background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 2px 4px var(--shadow-color); 
-            border: 1px solid var(--border-color); overflow-x: auto; -webkit-overflow-scrolling: touch; transition: background 0.3s, border 0.3s;
+            border: 1px solid var(--border-color); transition: background 0.3s, border 0.3s;
         }
         .table-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; }
+        
+        /* Added max-height and overflow for large classes */
+        .table-responsive-wrapper {
+            overflow-x: auto;
+            max-height: 500px; /* Adjust this value if you want it taller or shorter */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Added sticky header so it stays visible while scrolling down */
         table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        thead th { position: sticky; top: 0; background-color: var(--card-bg); z-index: 1; border-bottom: 2px solid var(--border-color); }
+        
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
         th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
         td { font-size: 14px; font-weight: 500; color: var(--text-dark); }
@@ -454,8 +466,8 @@
         </div>
 
         <div class="table-card">
-            <h3>Top Students</h3>
-            <div style="overflow-x: auto;">
+            <h3>All Students Ranking</h3>
+            <div class="table-responsive-wrapper">
                 <table>
                     <thead>
                         <tr>
@@ -1070,7 +1082,8 @@
         
         tbody.innerHTML = ''; 
 
-        sortedStudents.slice(0, 5).forEach((student, index) => { 
+        // GIN KAKAS NATON ANG .slice(0, 5) DIRI PARA MAG SHOW TANAN NGA STUDENTS
+        sortedStudents.forEach((student, index) => { 
             const rank = index + 1;
             let rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
             
