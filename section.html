@@ -267,11 +267,11 @@
             border-left: 6px solid var(--accent-blue);
             box-shadow: 0 4px 6px -1px var(--shadow-color);
             display: flex;
-            flex-direction: column; /* Updated */
+            flex-direction: column;
             justify-content: space-between;
-            align-items: flex-start; /* Updated */
-            gap: 20px; /* Added gap */
-            height: 100%; /* Ensure cards match height in grid row */
+            align-items: flex-start;
+            gap: 20px;
+            height: 100%;
             transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
         }
         .section-card:hover {
@@ -309,11 +309,11 @@
         /* ACTION BUTTONS & THREE DOT MENU - ADJUSTED FOR GRID */
         .card-actions {
             display: flex;
-            flex-direction: row; /* Updated */
-            width: 100%; /* Span full width of card */
-            justify-content: space-between; /* Space out the menu and view button */
+            flex-direction: row;
+            width: 100%;
+            justify-content: space-between;
             align-items: center;
-            margin-top: auto; /* Push to the bottom */
+            margin-top: auto;
             padding-top: 15px;
             border-top: 1px solid var(--border-color);
         }
@@ -344,7 +344,7 @@
         .dropdown-menu {
             display: none;
             position: absolute;
-            left: 0; /* Align left */
+            left: 0;
             top: 40px;
             background: var(--card-bg);
             border-radius: 8px;
@@ -722,13 +722,8 @@
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
     const accessToken = localStorage.getItem('access_token');
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-        headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : ''
-        }
-    }
-});
+    // FIXED: Gindula ang global headers para mag-auto refresh ang token
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
 
     /* =========================================
