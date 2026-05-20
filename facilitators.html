@@ -311,11 +311,13 @@
             <option value="" disabled selected>Loading sections...</option>
         </select>
         
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="facAccountId" class="modal-input" placeholder="Account ID (e.g. FACI-001)" style="flex: 1;">
-            <button onclick="generateCredentials()" style="margin-bottom: 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-blue); padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem; white-space: nowrap; transition: 0.2s;">Auto-Gen</button>
+        <div id="credentialsSection">
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="facAccountId" class="modal-input" placeholder="Account ID (e.g. FACI-001)" style="flex: 1;">
+                <button onclick="generateCredentials()" style="margin-bottom: 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-blue); padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem; white-space: nowrap; transition: 0.2s;">Auto-Gen</button>
+            </div>
+            <input type="text" id="facPassword" class="modal-input" placeholder="Temporary Password">
         </div>
-        <input type="text" id="facPassword" class="modal-input" placeholder="Temporary Password">
         
         <div style="display:flex; gap:10px; margin-top: 10px;">
             <button onclick="toggleFacilitatorModal()" style="flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; background: var(--input-bg); color: var(--text-dark); font-weight: 500;">Cancel</button>
@@ -392,9 +394,9 @@
     const API_URL ='https://teacher-panel-d1kw.onrender.com'; 
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
-   const accessToken = localStorage.getItem('access_token');
+    const accessToken = localStorage.getItem('access_token');
 
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     /* =========================================
        TOAST NOTIFICATION FUNCTION
@@ -504,7 +506,7 @@
     function logoutUser() {
         const userId = localStorage.getItem('user_id');
         if (userId) {
-            localStorage.removeItem(`cached_facilitators_${userId}`); // Clear the new cache
+            localStorage.removeItem(`cached_facilitators_${userId}`); 
         }
         
         localStorage.removeItem('access_token'); 
@@ -515,7 +517,7 @@
     }
 
     /* =========================================
-       FACILITATOR CRUD LOGIC (WITH CACHING)
+       FACILITATOR CRUD LOGIC (WITH CACHING & AVATAR)
        ========================================= */
     const facilitatorList = document.getElementById('facilitatorList');
     let editingFacId = null; 
@@ -537,9 +539,17 @@
         }
 
         savedFacilitators.forEach((fac) => {
+            // I-check kon may avatar sa database, kon wala default sa initials profile picture
+            let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${fac.full_name}</strong></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="${avatarSrc}" alt="${fac.full_name}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(59, 130, 246, 0.3);">
+                        <strong>${fac.full_name}</strong>
+                    </div>
+                </td>
                 <td><span class="badge-section">${fac.section}</span></td>
                 <td>${fac.subject}</td>
                 <td><span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span></td>
@@ -567,7 +577,7 @@
             const { data: savedSections, error } = await supabaseClient
                 .from('sections')
                 .select('*')
-                .eq('teacher_id', userId); // Secured: Only load this teacher's sections
+                .eq('teacher_id', userId); 
 
             sectionSelect.innerHTML = '<option value="" disabled selected>Select Section to Assign</option>';
 
@@ -658,6 +668,10 @@
         document.getElementById('facSection').value = '';
         document.getElementById('facAccountId').value = '';
         document.getElementById('facPassword').value = '';
+        
+        // SHOW the credentials input section when adding new facilitator
+        document.getElementById('credentialsSection').style.display = 'block';
+
         await loadAvailableSections(); 
         toggleFacilitatorModal();
     }
@@ -668,8 +682,14 @@
         const fac = window.currentFacilitators.find(f => f.id === facId);
         if (fac) {
             document.getElementById('facName').value = fac.full_name;
+            
+            // Retain the values in the hidden inputs so that they submit properly without error
             document.getElementById('facAccountId').value = fac.account_id;
             document.getElementById('facPassword').value = fac.temporary_password;
+            
+            // HIDE the credentials input section when editing existing facilitator
+            document.getElementById('credentialsSection').style.display = 'none';
+
             await loadAvailableSections();
             setTimeout(() => { document.getElementById('facSection').value = fac.section; }, 50);
             toggleFacilitatorModal();
