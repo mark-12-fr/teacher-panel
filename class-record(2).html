@@ -28,6 +28,7 @@
 
     <style>
         :root {
+            /* ORIGINAL COLORS & LIGHT MODE VARIABLES */
             --sidebar-bg: #111827;
             --main-bg: #eef2ff;
             --accent-blue: #3b82f6;
@@ -44,6 +45,7 @@
             --hover-bg: #f1f5f9;
         }
 
+        /* DARK MODE VARIABLES */
         [data-theme="dark"] {
             --sidebar-bg: #0b0f19;
             --main-bg: #111827;
@@ -170,7 +172,7 @@
             -webkit-overflow-scrolling: touch; 
             border-bottom: 1px solid var(--border-color); 
             border-right: 1px solid var(--border-color); 
-            display: block;
+            display: block; 
         }
         table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2400px; background: var(--card-bg); }
         
@@ -223,70 +225,11 @@
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
-        /* ========================================================= */
-        /* ✨ FIXED FLOATING BUTTONS (PLUS ICON & AI ASSISTANT) ✨ */
-        /* ========================================================= */
-
-        /* PLUS BUTTON (Sa idalom gid dampi) */
-        .add-floating-btn { 
-            position: fixed; 
-            bottom: 40px; 
-            right: 40px; 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            background-color: var(--accent-blue); 
-            color: white; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); 
-            cursor: pointer; 
-            z-index: 9998; 
-            transition: transform 0.3s; 
-            border: none; 
-        }
-        .add-floating-btn:hover { transform: scale(1.1); }
-
-        /* AI BUTTON (Ginbutang sa ibabaw sang Plus Button) */
-        .ai-floating-btn { 
-            position: fixed; 
-            bottom: 115px; /* Gin-adjust ko para indi magsapaw */
-            right: 40px; 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            background-color: var(--accent-blue); 
-            color: white; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); 
-            cursor: pointer; 
-            z-index: 9998; 
-            transition: transform 0.3s; 
-            border: none; 
-        }
+        /* AI ASSISTANT STYLES */
+        .ai-floating-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .ai-floating-btn:hover { transform: scale(1.1); }
         
-        .ai-chat-widget { 
-            position: fixed; 
-            bottom: 185px; /* Gin-adjust ko pataas ang chat window */
-            right: 40px; 
-            width: 350px; 
-            height: 450px; 
-            background: var(--card-bg); 
-            border-radius: 16px; 
-            box-shadow: 0 10px 25px var(--shadow-color); 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 9999; 
-            transform: scale(0); 
-            transform-origin: bottom right; 
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s; 
-            overflow: hidden; 
-            border: 1px solid var(--border-color); 
-        }
+        .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 350px; height: 450px; background: var(--card-bg); border-radius: 16px; box-shadow: 0 10px 25px var(--shadow-color); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s; overflow: hidden; border: 1px solid var(--border-color); }
         .ai-chat-widget.active { transform: scale(1); }
         
         .ai-chat-header { background: linear-gradient(-45deg, #3b82f6, #6366f1); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
@@ -329,18 +272,15 @@
             .export-btn { width: 100%; justify-content: center; }
         }
 
-        /* 📱 RESPONSIVE FIXES FOR MOBILE */
+        /* 📱 RESPONSIVE FIXES FOR MOBILE TABLE SCROLLING - ADJUSTED FOR 4 COLUMNS */
         @media (max-width: 640px) {
             .main-content { padding: 15px 5px 100px 5px; }
             .class-record-container { padding: 15px 5px; }
             .dashboard-wrapper { grid-template-columns: 1fr; padding: 15px; }
             .topbar-left h1 { font-size: 1.4rem; }
             
-            /* Adjusted Floating Buttons for Mobile */
-            .add-floating-btn { bottom: 20px; right: 20px; width: 55px; height: 55px; }
-            .ai-floating-btn { bottom: 85px; right: 20px; width: 55px; height: 55px; }
-            .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 150px; }
-            
+            .ai-floating-btn { bottom: 20px; right: 20px; width: 55px; height: 55px; }
+            .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 85px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
 
             /* Gin-gamyan gid naton ang Padding kag Font Size para maka-igo gid ang 4-5 ka columns */
@@ -350,7 +290,7 @@
             .sticky-col:nth-child(1) { width: 22px; min-width: 22px; padding: 4px 1px; }
             .sticky-col:nth-child(2) { 
                 left: 22px; 
-                min-width: 75px; 
+                min-width: 75px;  /* Gin-gamyan pa gid ang Student Name column */
                 max-width: 75px; 
                 font-size: 0.7rem; 
                 white-space: nowrap; 
@@ -472,10 +412,6 @@
         <span id="toastMessage">Success</span>
     </div>
 
-    <button class="add-floating-btn" title="Add New Item">
-        <i class="fa-solid fa-plus" style="font-size: 20px;"></i>
-    </button>
-
     <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
         <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
     </button>
@@ -534,15 +470,9 @@
         const API_URL ='http://127.0.0.1:5000';
         const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
         const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
-        const accessToken = localStorage.getItem('access_token');
 
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            global: {
-                headers: {
-                    Authorization: accessToken ? `Bearer ${accessToken}` : ''
-                }
-            }
-        });
+        // ✅ AUTO-REFRESH FIX: Gindula ang "global headers"
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentSectionId = urlParams.get('id');
@@ -1094,7 +1024,7 @@
                 sortedAbsents.slice(0,5).forEach(name => { res += `- <strong>${name}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
-            else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
+            else if (query.includes('schedule') || query.includes('class') || query.includes('class')) {
                 if(schedules.length === 0) return "You do not have any schedules recorded. Would you like to add one via the Dashboard?";
                 let res = "<strong>Here is your current class schedule:</strong><br><br>";
                 schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; });
@@ -1113,10 +1043,10 @@
                 let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
                 if(!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if(!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the system.`;
+                if(!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the database.`;
                 return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
             }
-            else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
+            else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('hello')) {
                 let totalStuds = students.length; let passCount = 0;
                 records.forEach(r => { if(getFinalGrade(r) >= 75) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
