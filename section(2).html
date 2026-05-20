@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        // 🔒 SECURITY GUARD SANG PAGE
         if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
             window.location.replace('login.html');
         }
@@ -583,42 +583,41 @@
             </div>
         </div>
 
-        <button id="openModal" title="Add New Student"><i class="fas fa-plus"></i></button>
-
-        <div id="modal2" class="modal">
-            <div class="modal-content">
-                <h3>Add New Student</h3>
-                <input type="text" id="addIdNo" placeholder="ID Number">
-                <input type="text" id="addFullName" placeholder="Full Name">
-                <select id="addGender">
-                    <option value="" disabled selected>Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-                <div class="actionBtn">
-                    <button id="cancelAdd" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
-                    <button id="confirmAdd" style="background: #3b82f6; color: white;">Add Student</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="modal" class="modal">
-            <div class="modal-content">
-                <span id="closeEditModal" style="position:absolute; right:15px; top:10px; cursor:pointer; font-size:24px; color: var(--text-muted);">&times;</span>
-                <h3>Edit Student Info</h3>
-                <input type="text" id="editIdNo" placeholder="ID Number">
-                <input type="text" id="editFullName" placeholder="Full Name">
-                <select id="editGender">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-                <div class="actionBtn">
-                    <button id="cancelEdit" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
-                    <button id="updateBtn" style="background: #3b82f6; color: white;">Update</button>
-                </div>
-            </div>
-        </div>
     </main>
+</div> <button id="openModal" title="Add New Student"><i class="fas fa-plus"></i></button>
+
+<div id="modal2" class="modal">
+    <div class="modal-content">
+        <h3>Add New Student</h3>
+        <input type="text" id="addIdNo" placeholder="ID Number">
+        <input type="text" id="addFullName" placeholder="Full Name">
+        <select id="addGender">
+            <option value="" disabled selected>Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+        </select>
+        <div class="actionBtn">
+            <button id="cancelAdd" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
+            <button id="confirmAdd" style="background: #3b82f6; color: white;">Add Student</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span id="closeEditModal" style="position:absolute; right:15px; top:10px; cursor:pointer; font-size:24px; color: var(--text-muted);">&times;</span>
+        <h3>Edit Student Info</h3>
+        <input type="text" id="editIdNo" placeholder="ID Number">
+        <input type="text" id="editFullName" placeholder="Full Name">
+        <select id="editGender">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+        </select>
+        <div class="actionBtn">
+            <button id="cancelEdit" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
+            <button id="updateBtn" style="background: #3b82f6; color: white;">Update</button>
+        </div>
+    </div>
 </div>
 
 <div id="customToast" class="toast-notification">
@@ -688,20 +687,14 @@
     lucide.createIcons();
 
     /* =========================================
-       SUPABASE CONFIGURATION
+       SUPABASE CONFIGURATION (FIXED SESSION)
        ========================================= */
     const API_URL ='http://127.0.0.1:5000'; 
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0';
-    const accessToken = localStorage.getItem('access_token');
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-        headers: {
-            Authorization: accessToken ? `Bearer ${accessToken}` : ''
-        }
-    }
-});
+    
+    // Gindula ang global headers para mag-auto refresh ang Supabase token sa background
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     /* =========================================
        TOAST NOTIFICATION
@@ -783,7 +776,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             const firstName = fullName.split(' ')[0];
             const aiGreetingEl = document.getElementById('aiGreeting');
             if(aiGreetingEl) {
-                aiGreetingEl.textContent = `Hello Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}! How are you? You can ask me about attendance, absences, quizzes, or your students' modules.`;
+                aiGreetingEl.textContent = `Good day, Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}. I am your AI assistant. You may ask about your sections, students, schedules, notes, notices, attendance, or performance records.`;
             }
 
             let finalAvatarSrc = profile?.avatar_url || googleAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=3b82f6&color=fff&size=128`;
@@ -867,7 +860,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 
     /* =========================================
-       CUSTOM SMART VIRTUAL ASSISTANT (SECURED DATA FETCH)
+       CUSTOM SMART VIRTUAL ASSISTANT
        ========================================= */
     function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
@@ -914,7 +907,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // 1. Kuhaon anay ang sections nga iya sang naka-login nga teacher
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         
@@ -923,7 +915,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         const sectionIds = sections.map(s => s.id);
         const sectionTitles = sections.map(s => s.title);
 
-        // 2. Fetch data nga NAKA-FILTER base sa section kag teacher ID
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
@@ -1061,14 +1052,13 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     const urlParams = new URLSearchParams(window.location.search);
     const currentSectionId = urlParams.get('id');
 
-    // 1. I-load ang details sang Section sa ibabaw (ADDED TEACHER_ID SECURITY CHECK)
     async function loadSectionDetails() {
         const userId = localStorage.getItem('user_id');
         const { data: secData, error } = await supabaseClient
             .from('sections')
             .select('*') 
             .eq('id', currentSectionId)
-            .eq('teacher_id', userId) // SECURITY: Ensure user owns this section
+            .eq('teacher_id', userId)
             .single();
 
         if (error || !secData) {
@@ -1082,7 +1072,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
     }
 
-    // 2. I-load ang listahan sang students halin sa Database
     async function loadStudents() {
         const { data: students, error } = await supabaseClient
             .from('students')
@@ -1095,7 +1084,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             return;
         }
 
-        // Automatic update ang Total Students Count sa taas
         document.getElementById('dashTotalStudents').innerText = students.length;
 
         const tbody = document.getElementById('studentTableBody');
@@ -1148,7 +1136,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         if (e.target === addModal) addModal.style.display = "none";
     };
 
-    // ADD STUDENT
     confirmAdd.onclick = async () => {
         const idNo = document.getElementById("addIdNo").value.trim();
         const fullName = document.getElementById("addFullName").value.trim();
@@ -1178,7 +1165,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
             addModal.style.display = "none";
             showNotification("Student added successfully!");
             
-            loadStudents(); // Refresh table & count
+            loadStudents();
 
         } catch (error) {
             console.error("Add student error:", error);
@@ -1186,7 +1173,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
     };
 
-    // OPEN EDIT MODAL
     function openEditModal(encodedData) {
         const stud = JSON.parse(decodeURIComponent(encodedData));
         currentEditId = stud.id;
@@ -1198,7 +1184,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         editModal.style.display = "block";
     }
 
-    // UPDATE STUDENT
     updateBtn.onclick = async () => {
         if (!currentEditId) return;
 
@@ -1231,7 +1216,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         }
     };
 
-    // DELETE STUDENT
     async function deleteStudent(id) {
         if(confirm("Are you sure you want to remove this student?")) {
             try {
@@ -1243,7 +1227,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
                 if (error) throw error;
                 
                 showNotification("Student removed.");
-                loadStudents(); // Refresh to update count
+                loadStudents();
             } catch (error) {
                 console.error("Delete error:", error);
                 showNotification("Failed to delete student", "error");
@@ -1266,7 +1250,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     });
 
     /* =========================================
-       SMOOTH PAGE TRANSITION (MAIN CONTENT ONLY)
+       SMOOTH PAGE TRANSITION
        ========================================= */
     document.addEventListener("DOMContentLoaded", () => {
         const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
