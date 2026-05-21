@@ -841,8 +841,8 @@
                         <span class="tag tag-room"><i data-lucide="building"></i> ${sec.room}</span>
                         <span class="tag tag-sem"><i data-lucide="calendar"></i> ${sem}</span>
                         <span class="tag" style="background:#fce7f3; color:#9d174d;">
-    <i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}
-</span>
+                        <i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}
+                        </span>
                     </div>
                 </div>
                 <div class="card-actions">
@@ -952,7 +952,8 @@
             title: title,
             subject: subject,
             room: room,
-            semester: semester 
+            semester: semester,
+            school_year: school_year
         };
 
         try {
