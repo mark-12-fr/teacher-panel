@@ -670,6 +670,14 @@
             <option value="1st Sem">1st Semester</option>
             <option value="2nd Sem">2nd Semester</option>
         </select>
+
+        <select id="secSchoolYear" class="modal-input">
+    <option value="" disabled selected>Select School Year</option>
+    <option value="2023-2024">2023-2024</option>
+    <option value="2024-2025">2024-2025</option>
+    <option value="2025-2026">2025-2026</option>
+    <option value="2026-2027">2026-2027</option>
+        </select>
         
         <div style="display:flex; gap:10px; margin-top: 10px;">
             <button onclick="toggleSectionModal()" style="flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; background: var(--input-bg); color: var(--text-dark); font-weight: 500;">Cancel</button>
@@ -1114,6 +1122,8 @@
                         <span class="tag tag-students"><i data-lucide="user"></i> ${studentCount} Students</span>
                         <span class="tag tag-room"><i data-lucide="building"></i> ${sec.room}</span>
                         <span class="tag tag-sem"><i data-lucide="calendar"></i> ${sem}</span>
+                        <span class="tag" style="background:#fce7f3; color:#9d174d;">
+                        <i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}
                     </div>
                 </div>
                 <div class="card-actions">
@@ -1189,6 +1199,7 @@
         document.getElementById('secSubject').value = '';
         document.getElementById('secRoom').value = '';
         document.getElementById('secSemester').value = ''; 
+        document.getElementById('secSchoolYear').value = '';
         toggleSectionModal();
     }
 
@@ -1200,7 +1211,8 @@
         document.getElementById('secTitle').value = sec.title;
         document.getElementById('secSubject').value = sec.subject;
         document.getElementById('secRoom').value = sec.room;
-        document.getElementById('secSemester').value = sec.semester || '1st Sem'; 
+        document.getElementById('secSemester').value = sec.semester || '1st Sem';
+        document.getElementById('secSchoolYear').value = sec.school_year || '';
         
         toggleSectionModal();
     }
@@ -1210,9 +1222,10 @@
         const subject = document.getElementById('secSubject').value.trim();
         const room = document.getElementById('secRoom').value.trim();
         const semester = document.getElementById('secSemester').value; 
+        const school_year = document.getElementById('secSchoolYear').value;
         const teacher_id = localStorage.getItem('user_id');
 
-        if (!title || !subject || !room || !semester) {
+        if (!title || !subject || !room || !semester || school_year) {
             showNotification("Please fill in all fields including Semester!", "error");
             return;
         }
