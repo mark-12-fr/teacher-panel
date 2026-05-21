@@ -1123,7 +1123,7 @@
                         <span class="tag tag-room"><i data-lucide="building"></i> ${sec.room}</span>
                         <span class="tag tag-sem"><i data-lucide="calendar"></i> ${sem}</span>
                         <span class="tag" style="background:#fce7f3; color:#9d174d;">
-                        <i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}
+    <i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}</span>
                     </div>
                 </div>
                 <div class="card-actions">
@@ -1225,7 +1225,7 @@
         const school_year = document.getElementById('secSchoolYear').value;
         const teacher_id = localStorage.getItem('user_id');
 
-        if (!title || !subject || !room || !semester || school_year) {
+        if (!title || !subject || !room || !semester || !school_year) {
             showNotification("Please fill in all fields including Semester!", "error");
             return;
         }
@@ -1235,7 +1235,8 @@
             title: title,
             subject: subject,
             room: room,
-            semester: semester 
+            semester: semester,
+            school_year: school_year
         };
 
         try {
