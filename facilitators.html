@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
+        // 🔒 SECURITY GUARD SANG PAGE
         if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
             window.location.replace('login.html');
         }
@@ -43,7 +43,7 @@
             --hover-bg: #f1f5f9;
             --table-header: #f9fafb;
             
-            /* Light Mode Button Colors (Pastel) */
+            /* Light Mode Button Colors */
             --btn-edit-bg: rgba(59, 130, 246, 0.1);
             --btn-edit-hover: rgba(59, 130, 246, 0.2);
             --btn-edit-text: #3b82f6;
@@ -539,16 +539,24 @@
         }
 
         savedFacilitators.forEach((fac) => {
-            // I-check kon may avatar sa database, kon wala default sa initials profile picture
             let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
 
-            // 🔥 DYNAMIC STATUS LOGIC 🔥
-            // Base sa imong request: "kon waay na ga open ang faci sang isa ka beses ma update ang status nga gs gray... tas kon naka open na sya ... ma green liwat"
-            // Ginabutangan ko sang logic nga maga-check kung may unod ang "last_login" ukon "status" column.
+            // 🔥 TIME-BASED STATUS LOGIC (Auto-Inactive after 2 hours) 🔥
+            let isFaciActive = false;
             
-            // NOTE: Kung nagamit ka sing 'last_login' column (timestamp) pag-login nila, amo ni ang ma-check. 
-            // Or pwede man `fac.status === 'Active'` kung 'status' ang ngalan sang imo column nga gina-update.
-            let isFaciActive = (fac.last_login != null) || (fac.status === 'Active') || (fac.is_active === true);
+            if (fac.last_login) {
+                const lastLoginDate = new Date(fac.last_login);
+                const now = new Date();
+                
+                // Kuhaon ang difference sa milliseconds
+                const diffInMilliseconds = now - lastLoginDate;
+                const diffInHours = diffInMilliseconds / (1000 * 60 * 60); // Convert to hours
+                
+                // Kon ang last login wala pa naglab-ot sa 2 ka oras, Active sia
+                if (diffInHours < 2) {
+                    isFaciActive = true;
+                }
+            }
 
             let statusHtml = isFaciActive 
                 ? `<span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span>`
