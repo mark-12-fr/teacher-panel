@@ -9,7 +9,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_socketio import SocketIO, emit
-from datetime import datetime
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -787,6 +787,28 @@ def faci_login():
         print(f"Faci Login Error: {e}")
         return jsonify({"error": "Server error. Please try again later."}), 500
     
+# ==========================================
+# --- FACILITATOR PRESENCE / HEARTBEAT ROUTE ---
+# ==========================================
+@app.route('/api/faci/presence', methods=['POST'])
+@limiter.exempt
+def faci_presence():
+    data = request.get_json(silent=True) or {}
+    faci_id = data.get('faci_id')
+    if not faci_id:
+        return jsonify({"error": "Missing faci_id"}), 400
+
+    # online True -> Active (green); online False (logout) -> Inactive (gray)
+    is_online = data.get('online', True)
+    new_value = datetime.now(timezone.utc).isoformat() if is_online else None
+
+    try:
+        supabase.table('facilitators').update({'last_login': new_value}).eq('id', faci_id).execute()
+        return jsonify({"status": "success", "last_login": new_value}), 200
+    except Exception as e:
+        print(f"Faci Presence Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # ==========================================
 # --- DELETE FACILITATOR ROUTE ---
 # ==========================================
