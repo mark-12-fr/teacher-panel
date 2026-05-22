@@ -541,17 +541,20 @@
         savedFacilitators.forEach((fac) => {
             let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
 
-            // 🔥 TIME-BASED STATUS LOGIC (Auto-Inactive after 2 hours) 🔥
+            // 🔥 LIVE PRESENCE STATUS LOGIC (Inactive once the faci panel is closed) 🔥
             let isFaciActive = false;
             
             if (fac.last_login) {
-                const lastLoginDate = new Date(fac.last_login);
+                // last_login is written in UTC; parse it as UTC when the stored value has no timezone marker.
+                let rawLogin = String(fac.last_login).trim().replace(' ', 'T');
+                if (!/(z|[+-]\d{2}:?\d{2})$/i.test(rawLogin)) rawLogin += 'Z';
+                const lastLoginDate = new Date(rawLogin);
                 const now = new Date();
                 
                 const diffInMilliseconds = now - lastLoginDate;
-                const diffInHours = diffInMilliseconds / (1000 * 60 * 60); 
+                const diffInMinutes = diffInMilliseconds / (1000 * 60);
                 
-                if (diffInHours < 2) {
+                if (diffInMinutes < 2) {
                     isFaciActive = true;
                 }
             }
@@ -653,8 +656,8 @@
                 localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
                 renderFacilitatorTable(savedFacilitators);
             } else if (isSilent) {
-                // If it's a silent check but the data hasn't changed from the database, 
-                // we still re-render to check if the 2-hour timeframe has passed locally
+                // If it's a silent check but the data hasn't changed from the database,
+                // we still re-render to check if the 2-minute presence window has passed locally
                 renderFacilitatorTable(savedFacilitators);
             }
 
@@ -796,6 +799,22 @@
         // Initial Loads
         checkAuthAndLoadProfile(); 
         loadFacilitators();
+
+        // Realtime: refresh the table the moment a facilitator logs in or out, without a manual reload.
+        const presenceUserId = localStorage.getItem('user_id');
+        if (presenceUserId) {
+            supabaseClient
+                .channel('facilitators-presence')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'facilitators',
+                    filter: `teacher_id=eq.${presenceUserId}`
+                }, () => {
+                    loadFacilitators(true);
+                })
+                .subscribe();
+        }
 
         // 🔥 POLLING: Auto-check status every 15 seconds without refreshing the page 🔥
         setInterval(() => {
