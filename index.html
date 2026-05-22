@@ -343,7 +343,6 @@
 
 <div id="customToast" class="toast-notification"><i class="fa-solid fa-circle-check"></i><span id="toastMessage">Success</span></div>
 
-<!-- SCHEDULE MODAL: time field now uses native picker -->
 <div id="scheduleModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <h4 style="margin-bottom:15px">New Schedule</h4>
@@ -357,7 +356,6 @@
     </div>
 </div>
 
-<!-- NOTICE MODAL: date + time fields now use native pickers side-by-side -->
 <div id="noticeModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <h4 style="margin-bottom:15px">New Notice</h4>
@@ -660,34 +658,51 @@
         const { data: savedNotices } = await supabaseClient.from('notices').select('*').eq('user_id', userId).order('created_at', { ascending: false });
         noticeTableBody.innerHTML = '';
         if (!savedNotices || savedNotices.length === 0) { noticeTableBody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No notices.</td></tr>'; return; }
+        
         savedNotices.forEach(n => {
+            // Format sang Date (halin sa YYYY-MM-DD pakadto sa "May 27, 2026")
+            let displayDateTime = n.date;
+            if (n.date) {
+                const dateObj = new Date(n.date + 'T00:00:00');
+                displayDateTime = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            
+            // Format sang Time (halin sa 24h pakadto sa 12h format nga may AM/PM)
+            if (n.time) {
+                const [h, m] = n.time.split(':');
+                const hour = parseInt(h); 
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const hour12 = hour % 12 || 12;
+                displayDateTime += ` - ${hour12}:${m} ${ampm}`;
+            }
+
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${n.text}</div></td><td><div class="notice-date">${n.date}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
+            tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${n.text}</div></td><td><div class="notice-date">${displayDateTime}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
             noticeTableBody.appendChild(tr);
         });
     }
     function toggleNoticeModal() { const m = document.getElementById('noticeModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
 
-    // ✅ saveNotice — uses date picker + time picker, formats nicely (e.g. "Apr 11, 2026 - 3:00 PM")
+    // ✅ saveNotice — separaron ang insert sa date kag time columns
     async function saveNotice() {
         const text = document.getElementById('noticeText').value.trim();
         const dateVal = document.getElementById('noticeDate').value;
         const timeVal = document.getElementById('noticeTime').value;
+        
         if (!text || !dateVal) { showNotification("Please fill in the notice and date.", "error"); return; }
 
-        const dateObj = new Date(dateVal + 'T00:00:00');
-        let formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
+        // Ang PostgreSQL 'time' datatype gahulalat sang format nga HH:MM:SS
+        let dbTime = null;
         if (timeVal) {
-            const [h, m] = timeVal.split(':');
-            const hour = parseInt(h); const ampm = hour >= 12 ? 'PM' : 'AM';
-            const hour12 = hour % 12 || 12;
-            formattedDate += ` - ${hour12}:${m} ${ampm}`;
+            dbTime = timeVal + ':00'; // Dugangan naton sang seconds
         }
 
         const colors = ['blue', 'orange', 'green'];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
-        await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: formattedDate, color: randomColor }]);
+        
+        // Diri naton i-insert ang dateVal sa `date` column, kag ang dbTime sa `time` column
+        await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: dateVal, time: dbTime, color: randomColor }]);
+        
         loadNotices(); toggleNoticeModal();
         document.getElementById('noticeText').value = ''; document.getElementById('noticeDate').value = ''; document.getElementById('noticeTime').value = '';
         showNotification("Notice added!");
