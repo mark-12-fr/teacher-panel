@@ -747,7 +747,7 @@ def handle_facilitators():
             return jsonify({"error": str(e)}), 500
         
 # ==========================================
-# --- FACILITATOR LOGIN ROUTE (NEW) ---
+# --- FACILITATOR LOGIN ROUTE (UPDATED) ---
 # ==========================================
 @app.route('/api/faci/login', methods=['POST'])
 def faci_login():
@@ -772,6 +772,15 @@ def faci_login():
         if faci_data['temporary_password'] != password:
             return jsonify({"error": "Incorrect Password."}), 401
         
+        # 🔥 UPDATE STATUS KAG LAST LOGIN DAYON PAG LOGIN 🔥
+        try:
+            supabase.table('facilitators').update({
+                'last_login': datetime.now(timezone.utc).isoformat(),
+                'status': 'Active'
+            }).eq('id', faci_data['id']).execute()
+        except Exception as e:
+            print(f"Failed to update login status in backend: {e}")
+
         # Kon sakto tanan, i-return ang success response dala ang details sang faci
         return jsonify({
             "message": "Login successful",
@@ -788,23 +797,35 @@ def faci_login():
         return jsonify({"error": "Server error. Please try again later."}), 500
     
 # ==========================================
-# --- FACILITATOR PRESENCE / HEARTBEAT ROUTE ---
+# --- FACILITATOR PRESENCE / HEARTBEAT ROUTE (UPDATED) ---
 # ==========================================
 @app.route('/api/faci/presence', methods=['POST'])
 @limiter.exempt
 def faci_presence():
     data = request.get_json(silent=True) or {}
     faci_id = data.get('faci_id')
+    
     if not faci_id:
         return jsonify({"error": "Missing faci_id"}), 400
 
     # online True -> Active (green); online False (logout) -> Inactive (gray)
     is_online = data.get('online', True)
-    new_value = datetime.now(timezone.utc).isoformat() if is_online else None
+    now_iso = datetime.now(timezone.utc).isoformat()
+    status_val = 'Active' if is_online else 'Inactive'
 
     try:
-        supabase.table('facilitators').update({'last_login': new_value}).eq('id', faci_id).execute()
-        return jsonify({"status": "success", "last_login": new_value}), 200
+        # Update both last_login and status seamlessly
+        supabase.table('facilitators').update({
+            'last_login': now_iso,
+            'status': status_val
+        }).eq('id', faci_id).execute()
+        
+        return jsonify({
+            "status": "success", 
+            "last_login": now_iso,
+            "faci_status": status_val
+        }), 200
+        
     except Exception as e:
         print(f"Faci Presence Error: {e}")
         return jsonify({"error": str(e)}), 500
