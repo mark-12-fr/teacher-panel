@@ -797,6 +797,22 @@
         checkAuthAndLoadProfile(); 
         loadFacilitators();
 
+        // Realtime: refresh the table the moment a facilitator logs in or out, without a manual reload.
+        const presenceUserId = localStorage.getItem('user_id');
+        if (presenceUserId) {
+            supabaseClient
+                .channel('facilitators-presence')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'facilitators',
+                    filter: `teacher_id=eq.${presenceUserId}`
+                }, () => {
+                    loadFacilitators(true);
+                })
+                .subscribe();
+        }
+
         // 🔥 POLLING: Auto-check status every 15 seconds without refreshing the page 🔥
         setInterval(() => {
             loadFacilitators(true); // true means 'silent' load (no loading spinners)
