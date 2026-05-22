@@ -542,6 +542,18 @@
             // I-check kon may avatar sa database, kon wala default sa initials profile picture
             let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
 
+            // 🔥 DYNAMIC STATUS LOGIC 🔥
+            // Base sa imong request: "kon waay na ga open ang faci sang isa ka beses ma update ang status nga gs gray... tas kon naka open na sya ... ma green liwat"
+            // Ginabutangan ko sang logic nga maga-check kung may unod ang "last_login" ukon "status" column.
+            
+            // NOTE: Kung nagamit ka sing 'last_login' column (timestamp) pag-login nila, amo ni ang ma-check. 
+            // Or pwede man `fac.status === 'Active'` kung 'status' ang ngalan sang imo column nga gina-update.
+            let isFaciActive = (fac.last_login != null) || (fac.status === 'Active') || (fac.is_active === true);
+
+            let statusHtml = isFaciActive 
+                ? `<span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span>`
+                : `<span style="color: #9ca3af; font-weight:600;"><i class="fa-solid fa-circle-minus"></i> Inactive</span>`;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
@@ -552,7 +564,7 @@
                 </td>
                 <td><span class="badge-section">${fac.section}</span></td>
                 <td>${fac.subject}</td>
-                <td><span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span></td>
+                <td>${statusHtml}</td>
                 <td>
                     <div class="action-btns">
                         <button class="action-btn edit" onclick="editFacilitator('${fac.id}')">Edit</button>
