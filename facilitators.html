@@ -548,11 +548,9 @@
                 const lastLoginDate = new Date(fac.last_login);
                 const now = new Date();
                 
-                // Kuhaon ang difference sa milliseconds
                 const diffInMilliseconds = now - lastLoginDate;
-                const diffInHours = diffInMilliseconds / (1000 * 60 * 60); // Convert to hours
+                const diffInHours = diffInMilliseconds / (1000 * 60 * 60); 
                 
-                // Kon ang last login wala pa naglab-ot sa 2 ka oras, Active sia
                 if (diffInHours < 2) {
                     isFaciActive = true;
                 }
@@ -627,36 +625,42 @@
         document.getElementById('facPassword').value = randomPass;
     }
 
-    async function loadFacilitators() {
+    async function loadFacilitators(isSilent = false) {
         const userId = localStorage.getItem('user_id');
         if (!userId) return;
 
-        // 1. INSTANT LOAD: Check for cached data and show it immediately
         const cachedData = localStorage.getItem(`cached_facilitators_${userId}`);
-        if (cachedData) {
-            try {
-                renderFacilitatorTable(JSON.parse(cachedData));
-            } catch (e) {
-                console.error("Cache parsing error", e);
+        
+        if (!isSilent) {
+            if (cachedData) {
+                try {
+                    renderFacilitatorTable(JSON.parse(cachedData));
+                } catch (e) {
+                    console.error("Cache parsing error", e);
+                }
+            } else {
+                facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading facilitators...</td></tr>';
             }
-        } else {
-            // Show a nice loading spinner if there is no cache yet
-            facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading facilitators...</td></tr>';
         }
 
-        // 2. BACKGROUND FETCH: Get the freshest data from the Render API
         try {
             const response = await fetch(`${API_URL}/api/facilitators?teacher_id=${userId}`);
             const result = await response.json();
             let savedFacilitators = result.data || [];
 
-            // 3. UPDATE CACHE & UI: Save fresh data for next time and update the table seamlessly
-            localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
-            renderFacilitatorTable(savedFacilitators);
+            // E-check kung may nagbag-o (para indi mag-flicker ang table kung wala man nagbag-o)
+            if (JSON.stringify(savedFacilitators) !== cachedData) {
+                localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
+                renderFacilitatorTable(savedFacilitators);
+            } else if (isSilent) {
+                // If it's a silent check but the data hasn't changed from the database, 
+                // we still re-render to check if the 2-hour timeframe has passed locally
+                renderFacilitatorTable(savedFacilitators);
+            }
 
         } catch (error) {
             console.error("Error fetching facilitators:", error);
-            if (!cachedData) {
+            if (!cachedData && !isSilent) {
                 facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#ef4444;">Failed to connect to the server. Please check your connection.</td></tr>';
             }
         }
@@ -689,9 +693,7 @@
         document.getElementById('facAccountId').value = '';
         document.getElementById('facPassword').value = '';
         
-        // SHOW the credentials input section when adding new facilitator
         document.getElementById('credentialsSection').style.display = 'block';
-
         await loadAvailableSections(); 
         toggleFacilitatorModal();
     }
@@ -702,12 +704,9 @@
         const fac = window.currentFacilitators.find(f => f.id === facId);
         if (fac) {
             document.getElementById('facName').value = fac.full_name;
-            
-            // Retain the values in the hidden inputs so that they submit properly without error
             document.getElementById('facAccountId').value = fac.account_id;
             document.getElementById('facPassword').value = fac.temporary_password;
             
-            // HIDE the credentials input section when editing existing facilitator
             document.getElementById('credentialsSection').style.display = 'none';
 
             await loadAvailableSections();
@@ -733,7 +732,6 @@
         if (full_name && section && subject && account_id && temporary_password) {
             try {
                 let response;
-                // SECURITY: Include teacher_id in payload
                 const payload = { teacher_id: userId, full_name, section, subject, account_id, temporary_password };
                 
                 if (editingFacId) {
@@ -798,6 +796,11 @@
         // Initial Loads
         checkAuthAndLoadProfile(); 
         loadFacilitators();
+
+        // 🔥 POLLING: Auto-check status every 15 seconds without refreshing the page 🔥
+        setInterval(() => {
+            loadFacilitators(true); // true means 'silent' load (no loading spinners)
+        }, 15000); 
     });
 
     /* =========================================
@@ -848,7 +851,6 @@
             return "Hello there! How can I assist you with your classes today?";
         }
 
-        // SECURITY: Filter sections by teacherId first
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
@@ -856,7 +858,6 @@
         const sectionIds = sections.map(s => s.id);
         const sectionTitles = sections.map(s => s.title);
 
-        // SECURITY: Fetch data FILTERED by sectionIds and teacherId
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
