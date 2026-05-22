@@ -541,18 +541,21 @@
         savedFacilitators.forEach((fac) => {
             let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
 
-            // 🔥 LIVE PRESENCE STATUS LOGIC (Inactive once the faci panel is closed) 🔥
+            // 🔥 UPDATED LIVE PRESENCE STATUS LOGIC 🔥
             let isFaciActive = false;
-            
-            if (fac.last_login) {
-                // last_login is written in UTC; parse it as UTC when the stored value has no timezone marker.
+
+            // Direct check on the "status" column from Supabase DB
+            if (fac.status && fac.status.toLowerCase() === 'active') {
+                isFaciActive = true;
+            } else if (fac.status && fac.status.toLowerCase() === 'inactive') {
+                isFaciActive = false;
+            } else if (fac.last_login) {
+                // Fallback: If status column is empty, check time heartbeat (less than 2 mins)
                 let rawLogin = String(fac.last_login).trim().replace(' ', 'T');
                 if (!/(z|[+-]\d{2}:?\d{2})$/i.test(rawLogin)) rawLogin += 'Z';
                 const lastLoginDate = new Date(rawLogin);
                 const now = new Date();
-                
-                const diffInMilliseconds = now - lastLoginDate;
-                const diffInMinutes = diffInMilliseconds / (1000 * 60);
+                const diffInMinutes = (now - lastLoginDate) / (1000 * 60);
                 
                 if (diffInMinutes < 2) {
                     isFaciActive = true;
@@ -656,8 +659,6 @@
                 localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
                 renderFacilitatorTable(savedFacilitators);
             } else if (isSilent) {
-                // If it's a silent check but the data hasn't changed from the database,
-                // we still re-render to check if the 2-minute presence window has passed locally
                 renderFacilitatorTable(savedFacilitators);
             }
 
