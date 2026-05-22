@@ -391,7 +391,6 @@
     /* =========================================
        SUPABASE CONFIGURATION & CUSTOM API
        ========================================= */
-    const API_URL ='http://127.0.0.1:5000';
     const SUPABASE_URL ='https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
     const accessToken = localStorage.getItem('access_token');
@@ -650,22 +649,27 @@
         }
 
         try {
-            const response = await fetch(`${API_URL}/api/facilitators?teacher_id=${userId}`);
-            const result = await response.json();
-            let savedFacilitators = result.data || [];
+            const { data: savedFacilitators, error } = await supabaseClient
+                .from('facilitators')
+                .select('*')
+                .eq('teacher_id', userId);
+
+            if (error) throw error;
+
+            let stringifiedData = JSON.stringify(savedFacilitators || []);
 
             // E-check kung may nagbag-o (para indi mag-flicker ang table kung wala man nagbag-o)
-            if (JSON.stringify(savedFacilitators) !== cachedData) {
-                localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
-                renderFacilitatorTable(savedFacilitators);
+            if (stringifiedData !== cachedData) {
+                localStorage.setItem(`cached_facilitators_${userId}`, stringifiedData);
+                renderFacilitatorTable(savedFacilitators || []);
             } else if (isSilent) {
-                renderFacilitatorTable(savedFacilitators);
+                renderFacilitatorTable(savedFacilitators || []);
             }
 
         } catch (error) {
             console.error("Error fetching facilitators:", error);
             if (!cachedData && !isSilent) {
-                facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#ef4444;">Failed to connect to the server. Please check your connection.</td></tr>';
+                facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#ef4444;">Failed to load facilitators from Supabase. Please check your connection.</td></tr>';
             }
         }
     }
@@ -735,30 +739,23 @@
 
         if (full_name && section && subject && account_id && temporary_password) {
             try {
-                let response;
+                let error;
                 const payload = { teacher_id: userId, full_name, section, subject, account_id, temporary_password };
                 
                 if (editingFacId) {
-                    response = await fetch(`${API_URL}/api/facilitators/${editingFacId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                    const { error: updateError } = await supabaseClient.from('facilitators').update(payload).eq('id', editingFacId);
+                    error = updateError;
                 } else {
-                    response = await fetch(`${API_URL}/api/facilitators`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                    const { error: insertError } = await supabaseClient.from('facilitators').insert([payload]);
+                    error = insertError;
                 }
 
-                if (response.ok) {
+                if (!error) {
                     loadFacilitators();
                     toggleFacilitatorModal();
                     showNotification(editingFacId ? "Facilitator updated!" : "Facilitator assigned!");
                 } else {
-                    const result = await response.json();
-                    showNotification(result.error || "Error saving facilitator", "error");
+                    showNotification(error.message || "Error saving facilitator", "error");
                 }
             } catch (error) { showNotification("Server error", "error"); }
         } else { showNotification("Please fill in all details and select a section!", "error"); }
@@ -767,10 +764,13 @@
     async function deleteFacilitator(facId) {
         if(confirm("Are you sure you want to remove this facilitator's access?")) {
             try {
-                const response = await fetch(`${API_URL}/api/facilitators/${facId}`, { method: 'DELETE' });
-                if (response.ok) {
+                const { error } = await supabaseClient.from('facilitators').delete().eq('id', facId);
+                
+                if (!error) {
                     loadFacilitators();
                     showNotification("Facilitator access removed.");
+                } else {
+                    showNotification("Failed to delete facilitator.", "error");
                 }
             } catch (error) { console.error(error); }
         }
