@@ -545,7 +545,10 @@
             let isFaciActive = false;
             
             if (fac.last_login) {
-                const lastLoginDate = new Date(fac.last_login);
+                // last_login is written in UTC; parse it as UTC when the stored value has no timezone marker.
+                let rawLogin = String(fac.last_login).trim().replace(' ', 'T');
+                if (!/(z|[+-]\d{2}:?\d{2})$/i.test(rawLogin)) rawLogin += 'Z';
+                const lastLoginDate = new Date(rawLogin);
                 const now = new Date();
                 
                 const diffInMilliseconds = now - lastLoginDate;
