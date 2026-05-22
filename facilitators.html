@@ -541,7 +541,7 @@
         savedFacilitators.forEach((fac) => {
             let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
 
-            // 🔥 TIME-BASED STATUS LOGIC (Auto-Inactive after 2 hours) 🔥
+            // 🔥 LIVE PRESENCE STATUS LOGIC (Inactive once the faci panel is closed) 🔥
             let isFaciActive = false;
             
             if (fac.last_login) {
@@ -549,9 +549,9 @@
                 const now = new Date();
                 
                 const diffInMilliseconds = now - lastLoginDate;
-                const diffInHours = diffInMilliseconds / (1000 * 60 * 60); 
+                const diffInMinutes = diffInMilliseconds / (1000 * 60);
                 
-                if (diffInHours < 2) {
+                if (diffInMinutes < 2) {
                     isFaciActive = true;
                 }
             }
@@ -653,8 +653,8 @@
                 localStorage.setItem(`cached_facilitators_${userId}`, JSON.stringify(savedFacilitators));
                 renderFacilitatorTable(savedFacilitators);
             } else if (isSilent) {
-                // If it's a silent check but the data hasn't changed from the database, 
-                // we still re-render to check if the 2-hour timeframe has passed locally
+                // If it's a silent check but the data hasn't changed from the database,
+                // we still re-render to check if the 2-minute presence window has passed locally
                 renderFacilitatorTable(savedFacilitators);
             }
 
