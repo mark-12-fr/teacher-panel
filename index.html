@@ -17,7 +17,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Anti-flash theme script
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
@@ -25,7 +24,6 @@
 
     <style>
         :root {
-            /* ORIGINAL COLORS & LIGHT MODE VARIABLES */
             --sidebar-bg: #111827;
             --main-bg: #eef2ff;
             --accent-blue: #3b82f6;
@@ -39,7 +37,6 @@
             --hover-bg: #f3f4f6;
         }
 
-        /* DARK MODE VARIABLES */
         [data-theme="dark"] {
             --sidebar-bg: #0b0f19;
             --main-bg: #111827;
@@ -67,7 +64,6 @@
 
         .layout { display: flex; min-height: 100vh; }
         
-        /* SIDEBAR STYLES */
         .sidebar {
             width: 260px; background-color: var(--sidebar-bg); color: white; padding: 25px 0;
             position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 1001;
@@ -76,7 +72,6 @@
 
         .sidebar-top { padding: 0 20px 30px; text-align: center; }
 
-        /* PROFILE PICTURE STYLES */
         .sidebar-profile { display: flex; justify-content: center; margin-bottom: 15px; }
         .profile-container { position: relative; display: inline-block; cursor: pointer; }
         .profile-overlay {
@@ -106,11 +101,9 @@
         .logout-btn:hover, .theme-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
         .logout-btn svg, .theme-btn i { width: 20px; margin-right: 15px; font-size: 1.1rem; }
 
-        /* OVERLAY */
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; opacity: 0; transition: opacity 0.3s ease-in-out; }
         .sidebar-overlay.active { display: block; opacity: 1; }
 
-        /* MAIN CONTENT - ANIMATION */
         .main-content { 
             margin-left: 260px; flex-grow: 1; padding: 30px 30px 100px 30px; 
             display: flex; flex-direction: column; transition: margin-left 0.3s ease-in-out;
@@ -131,12 +124,10 @@
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 20px; }
 
-        /* ANIMATED BANNER */
         @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .div-banner { grid-column: span 8; background: linear-gradient(-45deg, #3b82f6, #6366f1, #8b5cf6, #3b82f6); background-size: 400% 400%; animation: gradientMove 10s ease infinite; border-radius: 15px; color: white; padding: 35px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2); margin-bottom: 10px; }
         .welcome-text h2 { font-size: 1.6rem; display:flex; align-items:center; gap:10px; margin-bottom: 5px; }
 
-        /* STAT CARDS */
         .dash-card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px var(--shadow-color); border: 2px solid transparent; transition: background 0.3s, box-shadow 0.3s; }
         .stat-card { grid-column: span 2; display: flex; flex-direction: column; gap: 15px; }
         .stat-icon-wrapper { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
@@ -145,7 +136,6 @@
         .stat-title { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 5px; display: block; }
         .stat-value { font-size: 2.2rem; font-weight: 800; color: var(--text-dark); line-height: 1.1; margin-bottom: 8px; }
         
-        /* CHARTS & LISTS */
         .main-chart { grid-column: span 5; min-height: 250px; } .side-list { grid-column: span 3; min-height: 250px; }
         .bottom-card-lg { grid-column: span 3; min-height: 180px; } .bottom-card-sm { grid-column: span 2; min-height: 180px; } .notes-card { grid-column: span 3; min-height: 180px; }
         .time-container { text-align: right; } .time-container span { display: block; font-size: 2.2rem; font-weight: 800; line-height: 1; } .time-container small { font-size: 1rem; opacity: 0.9; }
@@ -153,7 +143,6 @@
         .item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; border-bottom: 1px solid var(--border-color); }
         .delete-btn { color: #ef4444; cursor: pointer; border: none; background: none; font-size: 0.9rem; transition: 0.2s; } .delete-btn:hover { transform: scale(1.1); }
 
-        /* NOTICE BOARD */
         .notice-item { display: flex; align-items: flex-start; padding: 12px 5px; border-bottom: 1px solid var(--border-color); gap: 12px; }
         .notice-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
         .notice-dot.blue { background-color: #3b82f6; } .notice-dot.orange { background-color: #f59e0b; } .notice-dot.green { background-color: #22c55e; }
@@ -162,16 +151,13 @@
         #noticeTableBody td { padding: 10px 5px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
         .notice-dot-cell { width: 20px; } .notice-action-cell { width: 30px; text-align: right; }
 
-        /* MODALS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .modal-content { background: var(--card-bg); color: var(--text-dark); padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; margin: 20px; transition: background 0.3s; }
         .modal-content input, .modal-content textarea { background: var(--input-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
 
-        /* TOAST NOTIFICATION */
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
-        /* AI ASSISTANT */
         .ai-floating-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .ai-floating-btn:hover { transform: scale(1.1); }
         .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 360px; height: 500px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); overflow: hidden; border: 1px solid var(--border-color); }
@@ -190,10 +176,9 @@
             .main-content { margin-left: 0; padding: 20px 20px 100px 20px; } .stat-card { grid-column: span 4; } 
             .main-chart, .side-list, .bottom-card-lg, .bottom-card-sm, .notes-card { grid-column: span 8; }
             
-            /* CENTERING FIX - Centers the title but prevents overlap with the menu */
             .topbar-header { display: flex; align-items: center; justify-content: center; position: relative; min-height: 40px; width: 100%; }
             .menu-toggle { display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; padding: 10px; }
-            .topbar-title { text-align: center; width: 100%; padding: 0 45px; } /* Added padding to protect it from the menu icon */
+            .topbar-title { text-align: center; width: 100%; padding: 0 45px; }
         }
         @media (max-width: 768px) {
             .dashboard-grid { gap: 15px; } .div-banner { flex-direction: column; text-align: center; gap: 20px; padding: 25px 15px; }
@@ -206,14 +191,10 @@
 <body>
 
 <script>
-    // 🔒 SECURITY GUARD SANG PAGE (I-check dayon kon naka-login, kung wala kick out dayon sa login)
     if (!window.location.hash.includes('access_token') && (!localStorage.getItem('access_token') || !localStorage.getItem('user_id'))) {
         window.location.href = 'login.html';
     }
 
-    /* =========================================
-       THEME TOGGLE & ICONS
-       ========================================= */
     function toggleTheme() {
         const root = document.documentElement;
         const icon = document.getElementById('themeIcon');
@@ -362,11 +343,12 @@
 
 <div id="customToast" class="toast-notification"><i class="fa-solid fa-circle-check"></i><span id="toastMessage">Success</span></div>
 
+<!-- SCHEDULE MODAL: time field now uses native picker -->
 <div id="scheduleModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <h4 style="margin-bottom:15px">New Schedule</h4>
         <input type="text" id="schedSubject" placeholder="Subject" style="width:100%; padding:10px; margin-bottom:10px; border-radius:6px; outline: none;">
-        <input type="time" id="schedTime" style="width:100%; padding:10px; margin-bottom:10px; border-radius:6px; outline: none;">
+        <input type="time" id="schedTime" style="width:100%; padding:10px; margin-bottom:10px; border-radius:6px; outline: none; font-family: 'Inter', sans-serif;">
         <input type="text" id="schedDetails" placeholder="Section & Room" style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; outline: none;">
         <div style="display:flex; gap:10px;">
             <button onclick="toggleScheduleModal()" style="flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; background: #f1f5f9; color: #333;">Cancel</button>
@@ -375,11 +357,15 @@
     </div>
 </div>
 
+<!-- NOTICE MODAL: date + time fields now use native pickers side-by-side -->
 <div id="noticeModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <h4 style="margin-bottom:15px">New Notice</h4>
         <textarea id="noticeText" placeholder="Notice Details (e.g. Faculty meeting - Friday 3:00 PM)" style="width:100%; padding:10px; margin-bottom:10px; border-radius:6px; outline: none; resize: vertical; min-height: 80px; font-family: 'Inter', sans-serif;"></textarea>
-        <input type="text" id="noticeDate" placeholder="Date & Time (e.g. Apr 11, 2026)" style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; outline: none; font-family: 'Inter', sans-serif;">
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <input type="date" id="noticeDate" style="flex:1; padding:10px; border-radius:6px; outline: none; font-family: 'Inter', sans-serif;">
+            <input type="time" id="noticeTime" style="flex:1; padding:10px; border-radius:6px; outline: none; font-family: 'Inter', sans-serif;">
+        </div>
         <div style="display:flex; gap:10px;">
             <button onclick="toggleNoticeModal()" style="flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; background: #f1f5f9; color: #333;">Cancel</button>
             <button onclick="saveNotice()" style="flex:2; background:#3b82f6; color:white; padding:10px; border-radius:8px; border:none; cursor:pointer; font-weight:600;">Post Notice</button>
@@ -393,8 +379,7 @@
             <h4 id="attendanceModalTitle">Attendance Details</h4>
             <button onclick="toggleAttendanceModal()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted);"><i class="fa-solid fa-times"></i></button>
         </div>
-        <ul id="attendanceModalList" class="list-container" style="max-height: 300px; overflow-y: auto; padding: 0;">
-            </ul>
+        <ul id="attendanceModalList" class="list-container" style="max-height: 300px; overflow-y: auto; padding: 0;"></ul>
     </div>
 </div>
 
@@ -404,8 +389,7 @@
             <h4 id="sectionsModalTitle"><i class="fa-solid fa-layer-group" style="color: #22c55e; margin-right: 5px;"></i> My Sections</h4>
             <button onclick="toggleSectionsModal()" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted);"><i class="fa-solid fa-times"></i></button>
         </div>
-        <ul id="sectionsModalList" class="list-container" style="max-height: 300px; overflow-y: auto; padding: 0;">
-            </ul>
+        <ul id="sectionsModalList" class="list-container" style="max-height: 300px; overflow-y: auto; padding: 0;"></ul>
     </div>
 </div>
 
@@ -443,9 +427,6 @@
     }
     lucide.createIcons();
 
-    /* =========================================
-       SUPABASE CONFIG & AUTH
-       ========================================= */
     const API_URL = 'http://127.0.0.1:5000'; 
     const SUPABASE_URL = 'https://njzvuwkepaasnsvuujgx.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0'; 
@@ -453,8 +434,8 @@
     const accessToken = localStorage.getItem('access_token');
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let todayAttendanceData = []; // GLOBAL VARIABLE PARA MA-STORE ANG ATTENDANCE
-    let globalSectionsData = []; // GLOBAL VARIABLE PARA MA-STORE ANG SECTIONS
+    let todayAttendanceData = [];
+    let globalSectionsData = [];
 
     function showNotification(message, type = 'success') {
         const toast = document.getElementById('customToast');
@@ -518,7 +499,6 @@
         const file = event.target.files[0]; if (!file) return;
         const userId = localStorage.getItem('user_id'); 
         const imgElement = document.getElementById('userAvatar'); imgElement.style.opacity = '0.5';
-
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -530,7 +510,6 @@
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
                 try {
                     const { error } = await supabaseClient.from('profiles').upsert({ id: userId, avatar_url: compressedBase64 }).select(); 
                     if (error) throw error;
@@ -542,42 +521,30 @@
         }; reader.readAsDataURL(file);
     }
 
-    function logoutUser() {
-        localStorage.clear();
-        window.location.href = 'login.html';
-    }
-
+    function logoutUser() { localStorage.clear(); window.location.href = 'login.html'; }
     function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
     function closeSidebar() { if(window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
 
-    /* =========================================
-       CUSTOM SMART VIRTUAL ASSISTANT
-       ========================================= */
     function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
     async function sendAIMessage() {
         const input = document.getElementById('aiChatInput');
         const text = input.value.trim();
         if (!text) return;
-
         const chatBody = document.getElementById('aiChatBody');
         const userMsg = document.createElement('div');
         userMsg.className = 'chat-msg user'; userMsg.textContent = text;
         chatBody.appendChild(userMsg);
-        
         input.value = ''; chatBody.scrollTop = chatBody.scrollHeight;
-
         const typingMsg = document.createElement('div');
         typingMsg.className = 'chat-msg ai'; typingMsg.id = 'ai-typing-indicator';
         typingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing request...';
         chatBody.appendChild(typingMsg); chatBody.scrollTop = chatBody.scrollHeight;
-
         try {
             const responseText = await processSmartDBQuery(text.toLowerCase());
             if (document.getElementById('ai-typing-indicator')) document.getElementById('ai-typing-indicator').remove();
             const aiMsg = document.createElement('div');
-            aiMsg.className = 'chat-msg ai';
-            aiMsg.innerHTML = responseText;
+            aiMsg.className = 'chat-msg ai'; aiMsg.innerHTML = responseText;
             chatBody.appendChild(aiMsg);
         } catch (error) {
             console.error("Custom AI Error:", error);
@@ -593,19 +560,13 @@
     async function processSmartDBQuery(query) {
         let teacherId = localStorage.getItem('user_id');
         if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
-
         if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
             return "Hello there! How can I assist you with your classes today?";
         }
-
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
-        
         if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
-        
-        const sectionIds = sections.map(s => s.id);
-        const sectionTitles = sections.map(s => s.title);
-
+        const sectionIds = sections.map(s => s.id); const sectionTitles = sections.map(s => s.title);
         const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
             supabaseClient.from('students').select('*').in('section_id', sectionIds),
             supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
@@ -613,122 +574,67 @@
             supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
             supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
         ]);
-
-        const students = studRes.data || [];
-        const records = recRes.data || [];
-        const attendance = attRes.data || [];
-        const schedules = schedRes.data || [];
-        const facilitators = facRes.data || [];
-
+        const students = studRes.data || []; const records = recRes.data || []; const attendance = attRes.data || [];
+        const schedules = schedRes.data || []; const facilitators = facRes.data || [];
         const getFinalGrade = (studentId) => {
             let studRecs = records.filter(r => r.student_id === studentId);
-            let merged = studRecs.reduce((acc, curr) => {
-                Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc;
-            }, {});
-
+            let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
             let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
-            for (let key in merged) {
-                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0;
-                if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0;
-            }
-            let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
-            let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
-            let qe_score = Math.min((totalQE / 50) * 100, 100) || 0;
-            return Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
+            for (let key in merged) { if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0; if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0; }
+            let ww = Math.min((totalWW/100)*100,100)||0; let pt = Math.min((totalPT/100)*100,100)||0; let qe = Math.min((totalQE/50)*100,100)||0;
+            return Math.round((ww*0.3)+(pt*0.5)+(qe*0.2));
         };
-
         if (query.includes('top') || query.includes('highest') || query.includes('best')) {
             if(students.length === 0) return "You don't have any students registered yet.";
-            let scoredStudents = students.map(s => {
-                return { name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title };
-            }).sort((a,b) => b.grade - a.grade).slice(0, 5); 
-            
+            let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title })).sort((a,b) => b.grade - a.grade).slice(0, 5);
             let res = "<strong>Here are your top performing students:</strong><br><br>";
-            scoredStudents.forEach((s, i) => { res += `<strong>#${i+1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
+            scored.forEach((s, i) => { res += `<strong>#${i+1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
             return res;
-        }
-        else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
-            let failing = [];
-            students.forEach(s => {
-                let grade = getFinalGrade(s.id);
-                if(grade > 0 && grade < 75) failing.push({ name: s.full_name, grade: grade });
-            });
+        } else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
+            let failing = []; students.forEach(s => { let grade = getFinalGrade(s.id); if(grade > 0 && grade < 75) failing.push({ name: s.full_name, grade }); });
             if(failing.length === 0) return "Excellent news! None of your students are currently failing.";
-            let res = "<strong>The following students are currently falling behind (Below 75%):</strong><br><br>";
-            failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`);
-            return res;
-        }
-        else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
+            let res = "<strong>Students currently falling behind (Below 75%):</strong><br><br>"; failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`); return res;
+        } else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
             return `<strong>Sorry, I can't check missing modules accurately right now due to merged records formatting.</strong>`;
-        }
-        else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
+        } else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
             let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
-            if(!nameExtracted) return "Please specify the student's name. Example: <em>'What is the grade of Mark?'</em>";
-            
+            if(!nameExtracted) return "Please specify the student's name.";
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-            if(!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your class lists.`;
-            
+            if(!stud) return `Could not find "<strong>${nameExtracted}</strong>" in your class lists.`;
             let grade = getFinalGrade(stud.id);
             let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
-            return `The current calculated grade for <strong>${stud.full_name}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
-        }
-        else if (query.includes('absent') || query.includes('attendance')) {
-            if(attendance.length === 0) return "I couldn't find any attendance records in your lists.";
-            let absentCounts = {};
-            attendance.forEach(a => { if(a.status === 'Absent') absentCounts[a.student_name] = (absentCounts[a.student_name] || 0) + 1; });
-            let sortedAbsents = Object.keys(absentCounts).sort((a,b) => absentCounts[b] - absentCounts[a]);
-            if(sortedAbsents.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
-            
-            let res = "<strong>Attendance Report (Frequently Absent):</strong><br><br>";
-            sortedAbsents.slice(0,5).forEach(name => { res += `- <strong>${name}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
-            return res;
-        }
-        else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
-            if(schedules.length === 0) return "You do not have any schedules recorded. Would you like to add one via the Dashboard?";
-            let res = "<strong>Here is your current class schedule:</strong><br><br>";
-            schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; });
-            return res;
-        }
-        else if (query.includes('facilitator') || query.includes('faci')) {
-            if(facilitators.length === 0) return "You haven't assigned any facilitators yet.";
-            let res = "<strong>Here are your assigned facilitators:</strong><br><br>";
-            facilitators.forEach(f => { res += `👤 <strong>${f.full_name}</strong><br><small>Assigned to: ${f.section}</small><br><br>`; });
-            return res;
-        }
-        else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
-            return `You currently handle a total of <strong>${students.length} students</strong> distributed across <strong>${sections.length} active sections</strong>.`;
-        }
-        else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
+            return `Grade for <strong>${stud.full_name}</strong>: <strong>${grade}%</strong> - ${status}.`;
+        } else if (query.includes('absent') || query.includes('attendance')) {
+            if(attendance.length === 0) return "No attendance records found.";
+            let ac = {}; attendance.forEach(a => { if(a.status === 'Absent') ac[a.student_name] = (ac[a.student_name]||0)+1; });
+            let sorted = Object.keys(ac).sort((a,b) => ac[b]-ac[a]);
+            if(sorted.length === 0) return "Perfect attendance! No absences recorded.";
+            let res = "<strong>Frequently Absent:</strong><br><br>"; sorted.slice(0,5).forEach(n => { res += `- <strong>${n}</strong> <span style="color:#ef4444;">(${ac[n]} absences)</span><br>`; }); return res;
+        } else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
+            if(schedules.length === 0) return "No schedules recorded yet.";
+            let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; }); return res;
+        } else if (query.includes('facilitator') || query.includes('faci')) {
+            if(facilitators.length === 0) return "No facilitators assigned yet.";
+            let res = "<strong>Facilitators:</strong><br><br>"; facilitators.forEach(f => { res += `👤 <strong>${f.full_name}</strong><br><small>Assigned to: ${f.section}</small><br><br>`; }); return res;
+        } else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
+            return `You handle <strong>${students.length} students</strong> across <strong>${sections.length} sections</strong>.`;
+        } else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
             let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
-            if(!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
-            
+            if(!nameExtracted) return "Please specify the student.";
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-            if(!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the system.`;
-            return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
+            if(!stud) return `Couldn't locate "<strong>${nameExtracted}</strong>".`;
+            return `ID for <strong>${stud.full_name}</strong>: <strong>${stud.id}</strong>.`;
+        } else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
+            let passCount = 0; students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
+            let passRate = students.length > 0 ? Math.round((passCount/students.length)*100) : 0;
+            return `<strong>Overview:</strong><br><br>• Sections: <strong>${sections.length}</strong><br>• Students: <strong>${students.length}</strong><br>• Passing Rate: <strong>${passRate}%</strong>`;
         }
-        else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
-            let totalStuds = students.length; let passCount = 0;
-            students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
-            let passRate = totalStuds > 0 ? Math.round((passCount/totalStuds)*100) : 0;
-            
-            return `<strong>Class Performance Overview:</strong><br><br>` + 
-                   `• Total Active Sections: <strong>${sections.length}</strong><br>` +
-                   `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
-                   `• Overall Passing Rate: <strong>${passRate}%</strong><br><br>` +
-                   `<em>Tip: You can ask me to list down the top students or those who are failing.</em>`;
-        }
-        return `I am your Virtual Teaching Assistant. Here are some things I can help you with:<br><br>
-                💬 <em>"Who are the top students?"</em><br>
-                💬 <em>"What is the grade of [Student Name]?"</em><br>
-                💬 <em>"Who has missing modules?"</em><br>
-                💬 <em>"Who is frequently absent?"</em><br>
-                💬 <em>"What is my current schedule?"</em><br>
-                💬 <em>"Give me a class summary."</em>`;
+        return `I am your Virtual Teaching Assistant. Try:<br><br>💬 <em>"Who are the top students?"</em><br>💬 <em>"What is the grade of [Name]?"</em><br>💬 <em>"Who is frequently absent?"</em><br>💬 <em>"What is my schedule?"</em><br>💬 <em>"Give me a summary."</em>`;
     }
 
     /* =========================================
-       DYNAMIC COMPONENT SCRIPTS 
-       ========================================= */
+       NOTES, NOTICES, SCHEDULES 
+    ========================================= */
     const noteInput = document.getElementById('noteInput'); const notesList = document.getElementById('notesList');
     async function loadNotes() {
         const userId = localStorage.getItem('user_id'); if (!userId) return;
@@ -761,13 +667,30 @@
         });
     }
     function toggleNoticeModal() { const m = document.getElementById('noticeModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
+
+    // ✅ saveNotice — uses date picker + time picker, formats nicely (e.g. "Apr 11, 2026 - 3:00 PM")
     async function saveNotice() {
-        const text = document.getElementById('noticeText').value.trim(); const dateInput = document.getElementById('noticeDate').value.trim(); 
-        if (text && dateInput) {
-            const colors = ['blue', 'orange', 'green']; const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: dateInput, color: randomColor }]);
-            loadNotices(); toggleNoticeModal(); document.getElementById('noticeText').value = ''; document.getElementById('noticeDate').value = ''; showNotification("Notice added!");
+        const text = document.getElementById('noticeText').value.trim();
+        const dateVal = document.getElementById('noticeDate').value;
+        const timeVal = document.getElementById('noticeTime').value;
+        if (!text || !dateVal) { showNotification("Please fill in the notice and date.", "error"); return; }
+
+        const dateObj = new Date(dateVal + 'T00:00:00');
+        let formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        if (timeVal) {
+            const [h, m] = timeVal.split(':');
+            const hour = parseInt(h); const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            formattedDate += ` - ${hour12}:${m} ${ampm}`;
         }
+
+        const colors = ['blue', 'orange', 'green'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: formattedDate, color: randomColor }]);
+        loadNotices(); toggleNoticeModal();
+        document.getElementById('noticeText').value = ''; document.getElementById('noticeDate').value = ''; document.getElementById('noticeTime').value = '';
+        showNotification("Notice added!");
     }
     async function deleteNotice(id) { await supabaseClient.from('notices').delete().eq('id', id); loadNotices(); }
 
@@ -784,12 +707,23 @@
         });
     }
     function toggleScheduleModal() { const m = document.getElementById('scheduleModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
+
+    // ✅ saveSchedule — formats time from 24h picker to readable 12h (e.g. "7:30 AM")
     async function saveSchedule() {
-        const sub = document.getElementById('schedSubject').value; const time = document.getElementById('schedTime').value; const det = document.getElementById('schedDetails').value;
-        if (sub && time && det) {
-            await supabaseClient.from('schedules').insert([{ user_id: localStorage.getItem('user_id'), subject: sub, time: time, details: det }]);
-            loadSchedules(); toggleScheduleModal(); document.getElementById('schedSubject').value = ''; document.getElementById('schedTime').value = ''; document.getElementById('schedDetails').value = ''; showNotification("Schedule added!");
-        }
+        const sub = document.getElementById('schedSubject').value.trim();
+        const timeRaw = document.getElementById('schedTime').value;
+        const det = document.getElementById('schedDetails').value.trim();
+        if (!sub || !timeRaw || !det) { showNotification("Please fill in all fields.", "error"); return; }
+
+        const [h, m] = timeRaw.split(':');
+        const hour = parseInt(h); const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        const formattedTime = `${hour12}:${m} ${ampm}`;
+
+        await supabaseClient.from('schedules').insert([{ user_id: localStorage.getItem('user_id'), subject: sub, time: formattedTime, details: det }]);
+        loadSchedules(); toggleScheduleModal();
+        document.getElementById('schedSubject').value = ''; document.getElementById('schedTime').value = ''; document.getElementById('schedDetails').value = '';
+        showNotification("Schedule added!");
     }
     async function deleteSchedule(id) { await supabaseClient.from('schedules').delete().eq('id', id); loadSchedules(); }
 
@@ -811,178 +745,75 @@
     }
 
     async function loadDashboardStats() {
-        let teacherId = localStorage.getItem('user_id'); 
-        if (!teacherId) return; 
+        let teacherId = localStorage.getItem('user_id'); if (!teacherId) return; 
         teacherId = teacherId.replace(/['"]+/g, '');
-        
         try {
             const { data: sections } = await supabaseClient.from('sections').select('id, title').eq('teacher_id', teacherId);
-            
-            // I-SAVE NATON ANG SECTIONS PARA SA MODAL
             globalSectionsData = sections || [];
-
             let totalSections = sections ? sections.length : 0; 
-            let sectionTitles = []; let sectionMap = {}; 
-            let totalStudents = 0; let present = 0; let absentOrLate = 0;
-            
+            let sectionTitles = []; let sectionMap = {}; let totalStudents = 0; let present = 0; let absentOrLate = 0;
             if (totalSections > 0) {
                 sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; });
                 const sectionIds = sections.map(s => s.id);
-                
                 const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
                 totalStudents = students ? students.length : 0;
-
                 const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`; 
                 const { data: attData } = await supabaseClient.from('attendance').select('status, student_name, section').in('section', sectionTitles).eq('date', exactTodayDate); 
-                if (attData) {
-                    todayAttendanceData = attData; // STORE SA GLOBAL VARIABLE
-                    attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; });
-                }
+                if (attData) { todayAttendanceData = attData; attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; }); }
                 
                 const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
-                let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; 
-                let allStudentsScores = [];
-
+                let q1_t=0,q1_c=0,q2_t=0,q2_c=0,q3_t=0,q3_c=0,q4_t=0,q4_c=0; let allStudentsScores = [];
                 if (students && records) {
                     students.forEach(student => {
                         const studentRecords = records.filter(r => r.student_id === student.id);
-                        if (studentRecords.length === 0) return; 
-
-                        const mergedScores = studentRecords.reduce((acc, curr) => {
-                            Object.keys(curr).forEach(key => {
-                                if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key];
-                            });
-                            return acc;
-                        }, {});
-
-                        let totalWW = 0, totalPT = 0, totalQE = Number(mergedScores.qe) || 0;
-                        for (let key in mergedScores) { 
-                            if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(mergedScores[key]) || 0; 
-                            if (key.startsWith('pt_')) totalPT += Number(mergedScores[key]) || 0; 
-                        }
-                        
-                        let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
-                        let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
-                        let qe_score = Math.min((totalQE / 50) * 100, 100) || 0;
-                        let grade = Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
-                        
-                        let qtr = String(mergedScores.quarter || '1');
-                        if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; } 
-                        else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; } 
-                        else if (qtr === '3' || qtr === '3rd') { q3_t += grade; q3_c++; } 
-                        else if (qtr === '4' || qtr === '4th') { q4_t += grade; q4_c++; }
-                        
-                        allStudentsScores.push({ 
-                            name: student.full_name || 'No Name', 
-                            section: sectionMap[student.section_id], 
-                            grade: grade 
-                        });
+                        if (studentRecords.length === 0) return;
+                        const merged = studentRecords.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
+                        let totalWW=0,totalPT=0,totalQE=Number(merged.qe)||0;
+                        for (let key in merged) { if(key.startsWith('module_')||key.startsWith('activity_')||key==='at') totalWW+=Number(merged[key])||0; if(key.startsWith('pt_')) totalPT+=Number(merged[key])||0; }
+                        let ww=Math.min((totalWW/100)*100,100)||0; let pt=Math.min((totalPT/100)*100,100)||0; let qe=Math.min((totalQE/50)*100,100)||0;
+                        let grade = Math.round((ww*0.3)+(pt*0.5)+(qe*0.2));
+                        let qtr = String(merged.quarter||'1');
+                        if(qtr==='1'||qtr==='1st'){q1_t+=grade;q1_c++;} else if(qtr==='2'||qtr==='2nd'){q2_t+=grade;q2_c++;} else if(qtr==='3'||qtr==='3rd'){q3_t+=grade;q3_c++;} else if(qtr==='4'||qtr==='4th'){q4_t+=grade;q4_c++;}
+                        allStudentsScores.push({ name: student.full_name||'No Name', section: sectionMap[student.section_id], grade });
                     });
                 }
-                
                 initDashboardChart([q1_c>0?(q1_t/q1_c):0, q2_c>0?(q2_t/q2_c):0, q3_c>0?(q3_t/q3_c):0, q4_c>0?(q4_t/q4_c):0]);
-                
                 const topList = document.getElementById('topPerformersList'); 
-                allStudentsScores.sort((a, b) => b.grade - a.grade); 
-                topList.innerHTML = '';
-                
+                allStudentsScores.sort((a,b) => b.grade - a.grade); topList.innerHTML = '';
                 if (allStudentsScores.length > 0) {
-                    allStudentsScores.slice(0,5).forEach(s => { 
-                        topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${s.name} <small style="color:var(--text-muted);">(${s.section})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; 
-                    });
-                } else {
-                    topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`;
-                }
-
-            } else { 
-                initDashboardChart([0,0,0,0]); 
-            }
-
-            document.getElementById('val-total-sections').textContent = totalSections; 
-            document.getElementById('val-total-students').textContent = totalStudents;
-            document.getElementById('val-todays-present').textContent = present; 
-            document.getElementById('val-todays-absent').textContent = absentOrLate;
-            
-        } catch (error) { 
-            console.error(error); 
-            initDashboardChart([0,0,0,0]); 
-        }
+                    allStudentsScores.slice(0,5).forEach(s => { topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${s.name} <small style="color:var(--text-muted);">(${s.section})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; });
+                } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
+            } else { initDashboardChart([0,0,0,0]); }
+            document.getElementById('val-total-sections').textContent = totalSections; document.getElementById('val-total-students').textContent = totalStudents;
+            document.getElementById('val-todays-present').textContent = present; document.getElementById('val-todays-absent').textContent = absentOrLate;
+        } catch (error) { console.error(error); initDashboardChart([0,0,0,0]); }
     }
 
-    /* =========================================
-       MODAL FUNCTIONS (ATTENDANCE & SECTIONS)
-       ========================================= */
-    function toggleAttendanceModal() { 
-        const m = document.getElementById('attendanceModal'); 
-        m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; 
-    }
-
+    function toggleAttendanceModal() { const m = document.getElementById('attendanceModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
     function showAttendanceDetails(type) {
-        const listContainer = document.getElementById('attendanceModalList');
-        const title = document.getElementById('attendanceModalTitle');
-        listContainer.innerHTML = '';
-
-        let filteredStudents = [];
-        
-        if (type === 'present') {
-            title.innerHTML = '<i class="fa-solid fa-user-check" style="color: #22c55e;"></i> Today\'s Present Students';
-            filteredStudents = todayAttendanceData.filter(r => r.status === 'Present');
-        } else {
-            title.innerHTML = '<i class="fa-solid fa-user-x" style="color: #f59e0b;"></i> Today\'s Absent & Late Students';
-            filteredStudents = todayAttendanceData.filter(r => r.status !== 'Present'); // Absent kag Late
-        }
-
-        if (filteredStudents.length === 0) {
-            listContainer.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No students found in this category.</li>';
-        } else {
-            filteredStudents.sort((a, b) => a.section.localeCompare(b.section));
-            
-            filteredStudents.forEach(student => {
-                let statusColor = student.status === 'Present' ? '#22c55e' : (student.status === 'Late' ? '#f59e0b' : '#ef4444');
-                const li = document.createElement('li');
-                li.className = 'item-row';
-                li.innerHTML = `
-                    <div style="display: flex; flex-direction: column;">
-                        <strong style="color: var(--text-dark); font-size: 0.95rem;">${student.student_name}</strong>
-                        <small style="color: var(--text-muted);">${student.section} - <span style="font-weight: 600; color: ${statusColor};">${student.status}</span></small>
-                    </div>
-                `;
-                listContainer.appendChild(li);
-            });
-        }
-
+        const listContainer = document.getElementById('attendanceModalList'); const title = document.getElementById('attendanceModalTitle');
+        listContainer.innerHTML = ''; let filteredStudents = [];
+        if (type === 'present') { title.innerHTML = '<i class="fa-solid fa-user-check" style="color: #22c55e;"></i> Today\'s Present Students'; filteredStudents = todayAttendanceData.filter(r => r.status === 'Present'); }
+        else { title.innerHTML = '<i class="fa-solid fa-user-x" style="color: #f59e0b;"></i> Today\'s Absent & Late Students'; filteredStudents = todayAttendanceData.filter(r => r.status !== 'Present'); }
+        if (filteredStudents.length === 0) { listContainer.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No students found in this category.</li>'; }
+        else { filteredStudents.sort((a,b) => a.section.localeCompare(b.section)); filteredStudents.forEach(student => {
+            let statusColor = student.status === 'Present' ? '#22c55e' : (student.status === 'Late' ? '#f59e0b' : '#ef4444');
+            const li = document.createElement('li'); li.className = 'item-row';
+            li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${student.student_name}</strong><small style="color: var(--text-muted);">${student.section} - <span style="font-weight: 600; color: ${statusColor};">${student.status}</span></small></div>`;
+            listContainer.appendChild(li);
+        }); }
         toggleAttendanceModal();
     }
 
-    // BAG-O NGA FUNCTIONS PARA SA SECTIONS
-    function toggleSectionsModal() {
-        const m = document.getElementById('sectionsModal');
-        m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none';
-    }
-
+    function toggleSectionsModal() { const m = document.getElementById('sectionsModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
     function showSectionsDetails() {
-        const listContainer = document.getElementById('sectionsModalList');
-        listContainer.innerHTML = '';
-
-        if (globalSectionsData.length === 0) {
-            listContainer.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No sections found.</li>';
-        } else {
-            // I-sort alphabetical para limpyo
-            let sortedSections = [...globalSectionsData].sort((a, b) => a.title.localeCompare(b.title));
-            
-            sortedSections.forEach((section, index) => {
-                const li = document.createElement('li');
-                li.className = 'item-row';
-                li.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span>
-                        <strong style="color: var(--text-dark); font-size: 0.95rem;">${section.title}</strong>
-                    </div>
-                `;
-                listContainer.appendChild(li);
-            });
+        const listContainer = document.getElementById('sectionsModalList'); listContainer.innerHTML = '';
+        if (globalSectionsData.length === 0) { listContainer.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No sections found.</li>'; }
+        else { let sorted = [...globalSectionsData].sort((a,b) => a.title.localeCompare(b.title));
+            sorted.forEach((section, index) => { const li = document.createElement('li'); li.className = 'item-row';
+                li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index+1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${section.title}</strong></div>`;
+                listContainer.appendChild(li); });
         }
-
         toggleSectionsModal();
     }
 
