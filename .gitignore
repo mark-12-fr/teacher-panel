@@ -216,3 +216,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+INNOVEX_2026_Paper.docx
+generate_paper.py
