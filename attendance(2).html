@@ -443,6 +443,18 @@
 
                     // Update exact cell without reloading the entire table
                     updateSpecificCellUI(record.student_name, record.date, record.status, payload.eventType);
+
+                    // Notify the teacher that a facilitator just touched
+                    // their attendance — but never on our own echo.
+                    if (window.MJR_notify && !(window.MJR_isLikelyOwnChange && window.MJR_isLikelyOwnChange())) {
+                        const who = record.student_name || 'a student';
+                        const what = (payload.eventType === 'DELETE') ? 'cleared' : (record.status || 'updated');
+                        window.MJR_notify({
+                            title: 'Attendance updated — ' + currentSectionTitle,
+                            body: `${who}: ${what} (${record.date || ''})`,
+                            tag: 'mjr-attendance-' + currentSectionTitle
+                        });
+                    }
                 }
             )
             .subscribe();
@@ -968,8 +980,10 @@
         
         cellElement.innerHTML = mark;
         cellElement.className = `editable-cell ${markClass}`;
-        recalculateSummaryUI(); 
-        
+        recalculateSummaryUI();
+
+        if (window.MJR_markLocalSave) window.MJR_markLocalSave();
+
         try {
             if (status === 'None') {
                 await supabaseClient.from('attendance')
@@ -1052,6 +1066,7 @@
 </script>
 <script src="ai-assistant.js" defer></script>
 <script src="school-year.js" defer></script>
+<script src="mjr-notify.js" defer></script>
 <script src="mjr-guard.js" defer></script>
 </body>
 </html>
