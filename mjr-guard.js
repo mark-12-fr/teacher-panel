@@ -1,13 +1,12 @@
 /*
  * MJR client-side protection
  *
- * - Blocks the right-click context menu, F12, Ctrl+Shift+I/J/C, and Ctrl+U
- *   so casual users can't open DevTools or view source from the page.
- * - Masks the actual filename in the address bar by replacing the path
- *   with a deterministic, daily-rotating token. The real HTML file
- *   stays loaded; navigation between pages still uses the original
- *   .html links, so refresh on a masked URL falls back to the Vercel
- *   rewrite (configured in vercel.json).
+ * - Blocks the right-click context menu, F12, Ctrl+Shift+I/J/C, Ctrl+U,
+ *   and Ctrl+S so casual users can't open DevTools or view source.
+ * - Masks the address bar by replacing the entire path with a
+ *   deterministic, daily-rotating token. The mapping is also stashed in
+ *   localStorage so loader.html can resolve refreshes/back-navigation
+ *   even across timezone boundaries.
  */
 (function () {
     /* === 1. Block context menu and devtools shortcuts ===================== */
@@ -20,39 +19,52 @@
 
     document.addEventListener('keydown', function (e) {
         const key = (e.key || '').toLowerCase();
-        // F12
         if (e.keyCode === 123 || key === 'f12') return block(e);
-        // Ctrl+U → view-source
         if ((e.ctrlKey || e.metaKey) && key === 'u') return block(e);
-        // Ctrl+Shift+I/J/C → devtools panels
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) {
             return block(e);
         }
-        // Ctrl+S → save page
         if ((e.ctrlKey || e.metaKey) && key === 's') return block(e);
     }, { capture: true });
 
-    /* === 2. Mask the URL with a daily-rotating random hash ==============
-       We append a hash token rather than replacing the path so:
-         * the browser back button still works,
-         * refresh still resolves the real HTML file, and
-         * vercel.json's cleanUrls strips the .html so the visible URL
-           ends up looking like  /section#a8f4k9p3m21
-    ===================================================================== */
+    /* === 2. Mask the URL with a daily-rotating random path =============== */
+    function tokenFor(date, page) {
+        const seed = date + '|' + page;
+        let h = 2166136261;
+        for (let i = 0; i < seed.length; i++) {
+            h ^= seed.charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        const a = (h >>> 0).toString(36);
+        const b = ((h ^ 0xdeadbeef) >>> 0).toString(36);
+        return (a + b).slice(0, 12);
+    }
+
+    function rememberMapping(token, page) {
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const raw = localStorage.getItem('mjr_url_map');
+            const map = raw ? JSON.parse(raw) : {};
+            // Drop entries that aren't from today so localStorage stays small.
+            for (const k of Object.keys(map)) {
+                if (!map[k] || map[k].date !== today) delete map[k];
+            }
+            map[token] = { page: page, date: today };
+            localStorage.setItem('mjr_url_map', JSON.stringify(map));
+        } catch (e) { /* ignore quota / parse errors */ }
+    }
+
     try {
         const path = (window.location.pathname || '').toLowerCase();
-        const skip = /(^|\/)(login|sign)\.html?$/.test(path) || path === '/' || path.endsWith('/login') || path.endsWith('/sign');
+        const fileMatch = path.match(/\/([^/]+)\.html?$/);
+        const pageName = fileMatch ? fileMatch[1] : null;
 
-        if (!skip && window.history && typeof window.history.replaceState === 'function') {
-            const seed = new Date().toISOString().slice(0, 10) + '|' + path;
-            let h = 2166136261;
-            for (let i = 0; i < seed.length; i++) {
-                h ^= seed.charCodeAt(i);
-                h = (h * 16777619) >>> 0;
-            }
-            const token = (h.toString(36) + Math.abs(h ^ 0xdeadbeef).toString(36)).slice(0, 12);
-            const cleanPath = path.replace(/\.html?$/i, '');
-            window.history.replaceState({}, '', cleanPath + window.location.search + '#' + token);
+        const SKIP = ['login', 'sign', 'loader'];
+        if (pageName && SKIP.indexOf(pageName) === -1 && window.history && typeof window.history.replaceState === 'function') {
+            const today = new Date().toISOString().slice(0, 10);
+            const token = tokenFor(today, pageName);
+            rememberMapping(token, pageName);
+            window.history.replaceState({}, '', '/' + token + window.location.search);
         }
     } catch (e) {
         /* never let URL masking break the page */

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading...</title>
+<style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #0f172a; color: #cbd5e1; font-family: 'Inter', system-ui, sans-serif; }
+    .wrap { display: flex; align-items: center; justify-content: center; height: 100vh; }
+    .spinner { width: 38px; height: 38px; border: 3px solid rgba(255,255,255,0.12); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap"><div class="spinner"></div></div>
+<script>
+(function () {
+    const PAGES = ['index', 'section', 'section(2)', 'class-record', 'class-record(2)',
+                   'attendance', 'attendance(2)', 'performance', 'performance(2)',
+                   'facilitators', 'about', 'help'];
+
+    function tokenFor(date, page) {
+        const seed = date + '|' + page;
+        let h = 2166136261;
+        for (let i = 0; i < seed.length; i++) {
+            h ^= seed.charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        const a = (h >>> 0).toString(36);
+        const b = ((h ^ 0xdeadbeef) >>> 0).toString(36);
+        return (a + b).slice(0, 12);
+    }
+
+    function resolve() {
+        const slug = window.location.pathname.replace(/^\//, '').toLowerCase();
+        if (!slug) {
+            window.location.replace('/login.html');
+            return;
+        }
+
+        // 1. Try the localStorage mapping first (handles same-day refresh).
+        try {
+            const raw = localStorage.getItem('mjr_url_map');
+            if (raw) {
+                const map = JSON.parse(raw);
+                if (map && map[slug] && map[slug].page) {
+                    window.location.replace('/' + map[slug].page + '.html' + window.location.search);
+                    return;
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        // 2. Fall back to recomputing today / yesterday tokens for each page
+        //    (handles timezone differences and cleared localStorage).
+        const now = new Date();
+        const today = now.toISOString().slice(0, 10);
+        const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+        for (const page of PAGES) {
+            if (slug === tokenFor(today, page) || slug === tokenFor(yesterday, page)) {
+                window.location.replace('/' + page + '.html' + window.location.search);
+                return;
+            }
+        }
+
+        // 3. Nothing matched — bounce back to login.
+        window.location.replace('/login.html');
+    }
+
+    resolve();
+})();
+</script>
+</body>
+</html>
