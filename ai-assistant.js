@@ -403,6 +403,61 @@
         };
     }
 
+    async function formatFacilitatorLogsHTML(facilitators, sb) {
+        const client = sb || (typeof window.supabaseClient !== 'undefined' ? window.supabaseClient : null);
+        if (!facilitators || facilitators.length === 0) {
+            return "You haven't assigned any facilitators yet.";
+        }
+
+        const latestByFaci = {};
+        if (client) {
+            try {
+                const faciIds = facilitators.map(f => f.id);
+                const { data } = await client.from('facilitator_logs')
+                    .select('facilitator_id, time_in, time_out')
+                    .in('facilitator_id', faciIds)
+                    .order('time_in', { ascending: false });
+                (data || []).forEach(log => {
+                    if (!latestByFaci[log.facilitator_id]) latestByFaci[log.facilitator_id] = log;
+                });
+            } catch (err) {
+                console.error('formatFacilitatorLogsHTML: log fetch failed', err);
+            }
+        }
+
+        const fmt = ts => ts ? new Date(ts).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
+        }) : null;
+
+        let res = "<strong>Facilitators Logs:</strong><ul class='ai-list' style='list-style:none; padding-left:0;'>";
+        facilitators.forEach(f => {
+            const log = latestByFaci[f.id];
+            const timeIn = log && log.time_in
+                ? fmt(log.time_in)
+                : '<span style="color:#ef4444;">No record</span>';
+            const stillActive = log && log.time_in &&
+                (!log.time_out || (Date.now() - new Date(log.time_out).getTime()) < 60000);
+            const timeOut = stillActive
+                ? '<span style="color:#10b981;">Currently Active</span>'
+                : (log && log.time_out
+                    ? fmt(log.time_out)
+                    : '<span style="color:#f59e0b;">Not signed out</span>');
+
+            res += `<li style="margin-bottom:12px; background:rgba(0,0,0,0.03); padding:12px; border-radius:8px;">
+                👤 <strong>${f.full_name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section || 'Unassigned'})</span><br>
+                <div style="font-size:0.85rem; margin-top:8px; display:flex; flex-direction:column; gap:5px;">
+                    <span><i class="fa-solid fa-arrow-right-to-bracket" style="color:#10b981; width:16px;"></i> Time In: <strong>${timeIn}</strong></span>
+                    <span><i class="fa-solid fa-arrow-right-from-bracket" style="color:#ef4444; width:16px;"></i> Time Out: <strong>${timeOut}</strong></span>
+                </div>
+            </li>`;
+        });
+        res += "</ul>";
+        return res;
+    }
+
+    window.formatFacilitatorLogsHTML = formatFacilitatorLogsHTML;
+
     function watchTypingIndicator() {
         const chatBody = document.getElementById('aiChatBody');
         if (!chatBody || chatBody.dataset.mjrObserved === 'true') return;

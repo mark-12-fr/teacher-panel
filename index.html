@@ -777,25 +777,9 @@
             if(schedules.length === 0) return "No schedules recorded yet.";
             let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; }); return res;
         
-        // UPDATED: FACILITATOR LOGS (TIME IN AND TIME OUT)
+        // FACILITATOR LOGS (TIME IN / TIME OUT) — pulled live from facilitator_logs
         } else if (query.includes('facilitator') || query.includes('faci') || query.includes('logs')) {
-            if(facilitators.length === 0) return "No facilitators assigned yet.";
-            let res = "<strong>Facilitators Logs:</strong><ul class='ai-list' style='list-style:none; padding-left:0;'>";
-            
-            facilitators.forEach(f => {
-                let timeIn = f.time_in ? new Date(f.time_in).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '<span style="color:#ef4444;">No record</span>';
-                let timeOut = f.time_out ? new Date(f.time_out).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '<span style="color:#f59e0b;">Currently Active</span>';
-                
-                res += `<li style="margin-bottom: 12px; background: rgba(0,0,0,0.03); padding: 12px; border-radius: 8px;">
-                    👤 <strong>${f.full_name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section || 'Unassigned'})</span><br>
-                    <div style="font-size:0.85rem; margin-top:8px; display:flex; flex-direction:column; gap:5px;">
-                        <span><i class="fa-solid fa-arrow-right-to-bracket" style="color:#10b981; width:16px;"></i> Time In: <strong>${timeIn}</strong></span>
-                        <span><i class="fa-solid fa-arrow-right-from-bracket" style="color:#ef4444; width:16px;"></i> Time Out: <strong>${timeOut}</strong></span>
-                    </div>
-                </li>`;
-            });
-            res += "</ul>";
-            return res;
+            return await window.formatFacilitatorLogsHTML(facilitators, supabaseClient);
 
         } else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
             return `You handle a total of <strong>${students.length} students</strong> across <strong>${sections.length} sections</strong>.`;
