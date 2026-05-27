@@ -150,11 +150,6 @@
         .dash-wrap h4 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-dark); }
         .dash-wrap:last-child { text-align: center; }
         .badge { display: inline-block; background: var(--input-bg); color: var(--accent-blue); padding: 5px 15px; border-radius: 8px; font-weight: 700; }
-        .badge-quarter { animation: mjrFloat 2.6s ease-in-out infinite; box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
-        @keyframes mjrFloat {
-            0%, 100% { transform: translateY(0); box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
-            50%      { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(59,130,246,0.35); }
-        }
 
         /* TABLE CONTAINER */
         .class-record-container { 
@@ -375,7 +370,7 @@
                 <div class="dash-wrap"><h3>SEMESTER</h3><h4 id="dashSemester">Loading...</h4></div>
                 <div class="dash-wrap"><h3>SUBJECT</h3><h4 id="dashSubject">--</h4></div>
                 <div class="dash-wrap"><h3>TOTAL STUDENTS</h3><h4 id="dashTotalStudents">0</h4></div>
-                <div class="dash-wrap"><h3>QUARTER</h3><h4 class="badge badge-quarter" id="dashQuarter">Q1</h4></div>
+                <div class="dash-wrap"><h3>QUARTER</h3><h4 class="badge" id="dashQuarter">Q1</h4></div>
                 <div class="dash-wrap"><h3>SECTION</h3><h4 class="badge" id="dashSection">--</h4></div>
             </div>
 
