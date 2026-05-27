@@ -295,15 +295,15 @@
                 <p class="txt-total" id="summaryTotal">0</p>
             </div>
             <div class="dat-box">
-                <h4>THIS MONTH'S PRESENT</h4>
+                <h4>TODAY'S PRESENT</h4>
                 <p class="txt-present" id="summaryPresent">0</p>
             </div>
             <div class="dat-box">
-                <h4>THIS MONTH'S ABSENT</h4>
+                <h4>TODAY'S ABSENT</h4>
                 <p class="txt-absent" id="summaryAbsent">0</p>
             </div>
             <div class="dat-box">
-                <h4>THIS MONTH'S LATE</h4>
+                <h4>TODAY'S LATE</h4>
                 <p class="txt-late" id="summaryLate">0</p>
             </div>
         </div>
@@ -877,13 +877,18 @@
         document.getElementById('summaryTotal').innerText = globalStudents.length;
         document.getElementById('dashTotalStudents').innerText = globalStudents.length;
 
+        // Show TODAY'S counts only — same `DD/MM/YYYY` format that the
+        // attendance rows are written in (`new Date().toLocaleDateString('en-GB')`).
+        const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
         let present = 0, absent = 0, late = 0;
 
         if (allAttendance) {
             allAttendance.forEach(a => {
-                if(a.status === 'Present') present++;
-                else if(a.status === 'Absent') absent++;
-                else if(a.status === 'Late') late++;
+                if (a.date !== todayStr) return;
+                if (a.status === 'Present') present++;
+                else if (a.status === 'Absent') absent++;
+                else if (a.status === 'Late') late++;
             });
         }
 
@@ -929,8 +934,10 @@
     }
 
     function recalculateSummaryUI() {
+        const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
         let p = 0, a = 0, l = 0;
         document.querySelectorAll('.editable-cell').forEach(cell => {
+            if (cell.dataset.date !== todayStr) return;
             const mark = cell.innerText.trim();
             if (mark === 'P') p++;
             else if (mark === 'A') a++;
