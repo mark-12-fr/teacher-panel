@@ -3,10 +3,13 @@
  *
  * - Blocks the right-click context menu, F12, Ctrl+Shift+I/J/C, Ctrl+U,
  *   and Ctrl+S so casual users can't open DevTools or view source.
+ * - Strips the .html extension from every internal <a href> so the
+ *   hover preview / status bar no longer reveals the real filename.
+ *   Vercel's cleanUrls handles the routing.
  * - Appends a daily-rotating hash token to the URL so links look
- *   different every day. The pathname (cleaned of .html by Vercel's
- *   cleanUrls) stays intact, so refresh, back, and direct navigation
- *   keep working. OAuth callbacks (#access_token=...) are left alone.
+ *   different every day. The pathname stays intact, so refresh,
+ *   back, and direct navigation keep working. OAuth callbacks
+ *   (#access_token=...) are left alone.
  */
 (function () {
     /* === 1. Block context menu and devtools shortcuts ===================== */
@@ -27,7 +30,59 @@
         if ((e.ctrlKey || e.metaKey) && key === 's') return block(e);
     }, { capture: true });
 
-    /* === 2. Append a daily-rotating hash token =========================== */
+    /* === 2. Strip .html from internal <a href> so hover preview is clean === */
+    function cleanHref(href) {
+        if (!href) return href;
+        // Skip absolute URLs to other domains, mailto:, tel:, anchors, javascript:
+        if (/^([a-z][a-z0-9+.-]*:)?\/\//i.test(href) || /^(mailto:|tel:|javascript:|#)/i.test(href)) {
+            return href;
+        }
+        // Strip .html / .htm right before ?query or #hash or end
+        return href.replace(/\.html?(?=$|[?#])/i, '');
+    }
+
+    function stripHtmlFromLinks(root) {
+        const anchors = (root || document).querySelectorAll('a[href]');
+        for (let i = 0; i < anchors.length; i++) {
+            const a = anchors[i];
+            const raw = a.getAttribute('href');
+            const cleaned = cleanHref(raw);
+            if (cleaned !== raw) a.setAttribute('href', cleaned);
+        }
+    }
+
+    function watchForNewLinks() {
+        if (typeof MutationObserver !== 'function') return;
+        const obs = new MutationObserver(function (mutations) {
+            for (let i = 0; i < mutations.length; i++) {
+                const added = mutations[i].addedNodes;
+                for (let j = 0; j < added.length; j++) {
+                    const node = added[j];
+                    if (node.nodeType !== 1) continue;
+                    if (node.tagName === 'A') {
+                        const raw = node.getAttribute('href');
+                        const cleaned = cleanHref(raw);
+                        if (cleaned !== raw) node.setAttribute('href', cleaned);
+                    } else if (node.querySelectorAll) {
+                        stripHtmlFromLinks(node);
+                    }
+                }
+            }
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            stripHtmlFromLinks(document);
+            watchForNewLinks();
+        });
+    } else {
+        stripHtmlFromLinks(document);
+        watchForNewLinks();
+    }
+
+    /* === 3. Append a daily-rotating hash token =========================== */
     function computeToken() {
         const seed = new Date().toISOString().slice(0, 10) + '|' + (window.location.pathname || '').toLowerCase();
         let h = 2166136261;
