@@ -624,12 +624,11 @@
             for(let i=1; i<=25; i++) {
                 const val = rec ? rec[`module_${i}`] : null;
                 const display = (val === null || val === undefined || val === "") ? '' : val;
-                html += `<td ${i===25 ? 'class="group-divider"' : ''} 
-                            class="editable-score" 
-                            contenteditable="true" 
-                            data-field="module_${i}" 
-                            data-studentid="${student.id}" 
-                            onfocus="this.dataset.oldVal = this.innerText.trim()" 
+                html += `<td class="editable-score${i===25 ? ' group-divider' : ''}"
+                            contenteditable="true"
+                            data-field="module_${i}"
+                            data-studentid="${student.id}"
+                            onfocus="this.dataset.oldVal = this.innerText.trim()"
                             onblur="saveScore(this)">${display}</td>`;
             }
 
@@ -637,12 +636,11 @@
             for(let i=1; i<=10; i++) {
                 const val = rec ? rec[`activity_${i}`] : null;
                 const display = (val === null || val === undefined || val === "") ? '' : val;
-                html += `<td ${i===10 ? 'class="group-divider"' : ''} 
-                            class="editable-score" 
-                            contenteditable="true" 
-                            data-field="activity_${i}" 
-                            data-studentid="${student.id}" 
-                            onfocus="this.dataset.oldVal = this.innerText.trim()" 
+                html += `<td class="editable-score${i===10 ? ' group-divider' : ''}"
+                            contenteditable="true"
+                            data-field="activity_${i}"
+                            data-studentid="${student.id}"
+                            onfocus="this.dataset.oldVal = this.innerText.trim()"
                             onblur="saveScore(this)">${display}</td>`;
             }
 
