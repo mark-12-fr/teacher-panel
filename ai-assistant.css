@@ -330,5 +330,7 @@
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.3px;
-    visibility: hidden;
+    min-height: 18px;
+    transition: opacity 0.2s ease;
 }
+.sidebar-school-year:empty { background: transparent; padding: 0; }

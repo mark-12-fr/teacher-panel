@@ -1,26 +1,44 @@
 /*
  * MJR school year badge
  *
- * Displays the teacher's current school year inside the sidebar
- * (`#userSchoolYear`) on every page. Reads the value from the most
- * recent section the teacher owns, falls back to a localStorage
- * cache so the label appears instantly on subsequent navigations
- * without flashing empty.
+ * Renders the teacher's current school year inside the sidebar
+ * (`#userSchoolYear`) on every page. Reads from a localStorage
+ * cache first so the badge appears instantly with zero flash on
+ * page navigation, then refreshes from Supabase in the background.
+ *
+ * Any page that loads section data may call
+ * `window.MJR_setSchoolYear(value)` to keep the cache fresh even
+ * when the Supabase round-trip hasn't finished yet.
  */
 (function () {
     const CACHE_KEY = 'current_school_year';
 
+    function applyVisible(el) {
+        el.style.visibility = 'visible';
+        el.style.opacity = '1';
+        el.style.display = 'inline-block';
+    }
+
     function render(value) {
         const el = document.getElementById('userSchoolYear');
         if (!el) return;
-        if (value) {
-            el.textContent = 'SY ' + value;
-            el.style.visibility = 'visible';
-        } else {
-            el.textContent = '';
-            el.style.visibility = 'hidden';
+        const sy = (value || '').toString().trim();
+        if (sy) {
+            el.textContent = 'SY ' + sy;
+            applyVisible(el);
         }
     }
+
+    function setCache(value) {
+        const sy = (value || '').toString().trim();
+        if (!sy) return;
+        if (localStorage.getItem(CACHE_KEY) !== sy) {
+            localStorage.setItem(CACHE_KEY, sy);
+        }
+        render(sy);
+    }
+
+    window.MJR_setSchoolYear = setCache;
 
     function getSupabase() {
         if (typeof window.supabaseClient !== 'undefined' && window.supabaseClient) {
@@ -52,22 +70,21 @@
                 .limit(1);
 
             if (data && data.length > 0 && data[0].school_year) {
-                const sy = data[0].school_year;
-                if (localStorage.getItem(CACHE_KEY) !== sy) {
-                    localStorage.setItem(CACHE_KEY, sy);
-                }
-                render(sy);
+                setCache(data[0].school_year);
             }
         } catch (err) {
             /* silent — keep showing the cached value */
         }
     }
 
-    render(localStorage.getItem(CACHE_KEY) || '');
+    function init() {
+        render(localStorage.getItem(CACHE_KEY) || '');
+        refresh();
+    }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', refresh);
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        refresh();
+        init();
     }
 })();

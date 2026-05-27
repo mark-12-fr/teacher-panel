@@ -163,7 +163,7 @@
         .action-btn.delete:hover { background: var(--btn-delete-hover); }
 
         /* FLOATING ACTION BUTTON */
-        .fab-add-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
+        .fab-add-btn { position: fixed; bottom: 120px !important; right: 40px !important; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9999; transition: transform 0.3s; border: none; }
         .fab-add-btn:hover { transform: scale(1.1); }
 
         /* MODAL STYLES */
@@ -203,7 +203,7 @@
             .top-info-card { grid-template-columns: 1fr; text-align: center; padding: 15px; gap: 15px;}
             .info-col { margin-bottom: 0; }
             .table-card { padding: 15px; }
-            .fab-add-btn { bottom: 20px; right: 20px; }
+            .fab-add-btn { bottom: 100px !important; right: 20px !important; }
             .ai-floating-btn { bottom: 90px; right: 20px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 160px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
@@ -1011,5 +1011,6 @@
 
 <script src="ai-assistant.js" defer></script>
 <script src="school-year.js" defer></script>
+<script src="mjr-guard.js" defer></script>
 </body>
 </html>
