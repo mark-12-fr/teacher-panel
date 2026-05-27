@@ -318,3 +318,17 @@
         height: min(540px, calc(100vh - 180px)) !important;
     }
 }
+
+/* School year badge inside the sidebar (rendered by school-year.js) */
+.sidebar-school-year {
+    margin-top: 8px;
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    visibility: hidden;
+}
