@@ -478,11 +478,12 @@
                             <th>Written Works</th>
                             <th>Perf. Task</th>
                             <th>Quarterly Exam</th>
+                            <th>Attendance</th>
                             <th>Final Grade</th>
                         </tr>
                     </thead>
                     <tbody id="topStudentsTable">
-                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Waiting for performance data...</td></tr>
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Waiting for performance data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -877,7 +878,8 @@
        ========================================= */
     const urlParams = new URLSearchParams(window.location.search);
     const currentSectionId = urlParams.get('id');
-    let currentSemester = '1st Sem'; 
+    let currentSemester = '1st Sem';
+    let currentSectionTitle = '';
 
     async function loadSectionDetails() {
         const userId = localStorage.getItem('user_id');
@@ -890,9 +892,9 @@
 
         const { data: secData, error: secError } = await supabaseClient
             .from('sections')
-            .select('*') 
+            .select('*')
             .eq('id', currentSectionId)
-            .eq('teacher_id', userId) 
+            .eq('teacher_id', userId)
             .single();
 
         if (secError || !secData) {
@@ -904,6 +906,7 @@
         if (secData) {
             document.getElementById('dashSubject').innerText = secData.subject || '--';
             document.getElementById('dashSection').innerText = secData.title || '--';
+            currentSectionTitle = secData.title || '';
             currentSemester = secData.semester || '1st Sem';
             document.getElementById('dashSemester').innerText = currentSemester;
         }
@@ -931,21 +934,54 @@
             .eq('section_id', currentSectionId);
 
         const { data: records, error } = await supabaseClient
-            .from('class_records') 
-            .select('*') 
+            .from('class_records')
+            .select('*')
             .eq('section_id', currentSectionId);
+
+        // Attendance is stored against the section *title*, not id.
+        let attendanceRows = [];
+        if (currentSectionTitle) {
+            const { data: attRows } = await supabaseClient
+                .from('attendance')
+                .select('student_name, student_id_no, status, date')
+                .eq('section', currentSectionTitle);
+            attendanceRows = attRows || [];
+        }
+
+        // Build per-student attendance index.
+        const attByKey = {};
+        attendanceRows.forEach(a => {
+            const keys = [];
+            if (a.student_id_no) keys.push('id:' + String(a.student_id_no).trim());
+            if (a.student_name) keys.push('name:' + String(a.student_name).trim().toLowerCase());
+            keys.forEach(k => {
+                if (!attByKey[k]) attByKey[k] = { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
+                const s = (a.status || '').toLowerCase();
+                if (s === 'present') attByKey[k].present++;
+                else if (s === 'absent') attByKey[k].absent++;
+                else if (s === 'late') attByKey[k].late++;
+                else if (s === 'excused') attByKey[k].excused++;
+                attByKey[k].total++;
+            });
+        });
+
+        function attendanceFor(student) {
+            const byId = student.id_no ? attByKey['id:' + String(student.id_no).trim()] : null;
+            const byName = student.full_name ? attByKey['name:' + String(student.full_name).trim().toLowerCase()] : null;
+            return byId || byName || null;
+        }
 
         const tbody = document.getElementById('topStudentsTable');
 
         if (error || studErr) {
             console.error("Error fetching performance data:", error || studErr);
             showNotification(`DB Error: Failed to fetch records`, "error");
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--fail-color);">Database Error.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--fail-color);">Database Error.</td></tr>`;
             return;
         }
 
         if (!studentsData || studentsData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No students assigned to this section yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No students assigned to this section yet.</td></tr>';
             return;
         }
 
@@ -1011,12 +1047,21 @@
                 q4_count++;
             }
 
+            const att = attendanceFor(student);
+            const attTotal = att ? att.total : 0;
+            // Late and Excused count as half-present for the rate.
+            const attScore = att ? (att.present + 0.5 * (att.late + att.excused)) : 0;
+            const attRate = attTotal > 0 ? Math.round((attScore / attTotal) * 100) : null;
+
             return {
                 full_name: student.full_name || 'No Name',
                 written_works: totalWW_raw,
                 perf_task: totalPT_raw,
                 quarterly_exam: totalQE_raw,
-                final_grade: final_rounded 
+                final_grade: final_rounded,
+                attendance_present: att ? att.present : 0,
+                attendance_total: attTotal,
+                attendance_rate: attRate
             };
         });
 
@@ -1082,10 +1127,19 @@
         tbody.innerHTML = ''; 
 
         // GIN KAKAS NATON ANG .slice(0, 5) DIRI PARA MAG SHOW TANAN NGA STUDENTS
-        sortedStudents.forEach((student, index) => { 
+        sortedStudents.forEach((student, index) => {
             const rank = index + 1;
             let rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-            
+
+            let attCell;
+            if (student.attendance_total === 0) {
+                attCell = `<td style="color: var(--text-muted);">—</td>`;
+            } else {
+                const rate = student.attendance_rate;
+                const rateColor = rate >= 90 ? '#16a34a' : (rate >= 75 ? '#f59e0b' : '#ef4444');
+                attCell = `<td><strong style="color:${rateColor};">${rate}%</strong> <small style="color: var(--text-muted);">(${student.attendance_present}/${student.attendance_total})</small></td>`;
+            }
+
             tbody.innerHTML += `
                 <tr>
                     <td><span class="rank-badge ${rankClass}">${rank}</span></td>
@@ -1093,6 +1147,7 @@
                     <td>${student.written_works || 0}</td>
                     <td>${student.perf_task || 0}</td>
                     <td>${student.quarterly_exam || 0}</td>
+                    ${attCell}
                     <td><strong>${student.final_grade || 0}</strong></td>
                 </tr>
             `;
