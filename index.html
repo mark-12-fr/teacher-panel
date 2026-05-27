@@ -176,12 +176,11 @@
         .chat-msg.user { background: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .chat-msg.ai { background: var(--card-bg); color: var(--text-dark); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border-color); box-shadow: 0 2px 5px var(--shadow-color); }
         
-        /* UPDATED: Integrated AI Suggestions (One Screen Layout) */
         .ai-suggestions-container {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            margin-top: -5px; /* Pulls it slightly closer to the greeting message */
+            margin-top: -5px; 
         }
         .ai-suggestion-chip {
             background: var(--card-bg);
@@ -198,7 +197,7 @@
             gap: 10px;
             box-shadow: 0 2px 4px var(--shadow-color);
             max-width: 85%;
-            align-self: flex-start; /* Aligns them exactly like the AI messages */
+            align-self: flex-start;
         }
         .ai-suggestion-chip:hover {
             background: var(--accent-blue);
@@ -213,7 +212,6 @@
         .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
         .ai-chat-input-area button:hover { transform: scale(1.05); }
 
-        /* General AI bullet list styles */
         .ai-list { padding-left: 20px; margin-top: 8px; margin-bottom: 8px; }
         .ai-list li { margin-bottom: 5px; word-break: break-word; }
 
@@ -458,10 +456,10 @@
             <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Top students')">
                 <i class="fa-solid fa-star" style="color: #f59e0b;"></i> Top Students
             </div>
-            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Sino ang mga absent?')">
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Who is absent today?')">
                 <i class="fa-solid fa-user-x" style="color: #ef4444;"></i> Today's Absences
             </div>
-            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Sino ang mga failing?')">
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Failing students')">
                 <i class="fa-solid fa-chart-line-down" style="color: #ef4444;"></i> Failing Students
             </div>
             <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Class summary')">
@@ -471,7 +469,7 @@
     </div>
 
     <div class="ai-chat-input-area">
-        <input type="text" id="aiChatInput" placeholder="Ask anything... (e.g. 'Ano kulang ni Mark?')">
+        <input type="text" id="aiChatInput" placeholder="Ask anything... (e.g. 'What is missing for Mark?')">
         <button onclick="sendAIMessage()">
             <i class="fa-solid fa-paper-plane" style="font-size: 14px;"></i>
         </button>
@@ -653,15 +651,17 @@
         };
 
         if (query.includes('kulang') || query.includes('missing') || query.includes('wala pasa') || query.includes('wala ka kuha') || query.includes('wala na pasa')) {
-            let nameExtracted = query.split(/ni |of |kay |si /)[1]?.replace('?', '').trim();
+            let nameExtracted = query.split(/ni |of |kay |si |for /)[1]?.replace('?', '').trim();
             if(!nameExtracted) {
-                 return "Please specify the student's name to check their missing requirements. (e.g., 'Anong kulang ni John?' or 'Ano ang wala napasa ni Anna?')";
+                 return "Please specify the student's name to check their missing requirements. (e.g., 'What is missing for John?' or 'Ano ang wala napasa ni Anna?')";
             }
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your list. Please check the spelling.`;
 
+            let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
             let studRecs = records.filter(r => r.student_id === stud.id);
-            if(studRecs.length === 0) return `<strong>${stud.full_name}</strong> currently has no recorded activities or grades in the system.`;
+            
+            if(studRecs.length === 0) return `<strong>${stud.full_name} (${studentSection})</strong> currently has no recorded activities or grades in the system.`;
 
             let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
 
@@ -674,7 +674,7 @@
                 }
             }
 
-            let res = `<strong>Performance Report for ${stud.full_name}:</strong><br>`;
+            let res = `<strong>Performance Report for ${stud.full_name} (${studentSection}):</strong><br>`;
             if(missing.length > 0) {
                 res += `<br>The student has missing or zero scores in the following:<ul class="ai-list">`;
                 missing.forEach(m => res += `<li style="color:#ef4444;">${m}</li>`);
@@ -686,17 +686,24 @@
 
         } else if (query.includes('top') || query.includes('highest') || query.includes('best')) {
             if(students.length === 0) return "You don't have any students registered yet.";
-            let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title })).sort((a,b) => b.grade - a.grade).slice(0, 5);
+            let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title || 'Unknown Section' })).sort((a,b) => b.grade - a.grade).slice(0, 5);
             let res = "<strong>Top Performing Students:</strong><ul class='ai-list'>";
-            scored.forEach((s, i) => { res += `<li><strong>#${i+1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span></li>`; });
+            scored.forEach((s, i) => { res += `<li><strong>#${i+1} ${s.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${s.section})</span> - ${s.grade}%</li>`; });
             res += "</ul>";
             return res;
 
         } else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
-            let failing = []; students.forEach(s => { let grade = getFinalGrade(s.id); if(grade > 0 && grade < 75) failing.push({ name: s.full_name, grade }); });
+            let failing = []; 
+            students.forEach(s => { 
+                let grade = getFinalGrade(s.id); 
+                if(grade > 0 && grade < 75) {
+                    let secTitle = sections.find(sec=>sec.id===s.section_id)?.title || 'Unknown Section';
+                    failing.push({ name: s.full_name, grade: grade, section: secTitle }); 
+                }
+            });
             if(failing.length === 0) return "Excellent news! None of your students are currently failing.";
             let res = "<strong>Students falling behind (Below 75%):</strong><ul class='ai-list'>"; 
-            failing.forEach(f => res += `<li><strong>${f.name}</strong> (${f.grade}%)</li>`); 
+            failing.forEach(f => res += `<li><strong>${f.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section})</span> - ${f.grade}%</li>`); 
             res += "</ul>";
             return res;
 
@@ -705,17 +712,32 @@
             if(!nameExtracted) return "Please specify the student's name.";
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `Could not find "<strong>${nameExtracted}</strong>" in your class lists.`;
+            
+            let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
             let grade = getFinalGrade(stud.id);
             let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
-            return `Grade for <strong>${stud.full_name}</strong>: <strong>${grade}%</strong> - ${status}.`;
+            return `Grade for <strong>${stud.full_name} (${studentSection})</strong>: <strong>${grade}%</strong> - ${status}.`;
 
         } else if (query.includes('absent') || query.includes('attendance') || query.includes('wala nag sulod')) {
             if(attendance.length === 0) return "No attendance records found.";
-            let ac = {}; attendance.forEach(a => { if(a.status === 'Absent') ac[a.student_name] = (ac[a.student_name]||0)+1; });
-            let sorted = Object.keys(ac).sort((a,b) => ac[b]-ac[a]);
+            
+            let ac = {}; 
+            attendance.forEach(a => { 
+                if(a.status === 'Absent') {
+                    if(!ac[a.student_name]) {
+                        ac[a.student_name] = { count: 0, section: a.section || 'Unknown Section' };
+                    }
+                    ac[a.student_name].count++; 
+                }
+            });
+            
+            let sorted = Object.keys(ac).sort((a,b) => ac[b].count - ac[a].count);
             if(sorted.length === 0) return "Perfect attendance! No absences recorded.";
+            
             let res = "<strong>Frequently Absent Students:</strong><ul class='ai-list'>"; 
-            sorted.slice(0,5).forEach(n => { res += `<li><strong>${n}</strong> <span style="color:#ef4444;">(${ac[n]} absences)</span></li>`; }); 
+            sorted.slice(0,5).forEach(n => { 
+                res += `<li><strong>${n}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${ac[n].section})</span> <span style="color:#ef4444;">(${ac[n].count} absences)</span></li>`; 
+            }); 
             res += "</ul>";
             return res;
 
@@ -732,14 +754,16 @@
             if(!nameExtracted) return "Please specify the student.";
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `Couldn't locate "<strong>${nameExtracted}</strong>".`;
-            return `ID for <strong>${stud.full_name}</strong>: <strong>${stud.id}</strong>.`;
+            
+            let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
+            return `ID for <strong>${stud.full_name} (${studentSection})</strong>: <strong>${stud.id}</strong>.`;
         } else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
             let passCount = 0; students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
             let passRate = students.length > 0 ? Math.round((passCount/students.length)*100) : 0;
             return `<strong>Class Overview:</strong><ul class='ai-list'><li>Total Sections: <strong>${sections.length}</strong></li><li>Total Students: <strong>${students.length}</strong></li><li>Passing Rate: <strong>${passRate}%</strong></li></ul>`;
         }
         
-        return `I am your Virtual Teaching Assistant. You can tap the suggestions above or try asking:<br><ul class="ai-list"><li><em>"Ano kulang ni [Name]?"</em></li><li><em>"Who are the top students?"</em></li><li><em>"What is my schedule?"</em></li></ul>`;
+        return `I am your Virtual Teaching Assistant. You can tap the suggestions above or try asking:<br><ul class="ai-list"><li><em>"What is missing for [Name]?"</em></li><li><em>"Who are the top students?"</em></li><li><em>"What is my schedule?"</em></li></ul>`;
     }
 
     const noteInput = document.getElementById('noteInput'); const notesList = document.getElementById('notesList');
