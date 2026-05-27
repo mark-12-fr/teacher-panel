@@ -229,7 +229,7 @@
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
         /* ✨ FLOATING ACTION BUTTON (Add Section) ✨ */
-        .fab-add-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
+        .fab-add-btn { position: fixed; bottom: 120px !important; right: 40px !important; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9999; transition: transform 0.3s; border: none; }
         .fab-add-btn:hover { transform: scale(1.1); }
 
         /* ✨ AI ASSISTANT STYLES ✨ */
@@ -261,7 +261,7 @@
 
         @media (max-width: 768px) {
             .sections-wrapper { grid-template-columns: 1fr; } /* Stack on small tablet/mobile */
-            .fab-add-btn { bottom: 20px; right: 20px; }
+            .fab-add-btn { bottom: 100px !important; right: 20px !important; }
             .ai-floating-btn { bottom: 90px; right: 20px; }
             .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 160px; }
             .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
@@ -827,6 +827,11 @@
             return;
         }
 
+        const latestSY = savedSections.find(s => s.school_year)?.school_year;
+        if (latestSY && typeof window.MJR_setSchoolYear === 'function') {
+            window.MJR_setSchoolYear(latestSY);
+        }
+
         savedSections.forEach((sec) => {
             const card = document.createElement('div');
             card.className = 'section-card';
@@ -1037,5 +1042,6 @@
 
 <script src="ai-assistant.js" defer></script>
 <script src="school-year.js" defer></script>
+<script src="mjr-guard.js" defer></script>
 </body>
 </html>
