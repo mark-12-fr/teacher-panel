@@ -158,18 +158,32 @@
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
         .toast-notification.show { visibility: visible; opacity: 1; transform: translateY(0); }
 
+        /* AI CHAT ENHANCEMENTS */
         .ai-floating-btn { position: fixed; bottom: 40px; right: 40px; width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); cursor: pointer; z-index: 9998; transition: transform 0.3s; border: none; }
         .ai-floating-btn:hover { transform: scale(1.1); }
-        .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 360px; height: 500px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); overflow: hidden; border: 1px solid var(--border-color); }
+        .ai-chat-widget { position: fixed; bottom: 110px; right: 40px; width: 380px; height: 550px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; z-index: 9999; transform: scale(0); transform-origin: bottom right; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); overflow: hidden; border: 1px solid var(--border-color); }
         .ai-chat-widget.active { transform: scale(1); }
         .ai-chat-header { background: linear-gradient(-45deg, #3b82f6, #6366f1); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
         .ai-chat-body { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: var(--input-bg); }
+        
         .chat-msg { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 0.9rem; line-height: 1.5; word-wrap: break-word; }
         .chat-msg.user { background: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .chat-msg.ai { background: var(--card-bg); color: var(--text-dark); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border-color); box-shadow: 0 2px 5px var(--shadow-color); }
+        
+        /* NEW: AI Suggestions Styles */
+        .ai-suggestions-container { display: flex; gap: 8px; padding: 10px 15px; background: var(--card-bg); border-top: 1px solid var(--border-color); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+        .ai-suggestions-container::-webkit-scrollbar { display: none; }
+        .ai-suggestion-chip { background: var(--input-bg); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+        .ai-suggestion-chip:hover { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+
         .ai-chat-input-area { padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center; }
         .ai-chat-input-area input { flex-grow: 1; padding: 12px 18px; border: 1px solid var(--border-color); border-radius: 25px; outline: none; font-size: 0.9rem; background: var(--input-bg); color: var(--text-dark); }
-        .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .ai-chat-input-area button { background: #3b82f6; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        .ai-chat-input-area button:hover { transform: scale(1.05); }
+
+        /* General AI bullet list styles */
+        .ai-list { padding-left: 20px; margin-top: 8px; margin-bottom: 8px; }
+        .ai-list li { margin-bottom: 5px; }
 
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); } .sidebar.active { transform: translateX(0); box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
@@ -184,7 +198,7 @@
             .dashboard-grid { gap: 15px; } .div-banner { flex-direction: column; text-align: center; gap: 20px; padding: 25px 15px; }
             .welcome-text h2 { justify-content: center; font-size: 1.4rem; } .time-container { text-align: center; } .time-container span { font-size: 1.8rem; margin-bottom: 5px; }
             .stat-card { grid-column: span 8; text-align: left; } .dash-card { padding: 20px; }
-            input, textarea { font-size: 16px; } .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 85px; } .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
+            input, textarea { font-size: 16px; } .ai-chat-widget { width: calc(100% - 40px); right: 20px; bottom: 85px; height: 500px; } .toast-notification { right: 20px; left: 20px; min-width: auto; top: 20px; }
         }
     </style>
 </head>
@@ -405,10 +419,18 @@
         </button>
     </div>
     <div class="ai-chat-body" id="aiChatBody">
-        <div class="chat-msg ai" id="aiGreeting">Hello there! How can I assist you with your classes today?</div>
+        <div class="chat-msg ai" id="aiGreeting">Good day! I am your AI assistant. You may ask about your sections, students, schedules, or performance records.</div>
     </div>
+    
+    <div class="ai-suggestions-container" id="aiSuggestions">
+        <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Top students')">Top Students</div>
+        <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Sino ang mga absent?')">Today's Absences</div>
+        <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Sino ang mga failing?')">Failing Students</div>
+        <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Class summary')">Class Summary</div>
+    </div>
+
     <div class="ai-chat-input-area">
-        <input type="text" id="aiChatInput" placeholder="Ask anything...">
+        <input type="text" id="aiChatInput" placeholder="Ask anything... (e.g. 'Ano kulang ni Mark?')">
         <button onclick="sendAIMessage()">
             <i class="fa-solid fa-paper-plane" style="font-size: 14px;"></i>
         </button>
@@ -525,6 +547,12 @@
 
     function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
+    // NEW: Function to send suggested message directly
+    function sendSuggestedMessage(msg) {
+        document.getElementById('aiChatInput').value = msg;
+        sendAIMessage();
+    }
+
     async function sendAIMessage() {
         const input = document.getElementById('aiChatInput');
         const text = input.value.trim();
@@ -574,6 +602,7 @@
         ]);
         const students = studRes.data || []; const records = recRes.data || []; const attendance = attRes.data || [];
         const schedules = schedRes.data || []; const facilitators = facRes.data || [];
+        
         const getFinalGrade = (studentId) => {
             let studRecs = records.filter(r => r.student_id === studentId);
             let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
@@ -582,18 +611,60 @@
             let ww = Math.min((totalWW/100)*100,100)||0; let pt = Math.min((totalPT/100)*100,100)||0; let qe = Math.min((totalQE/50)*100,100)||0;
             return Math.round((ww*0.3)+(pt*0.5)+(qe*0.2));
         };
-        if (query.includes('top') || query.includes('highest') || query.includes('best')) {
+
+        // ENHANCED: Kulang / Missing Requirements specific query
+        if (query.includes('kulang') || query.includes('missing') || query.includes('wala pasa') || query.includes('wala ka kuha') || query.includes('wala na pasa')) {
+            let nameExtracted = query.split(/ni |of |kay |si /)[1]?.replace('?', '').trim();
+            if(!nameExtracted) {
+                 return "Please specify the student's name to check their missing requirements. (e.g., 'Anong kulang ni John?' or 'Ano ang wala napasa ni Anna?')";
+            }
+            let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
+            if(!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your list. Please check the spelling.`;
+
+            let studRecs = records.filter(r => r.student_id === stud.id);
+            if(studRecs.length === 0) return `<strong>${stud.full_name}</strong> currently has no recorded activities or grades in the system.`;
+
+            let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if(curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
+
+            let missing = [];
+            // Checking fields that usually represent activities (modules, pt, qe, activities)
+            for (let key in merged) {
+                if (key.startsWith('module_') || key.startsWith('activity_') || key.startsWith('pt_') || key === 'qe') {
+                    // Treat 0 or empty strings as missing/failed
+                    if (Number(merged[key]) === 0 || merged[key] === "0" || merged[key] === "") {
+                        missing.push(key.replace('_', ' ').toUpperCase());
+                    }
+                }
+            }
+
+            let res = `<strong>Performance Report for ${stud.full_name}:</strong><br>`;
+            if(missing.length > 0) {
+                res += `<br>The student has missing or zero scores in the following:<ul class="ai-list">`;
+                missing.forEach(m => res += `<li style="color:#ef4444;">${m}</li>`);
+                res += `</ul>Please advise the student to comply.`;
+            } else {
+                res += `<br><span style="color:#10b981;">Excellent! No missing modules or zero activities found based on current records.</span>`;
+            }
+            return res;
+
+        // ENHANCED: Top Students using bullets
+        } else if (query.includes('top') || query.includes('highest') || query.includes('best')) {
             if(students.length === 0) return "You don't have any students registered yet.";
             let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec=>sec.id===s.section_id)?.title })).sort((a,b) => b.grade - a.grade).slice(0, 5);
-            let res = "<strong>Here are your top performing students:</strong><br><br>";
-            scored.forEach((s, i) => { res += `<strong>#${i+1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
+            let res = "<strong>Top Performing Students:</strong><ul class='ai-list'>";
+            scored.forEach((s, i) => { res += `<li><strong>#${i+1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span></li>`; });
+            res += "</ul>";
             return res;
+
+        // ENHANCED: Failing students using bullets
         } else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
             let failing = []; students.forEach(s => { let grade = getFinalGrade(s.id); if(grade > 0 && grade < 75) failing.push({ name: s.full_name, grade }); });
             if(failing.length === 0) return "Excellent news! None of your students are currently failing.";
-            let res = "<strong>Students currently falling behind (Below 75%):</strong><br><br>"; failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`); return res;
-        } else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
-            return `<strong>Sorry, I can't check missing modules accurately right now due to merged records formatting.</strong>`;
+            let res = "<strong>Students falling behind (Below 75%):</strong><ul class='ai-list'>"; 
+            failing.forEach(f => res += `<li><strong>${f.name}</strong> (${f.grade}%)</li>`); 
+            res += "</ul>";
+            return res;
+
         } else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
             let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
             if(!nameExtracted) return "Please specify the student's name.";
@@ -602,12 +673,18 @@
             let grade = getFinalGrade(stud.id);
             let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
             return `Grade for <strong>${stud.full_name}</strong>: <strong>${grade}%</strong> - ${status}.`;
-        } else if (query.includes('absent') || query.includes('attendance')) {
+
+        // ENHANCED: Absences using bullets
+        } else if (query.includes('absent') || query.includes('attendance') || query.includes('wala nag sulod')) {
             if(attendance.length === 0) return "No attendance records found.";
             let ac = {}; attendance.forEach(a => { if(a.status === 'Absent') ac[a.student_name] = (ac[a.student_name]||0)+1; });
             let sorted = Object.keys(ac).sort((a,b) => ac[b]-ac[a]);
             if(sorted.length === 0) return "Perfect attendance! No absences recorded.";
-            let res = "<strong>Frequently Absent:</strong><br><br>"; sorted.slice(0,5).forEach(n => { res += `- <strong>${n}</strong> <span style="color:#ef4444;">(${ac[n]} absences)</span><br>`; }); return res;
+            let res = "<strong>Frequently Absent Students:</strong><ul class='ai-list'>"; 
+            sorted.slice(0,5).forEach(n => { res += `<li><strong>${n}</strong> <span style="color:#ef4444;">(${ac[n]} absences)</span></li>`; }); 
+            res += "</ul>";
+            return res;
+
         } else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
             if(schedules.length === 0) return "No schedules recorded yet.";
             let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; }); return res;
@@ -625,9 +702,10 @@
         } else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
             let passCount = 0; students.forEach(s => { if(getFinalGrade(s.id) >= 75) passCount++; });
             let passRate = students.length > 0 ? Math.round((passCount/students.length)*100) : 0;
-            return `<strong>Overview:</strong><br><br>• Sections: <strong>${sections.length}</strong><br>• Students: <strong>${students.length}</strong><br>• Passing Rate: <strong>${passRate}%</strong>`;
+            return `<strong>Class Overview:</strong><ul class='ai-list'><li>Total Sections: <strong>${sections.length}</strong></li><li>Total Students: <strong>${students.length}</strong></li><li>Passing Rate: <strong>${passRate}%</strong></li></ul>`;
         }
-        return `I am your Virtual Teaching Assistant. Try:<br><br>💬 <em>"Who are the top students?"</em><br>💬 <em>"What is the grade of [Name]?"</em><br>💬 <em>"Who is frequently absent?"</em><br>💬 <em>"What is my schedule?"</em><br>💬 <em>"Give me a summary."</em>`;
+        
+        return `I am your Virtual Teaching Assistant. You can tap the suggestions above or try asking:<br><ul class="ai-list"><li><em>"Ano kulang ni [Name]?"</em></li><li><em>"Who are the top students?"</em></li><li><em>"What is my schedule?"</em></li></ul>`;
     }
 
     /* =========================================
@@ -660,14 +738,12 @@
         if (!savedNotices || savedNotices.length === 0) { noticeTableBody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No notices.</td></tr>'; return; }
         
         savedNotices.forEach(n => {
-            // Format sang Date (halin sa YYYY-MM-DD pakadto sa "May 27, 2026")
             let displayDateTime = n.date;
             if (n.date) {
                 const dateObj = new Date(n.date + 'T00:00:00');
                 displayDateTime = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             }
             
-            // Format sang Time (halin sa 24h pakadto sa 12h format nga may AM/PM)
             if (n.time) {
                 const [h, m] = n.time.split(':');
                 const hour = parseInt(h); 
@@ -683,7 +759,6 @@
     }
     function toggleNoticeModal() { const m = document.getElementById('noticeModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
 
-    // ✅ saveNotice — separaron ang insert sa date kag time columns
     async function saveNotice() {
         const text = document.getElementById('noticeText').value.trim();
         const dateVal = document.getElementById('noticeDate').value;
@@ -691,16 +766,14 @@
         
         if (!text || !dateVal) { showNotification("Please fill in the notice and date.", "error"); return; }
 
-        // Ang PostgreSQL 'time' datatype gahulalat sang format nga HH:MM:SS
         let dbTime = null;
         if (timeVal) {
-            dbTime = timeVal + ':00'; // Dugangan naton sang seconds
+            dbTime = timeVal + ':00'; 
         }
 
         const colors = ['blue', 'orange', 'green'];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
         
-        // Diri naton i-insert ang dateVal sa `date` column, kag ang dbTime sa `time` column
         await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: dateVal, time: dbTime, color: randomColor }]);
         
         loadNotices(); toggleNoticeModal();
@@ -723,7 +796,6 @@
     }
     function toggleScheduleModal() { const m = document.getElementById('scheduleModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
 
-    // ✅ saveSchedule — formats time from 24h picker to readable 12h (e.g. "7:30 AM")
     async function saveSchedule() {
         const sub = document.getElementById('schedSubject').value.trim();
         const timeRaw = document.getElementById('schedTime').value;
