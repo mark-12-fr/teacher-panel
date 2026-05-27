@@ -973,10 +973,7 @@
             return res;
         }
         else if (query.includes('facilitator') || query.includes('faci') || query.includes('assigned')) {
-            if(facilitators.length === 0) return "You haven't assigned any facilitators yet.";
-            let res = "<strong>Here are your assigned facilitators:</strong><br><br>";
-            facilitators.forEach(f => { res += `👤 <strong>${f.full_name}</strong><br><small>Assigned to: ${f.section}</small><br><br>`; });
-            return res;
+            return await window.formatFacilitatorLogsHTML(facilitators, supabaseClient);
         }
         else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
             return `You currently handle a total of <strong>${students.length} students</strong> distributed across <strong>${sections.length} active sections</strong>.`;
@@ -1010,5 +1007,6 @@
     }
 </script>
 
+<script src="ai-assistant.js" defer></script>
 </body>
 </html>
