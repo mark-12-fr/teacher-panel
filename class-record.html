@@ -371,6 +371,14 @@
             <option value="2nd Sem">2nd Semester</option>
         </select>
 
+        <select id="secQuarter" class="modal-input">
+            <option value="" disabled selected>Select Quarter</option>
+            <option value="1">Q1 - First Quarter</option>
+            <option value="2">Q2 - Second Quarter</option>
+            <option value="3">Q3 - Third Quarter</option>
+            <option value="4">Q4 - Fourth Quarter</option>
+        </select>
+
         <select id="secSchoolYear" class="modal-input">
     <option value="" disabled selected>Select School Year</option>
     <option value="2023-2024">2023-2024</option>
@@ -836,6 +844,7 @@
             const secData = encodeURIComponent(JSON.stringify(sec)); 
             const studentCount = (sec.students && sec.students[0] && sec.students[0].count) ? sec.students[0].count : 0;
             const sem = sec.semester || '1st Sem';
+            const qtr = sec.quarter ? `Q${sec.quarter}` : 'Q1';
             
             card.innerHTML = `
                 <div>
@@ -845,6 +854,7 @@
                         <span class="tag tag-students"><i data-lucide="user"></i> ${studentCount} Students</span>
                         <span class="tag tag-room"><i data-lucide="building"></i> ${sec.room}</span>
                         <span class="tag tag-sem"><i data-lucide="calendar"></i> ${sem}</span>
+                        <span class="tag tag-quarter"><i data-lucide="bookmark"></i> ${qtr}</span>
                         <span class="tag tag-year"><i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}</span>
                     </div>
                 </div>
@@ -918,7 +928,8 @@
         document.getElementById('secTitle').value = '';
         document.getElementById('secSubject').value = '';
         document.getElementById('secRoom').value = '';
-        document.getElementById('secSemester').value = ''; 
+        document.getElementById('secSemester').value = '';
+        document.getElementById('secQuarter').value = '';
         document.getElementById('secSchoolYear').value = '';
         toggleSectionModal();
     }
@@ -926,14 +937,15 @@
     function editSection(encodedData) {
         const sec = JSON.parse(decodeURIComponent(encodedData));
         editingId = sec.id;
-        
+
         document.getElementById('modalTitle').textContent = "Edit Section";
         document.getElementById('secTitle').value = sec.title;
         document.getElementById('secSubject').value = sec.subject;
         document.getElementById('secRoom').value = sec.room;
-        document.getElementById('secSemester').value = sec.semester || '1st Sem'; 
+        document.getElementById('secSemester').value = sec.semester || '1st Sem';
+        document.getElementById('secQuarter').value = sec.quarter || '';
         document.getElementById('secSchoolYear').value = sec.school_year || '';
-        
+
         toggleSectionModal();
     }
 
@@ -941,12 +953,13 @@
         const title = document.getElementById('secTitle').value.trim();
         const subject = document.getElementById('secSubject').value.trim();
         const room = document.getElementById('secRoom').value.trim();
-        const semester = document.getElementById('secSemester').value; 
+        const semester = document.getElementById('secSemester').value;
+        const quarter = document.getElementById('secQuarter').value;
         const school_year = document.getElementById('secSchoolYear').value;
         const teacher_id = localStorage.getItem('user_id');
 
-        if (!title || !subject || !room || !semester || !school_year) {
-            showNotification("Please fill in all fields including Semester!", "error");
+        if (!title || !subject || !room || !semester || !quarter || !school_year) {
+            showNotification("Please fill in all fields including Semester and Quarter!", "error");
             return;
         }
 
@@ -956,6 +969,7 @@
             subject: subject,
             room: room,
             semester: semester,
+            quarter: quarter,
             school_year: school_year
         };
 
