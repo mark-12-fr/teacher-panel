@@ -516,6 +516,16 @@
                         if (updatedSectionId == currentSectionId) {
                             loadClassRecordData(); // I-reload ang table para mag-reflect dayon ang score
                             showNotification("Records have been updated by a Facilitator!", "success");
+
+                            // Cross-device notification — skip the echo of our own save.
+                            if (window.MJR_notify && !(window.MJR_isLikelyOwnChange && window.MJR_isLikelyOwnChange())) {
+                                const sec = document.getElementById('dashSection') ? document.getElementById('dashSection').innerText : 'Section';
+                                window.MJR_notify({
+                                    title: 'Class Record updated — ' + sec,
+                                    body: 'A facilitator submitted or changed scores.',
+                                    tag: 'mjr-classrec-' + currentSectionId
+                                });
+                            }
                         }
                     }
                 )
@@ -690,6 +700,9 @@
             const oldVal = cell.dataset.oldVal || "";
 
             if (newValue === oldVal) return;
+
+            if (window.MJR_markLocalSave) window.MJR_markLocalSave();
+
 
             cell.style.opacity = '0.5';
 
@@ -1095,6 +1108,7 @@
     </script>
     <script src="ai-assistant.js" defer></script>
     <script src="school-year.js" defer></script>
-    <script src="mjr-guard.js" defer></script>
+    <script src="mjr-notify.js" defer></script>
+<script src="mjr-guard.js" defer></script>
 </body>
 </html>
