@@ -11,6 +11,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="ai-assistant.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -882,12 +883,84 @@
     setInterval(updateTime, 1000); updateTime();
 
     function initDashboardChart(dataArray) {
-        const ctx = document.getElementById('dashboardBarChart').getContext('2d');
+        const canvas = document.getElementById('dashboardBarChart');
+        const ctx = canvas.getContext('2d');
         if(window.dashBarChart) window.dashBarChart.destroy();
+
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(15, 23, 42, 0.06)';
+        const labelColor = isDark ? '#9ca3af' : '#64748b';
+        const tooltipBg = isDark ? '#1f2937' : '#ffffff';
+        const tooltipTitle = isDark ? '#f9fafb' : '#111827';
+        const tooltipBody = isDark ? '#d1d5db' : '#374151';
+        const tooltipBorder = isDark ? '#374151' : '#e5e7eb';
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 250);
+        gradient.addColorStop(0, '#3b82f6');
+        gradient.addColorStop(1, '#1e40af');
+
         window.dashBarChart = new Chart(ctx, {
             type: 'bar',
-            data: { labels: ['Q1', 'Q2', 'Q3', 'Q4'], datasets: [{ label: 'Class Average', data: dataArray || [0,0,0,0], backgroundColor: '#3b82f6', borderRadius: 4, barThickness: 'flex', maxBarThickness: 40 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+            data: {
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                datasets: [{
+                    label: 'Class Average',
+                    data: dataArray || [0,0,0,0],
+                    backgroundColor: gradient,
+                    hoverBackgroundColor: '#1d4ed8',
+                    borderRadius: 10,
+                    borderSkipped: false,
+                    barThickness: 'flex',
+                    maxBarThickness: 56
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 8 } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: gridColor, drawBorder: false },
+                        border: { display: false },
+                        ticks: {
+                            color: labelColor,
+                            font: { size: 11, family: 'Inter', weight: '500' },
+                            stepSize: 25,
+                            callback: v => v + '%'
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            color: labelColor,
+                            font: { size: 12, family: 'Inter', weight: '600' }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: tooltipBg,
+                        titleColor: tooltipTitle,
+                        bodyColor: tooltipBody,
+                        borderColor: tooltipBorder,
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 10,
+                        displayColors: false,
+                        titleFont: { size: 12, family: 'Inter', weight: '600' },
+                        bodyFont: { size: 13, family: 'Inter' },
+                        callbacks: {
+                            title: items => 'Quarter ' + items[0].label.replace('Q',''),
+                            label: ctx => 'Class Average: ' + ctx.parsed.y.toFixed(1) + '%'
+                        }
+                    }
+                },
+                animation: { duration: 700, easing: 'easeOutQuart' }
+            }
         });
     }
 
