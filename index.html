@@ -181,6 +181,7 @@
             flex-direction: column;
             gap: 8px;
             margin-top: -5px; 
+            margin-bottom: 10px; /* Dagdag space sa idalom para di magdukot */
         }
         .ai-suggestion-chip {
             background: var(--card-bg);
@@ -206,6 +207,18 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
         }
+        /* Specific colors per icon to make it lively but professional */
+        .ai-suggestion-chip i.fa-star { color: #f59e0b; }
+        .ai-suggestion-chip i.fa-user-x { color: #ef4444; }
+        .ai-suggestion-chip i.fa-chart-line-down { color: #f43f5e; }
+        .ai-suggestion-chip i.fa-chart-pie { color: #3b82f6; }
+        .ai-suggestion-chip i.fa-calendar-days { color: #10b981; }
+        .ai-suggestion-chip i.fa-users { color: #8b5cf6; }
+        .ai-suggestion-chip i.fa-chalkboard-user { color: #06b6d4; }
+        .ai-suggestion-chip i.fa-file-circle-question { color: #f97316; }
+        .ai-suggestion-chip i.fa-magnifying-glass-chart { color: #ec4899; }
+        
+        .ai-suggestion-chip:hover i { color: white; }
 
         .ai-chat-input-area { padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center; }
         .ai-chat-input-area input { flex-grow: 1; padding: 12px 18px; border: 1px solid var(--border-color); border-radius: 25px; outline: none; font-size: 0.9rem; background: var(--input-bg); color: var(--text-dark); }
@@ -454,16 +467,31 @@
         
         <div class="ai-suggestions-container" id="aiSuggestions">
             <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Top students')">
-                <i class="fa-solid fa-star" style="color: #f59e0b;"></i> Top Students
+                <i class="fa-solid fa-star"></i> Top Students
             </div>
             <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Who is absent today?')">
-                <i class="fa-solid fa-user-x" style="color: #ef4444;"></i> Today's Absences
+                <i class="fa-solid fa-user-x"></i> Today's Absences
             </div>
             <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Failing students')">
-                <i class="fa-solid fa-chart-line-down" style="color: #ef4444;"></i> Failing Students
+                <i class="fa-solid fa-chart-line-down"></i> Failing Students
             </div>
             <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Class summary')">
-                <i class="fa-solid fa-chart-pie" style="color: #3b82f6;"></i> Class Summary
+                <i class="fa-solid fa-chart-pie"></i> Class Summary
+            </div>
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('What is my schedule?')">
+                <i class="fa-solid fa-calendar-days"></i> My Schedule
+            </div>
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('How many students do I have?')">
+                <i class="fa-solid fa-users"></i> Total Population
+            </div>
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('Who are my facilitators?')">
+                <i class="fa-solid fa-chalkboard-user"></i> Assigned Facilitators
+            </div>
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('How to check missing requirements?')">
+                <i class="fa-solid fa-file-circle-question"></i> Missing Requirements Guide
+            </div>
+            <div class="ai-suggestion-chip" onclick="sendSuggestedMessage('How to check a student\'s grade?')">
+                <i class="fa-solid fa-magnifying-glass-chart"></i> Check Student Grade Guide
             </div>
         </div>
     </div>
@@ -627,6 +655,12 @@
         if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
             return "Hello there! How can I assist you with your classes today?";
         }
+
+        // NEW: specific handling for the Help/Guide queries
+        if (query.includes('how to check grade') || query.includes('check a student\'s grade')) {
+            return "To check a specific student's grade, simply ask me:<br><br>💬 <em>'What is the grade of [Student Name]?'</em><br>💬 <em>'Score of [Student Name]'</em>";
+        }
+
         const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
         const sections = secRes || [];
         if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
@@ -653,7 +687,7 @@
         if (query.includes('kulang') || query.includes('missing') || query.includes('wala pasa') || query.includes('wala ka kuha') || query.includes('wala na pasa')) {
             let nameExtracted = query.split(/ni |of |kay |si |for /)[1]?.replace('?', '').trim();
             if(!nameExtracted) {
-                 return "Please specify the student's name to check their missing requirements. (e.g., 'What is missing for John?' or 'Ano ang wala napasa ni Anna?')";
+                 return "Please specify the student's name to check their missing requirements.<br><br>💡 <strong>Example:</strong><br>💬 <em>'What is missing for John?'</em><br>💬 <em>'Ano ang wala napasa ni Anna?'</em>";
             }
             let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
             if(!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your list. Please check the spelling.`;
@@ -748,7 +782,7 @@
             if(facilitators.length === 0) return "No facilitators assigned yet.";
             let res = "<strong>Facilitators:</strong><br><br>"; facilitators.forEach(f => { res += `👤 <strong>${f.full_name}</strong><br><small>Assigned to: ${f.section}</small><br><br>`; }); return res;
         } else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
-            return `You handle <strong>${students.length} students</strong> across <strong>${sections.length} sections</strong>.`;
+            return `You handle a total of <strong>${students.length} students</strong> across <strong>${sections.length} sections</strong>.`;
         } else if (query.includes('id number') || query.includes('id ni') || query.includes('id of')) {
             let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
             if(!nameExtracted) return "Please specify the student.";
