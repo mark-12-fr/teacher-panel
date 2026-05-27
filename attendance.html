@@ -183,9 +183,10 @@
         /* TAGS */
         .tags-wrapper { display: flex; gap: 8px; flex-wrap: wrap; }
         .tag { padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-        .tag-students { background: #dcfce7; color: #166534; }
-        .tag-room { background: #fef9c3; color: #b45309; }
-        .tag-sem { background: #e0e7ff; color: #3730a3; }
+        .tag-students,
+        .tag-room,
+        .tag-sem,
+        .tag-year { background: #dbeafe; color: #1e40af; }
 
         /* ACTION BUTTONS & THREE DOT MENU - ADJUSTED FOR GRID */
         .card-actions {
@@ -843,9 +844,7 @@
                         <span class="tag tag-students"><i data-lucide="user"></i> ${studentCount} Students</span>
                         <span class="tag tag-room"><i data-lucide="building"></i> ${sec.room}</span>
                         <span class="tag tag-sem"><i data-lucide="calendar"></i> ${sem}</span>
-                        <span class="tag" style="background:#fce7f3; color:#9d174d;">
-    <i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}
-</span>
+                        <span class="tag tag-year"><i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}</span>
                     </div>
                 </div>
                 <div class="card-actions">
