@@ -542,28 +542,28 @@
         savedFacilitators.forEach((fac) => {
             let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
 
-            // 🔥 UPDATED LIVE PRESENCE STATUS LOGIC 🔥
+            // 🔥 PRESENCE LOGIC — trust the heartbeat timestamp first 🔥
+            // Even if the status column says "Active", we only display Active
+            // when the last heartbeat is within HEARTBEAT_TIMEOUT_MIN minutes.
+            // This prevents stale "Active" rows when the facilitator's browser
+            // crashed / lost network / never fired pagehide.
+            const HEARTBEAT_TIMEOUT_MIN = 3;
             let isFaciActive = false;
 
-            // Direct check on the "status" column from Supabase DB
-            if (fac.status && fac.status.toLowerCase() === 'active') {
-                isFaciActive = true;
-            } else if (fac.status && fac.status.toLowerCase() === 'inactive') {
-                isFaciActive = false;
-            } else if (fac.last_login) {
-                // Fallback: If status column is empty, check time heartbeat (less than 2 mins)
+            if (fac.last_login) {
                 let rawLogin = String(fac.last_login).trim().replace(' ', 'T');
                 if (!/(z|[+-]\d{2}:?\d{2})$/i.test(rawLogin)) rawLogin += 'Z';
                 const lastLoginDate = new Date(rawLogin);
-                const now = new Date();
-                const diffInMinutes = (now - lastLoginDate) / (1000 * 60);
-                
-                if (diffInMinutes < 2) {
-                    isFaciActive = true;
+                if (!isNaN(lastLoginDate.getTime())) {
+                    const diffInMinutes = (new Date() - lastLoginDate) / (1000 * 60);
+                    const recent = diffInMinutes < HEARTBEAT_TIMEOUT_MIN;
+                    const statusActive = fac.status && fac.status.toLowerCase() === 'active';
+                    // Must be both: status says Active AND heartbeat is recent.
+                    isFaciActive = recent && (statusActive || !fac.status);
                 }
             }
 
-            let statusHtml = isFaciActive 
+            let statusHtml = isFaciActive
                 ? `<span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span>`
                 : `<span style="color: #9ca3af; font-weight:600;"><i class="fa-solid fa-circle-minus"></i> Inactive</span>`;
 
