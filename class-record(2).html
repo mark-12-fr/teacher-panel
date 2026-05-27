@@ -370,6 +370,15 @@
                 <div class="dash-wrap"><h3>SEMESTER</h3><h4 id="dashSemester">Loading...</h4></div>
                 <div class="dash-wrap"><h3>SUBJECT</h3><h4 id="dashSubject">--</h4></div>
                 <div class="dash-wrap"><h3>TOTAL STUDENTS</h3><h4 id="dashTotalStudents">0</h4></div>
+                <div class="dash-wrap">
+                    <h3>QUARTER</h3>
+                    <select id="quarterSelect" class="badge" style="border:none; cursor:pointer; padding: 5px 12px; font-weight:700; font-size:1rem;">
+                        <option value="1">Q1</option>
+                        <option value="2">Q2</option>
+                        <option value="3">Q3</option>
+                        <option value="4">Q4</option>
+                    </select>
+                </div>
                 <div class="dash-wrap"><h3>SECTION</h3><h4 class="badge" id="dashSection">--</h4></div>
             </div>
 
@@ -489,9 +498,19 @@
                 return;
             }
 
+            // Restore the quarter the user last picked on this device.
+            const savedQuarter = localStorage.getItem(QUARTER_STORAGE_KEY);
+            if (savedQuarter && /^[1-4]$/.test(savedQuarter)) {
+                document.getElementById('quarterSelect').value = savedQuarter;
+            }
+            document.getElementById('quarterSelect').addEventListener('change', (e) => {
+                localStorage.setItem(QUARTER_STORAGE_KEY, e.target.value);
+                loadClassRecordData();
+            });
+
             await loadSectionDetails();
             await loadClassRecordData();
-            
+
             // TINAWAG NGA REALTIME LISTENER FUNCTION
             listenForRecordUpdates();
         };
@@ -568,8 +587,16 @@
             }
         }
 
+        const QUARTER_STORAGE_KEY = 'mjr_current_quarter';
+
+        function getCurrentQuarter() {
+            const sel = document.getElementById('quarterSelect');
+            return sel ? sel.value : '1';
+        }
+
         async function loadClassRecordData() {
             const tbody = document.getElementById('recordTableBody');
+            const quarter = getCurrentQuarter();
             try {
                 const { data: students, error: studErr } = await supabaseClient
                     .from('students')
@@ -582,7 +609,8 @@
                 const { data: records, error: recErr } = await supabaseClient
                     .from('class_records')
                     .select('*')
-                    .eq('section_id', currentSectionId);
+                    .eq('section_id', currentSectionId)
+                    .or(`quarter.eq.${quarter},quarter.is.null`);
 
                 if (recErr) throw recErr;
 
@@ -616,7 +644,13 @@
         function createRow(student, index, allRecords) {
             const tr = document.createElement('tr');
             tr.className = 'student-data-row';
-            const rec = allRecords ? allRecords.find(r => r.student_id === student.id) : null;
+            const quarter = getCurrentQuarter();
+            const studentRecs = allRecords ? allRecords.filter(r => r.student_id === student.id) : [];
+            // Prefer the row that matches the current quarter; fall back to a
+            // legacy row that doesn't have a quarter set yet.
+            const rec = studentRecs.find(r => String(r.quarter) === String(quarter))
+                        || studentRecs.find(r => r.quarter === null || r.quarter === undefined)
+                        || null;
             
             let html = `<td class="sticky-col">${index}</td><td class="sticky-col text-left group-divider search-target" title="${student.full_name}"><strong>${student.full_name}</strong></td>`;
             
@@ -675,27 +709,39 @@
             cell.style.opacity = '0.5';
 
             try {
-                const { data: existingRec, error: fetchErr } = await supabaseClient
+                const quarter = getCurrentQuarter();
+                // Look for the row that matches this quarter; also accept a
+                // legacy row whose quarter is still null so we can claim it.
+                const { data: existingRecs } = await supabaseClient
                     .from('class_records')
-                    .select('id')
+                    .select('id, quarter')
                     .eq('student_id', studentId)
-                    .eq('section_id', currentSectionId)
-                    .single();
+                    .eq('section_id', currentSectionId);
+
+                const existingRec = (existingRecs || []).find(r => String(r.quarter) === String(quarter))
+                                  || (existingRecs || []).find(r => r.quarter === null || r.quarter === undefined);
 
                 let saveErr = null;
 
                 if (existingRec) {
+                    const payload = { [field]: newValue === "" ? null : newValue };
+                    // Stamp the quarter on legacy rows that were saved before we
+                    // had a selector.
+                    if (existingRec.quarter === null || existingRec.quarter === undefined) {
+                        payload.quarter = quarter;
+                    }
                     const { error } = await supabaseClient
                         .from('class_records')
-                        .update({ [field]: newValue === "" ? null : newValue })
+                        .update(payload)
                         .eq('id', existingRec.id);
                     saveErr = error;
                 } else {
                     const { error } = await supabaseClient
                         .from('class_records')
-                        .insert({ 
-                            student_id: studentId, 
+                        .insert({
+                            student_id: studentId,
                             section_id: currentSectionId,
+                            quarter: quarter,
                             [field]: newValue === "" ? null : newValue
                         });
                     saveErr = error;
