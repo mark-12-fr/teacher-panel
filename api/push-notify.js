@@ -61,6 +61,60 @@ async function sendAll(subs, payload) {
     };
 }
 
+async function nameOfFacilitator(facilitatorId) {
+    if (!facilitatorId) return null;
+    const { data } = await supabase
+        .from('facilitators')
+        .select('full_name')
+        .eq('id', facilitatorId)
+        .maybeSingle();
+    return (data && data.full_name) || null;
+}
+
+async function nameOfStudent(studentId) {
+    if (!studentId) return null;
+    const { data } = await supabase
+        .from('students')
+        .select('full_name')
+        .eq('id', studentId)
+        .maybeSingle();
+    return (data && data.full_name) || null;
+}
+
+async function nameOfTeacher(teacherId) {
+    if (!teacherId) return null;
+    const { data } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', teacherId)
+        .maybeSingle();
+    return (data && data.full_name) || null;
+}
+
+function changedFieldsFor(table, record, old) {
+    if (!old || !record) return [];
+    const SKIP = new Set(['id', 'created_at', 'updated_at', 'section_id', 'student_id', 'date', 'section', 'subject', 'facilitator_id', 'teacher_id', 'quarter']);
+    const changed = [];
+    for (const k of Object.keys(record)) {
+        if (SKIP.has(k)) continue;
+        const a = record[k], b = old[k];
+        if ((a == null && b == null) || a === b) continue;
+        changed.push({ key: k, before: b, after: a });
+    }
+    return changed;
+}
+
+function prettyField(k) {
+    if (k.startsWith('module_'))    return 'Module ' + k.slice(7);
+    if (k.startsWith('activity_'))  return 'Activity ' + k.slice(9);
+    if (k.startsWith('pt_'))        return 'Performance Task ' + k.slice(3);
+    if (k === 'qe')                 return 'Quarterly Exam';
+    if (k === 'at')                 return 'Attendance/Talent';
+    if (k === 'status')             return 'Status';
+    if (k === 'remarks')            return 'Remarks';
+    return k.replace(/_/g, ' ');
+}
+
 module.exports = async (req, res) => {
     if (req.method === 'GET') {
         return res.status(200).json({ ok: true, msg: 'mjr push-notify ready' });
@@ -81,8 +135,6 @@ module.exports = async (req, res) => {
     }
     body = body || {};
 
-    // Supabase webhook payload shape:
-    //   { type: 'INSERT'|'UPDATE'|'DELETE', table, record, old_record, schema }
     const table = body.table;
     const type = body.type || body.eventType;
     const record = body.record || body.new || null;
@@ -91,14 +143,13 @@ module.exports = async (req, res) => {
 
     if (!table || !data) return res.status(200).json({ skipped: 'no payload' });
 
-    const targets = []; // [{ user_type, user_id }]
+    const targets = [];
     let title = 'MJR Update';
     let body_text = '';
     let url = '/';
 
     try {
         if (table === 'attendance') {
-            // Notify the teacher who owns the section.
             const { data: section } = await supabase
                 .from('sections')
                 .select('teacher_id, id, title, subject')
@@ -109,8 +160,6 @@ module.exports = async (req, res) => {
                 url = '/attendance(2).html?id=' + section.id;
             }
 
-            // And notify the section's facilitators (so if a co-faci edits,
-            // everyone else who owns this section hears it).
             const { data: facis } = await supabase
                 .from('facilitators')
                 .select('account_id')
@@ -118,30 +167,54 @@ module.exports = async (req, res) => {
                 .not('account_id', 'is', null);
             (facis || []).forEach(f => targets.push({ user_type: 'faci', user_id: f.account_id }));
 
-            title = 'Attendance — ' + (data.section || '');
+            const sectionLabel = data.section || (section && section.title) || 'section';
+            const student = data.student_name || (await nameOfStudent(data.student_id)) || 'a student';
             const status = data.status || (type === 'DELETE' ? 'cleared' : 'updated');
-            body_text = (data.student_name || 'A student') + ': ' + status + (data.date ? ' (' + data.date + ')' : '');
+            const faciName = await nameOfFacilitator(data.facilitator_id);
+
+            title = '🗓️ Attendance · ' + sectionLabel;
+            const who = faciName ? (faciName + ' marked ') : '';
+            const dateLabel = data.date ? ' on ' + data.date : '';
+            body_text = who + student + ' as ' + status + dateLabel
+                      + (data.remarks ? ' — ' + data.remarks : '');
         } else if (table === 'class_records') {
             const { data: section } = await supabase
                 .from('sections')
                 .select('teacher_id, id, title, subject')
                 .eq('id', data.section_id)
                 .maybeSingle();
-            if (section) {
-                if (section.teacher_id) targets.push({ user_type: 'teacher', user_id: section.teacher_id });
+            if (!section) return res.status(200).json({ skipped: 'unknown section_id' });
 
-                const { data: facis } = await supabase
-                    .from('facilitators')
-                    .select('account_id')
-                    .eq('section', section.title)
-                    .not('account_id', 'is', null);
-                (facis || []).forEach(f => targets.push({ user_type: 'faci', user_id: f.account_id }));
+            if (section.teacher_id) targets.push({ user_type: 'teacher', user_id: section.teacher_id });
 
-                title = 'Class Record — ' + (section.title || '');
+            const { data: facis } = await supabase
+                .from('facilitators')
+                .select('account_id')
+                .eq('section', section.title)
+                .not('account_id', 'is', null);
+            (facis || []).forEach(f => targets.push({ user_type: 'faci', user_id: f.account_id }));
+
+            const student = await nameOfStudent(data.student_id);
+            const changed = changedFieldsFor(table, record, old);
+
+            title = '📘 Class Record · ' + (section.title || 'section');
+
+            if (changed.length === 1) {
+                const c = changed[0];
+                const beforeLabel = (c.before === null || c.before === undefined || c.before === '') ? '—' : c.before;
+                body_text = (student || 'A student') + ': ' + prettyField(c.key)
+                          + ' ' + beforeLabel + ' → ' + c.after;
+            } else if (changed.length > 1) {
+                body_text = (student || 'A student') + ' — ' + changed.length + ' scores updated ('
+                          + changed.slice(0, 3).map(c => prettyField(c.key)).join(', ')
+                          + (changed.length > 3 ? '…' : '') + ')';
+            } else {
                 body_text = (type === 'INSERT' ? 'New scores submitted' : 'Scores updated')
-                          + (section.subject ? ' for ' + section.subject : '');
-                url = '/class-record(2).html?id=' + section.id;
+                          + (student ? ' for ' + student : '')
+                          + (section.subject ? ' · ' + section.subject : '');
             }
+
+            url = '/class-record(2).html?id=' + section.id;
         } else {
             return res.status(200).json({ skipped: 'unhandled table: ' + table });
         }
@@ -152,7 +225,7 @@ module.exports = async (req, res) => {
         if (!subs.length) return res.status(200).json({ skipped: 'no subscriptions', targets: targets.length });
 
         const result = await sendAll(subs, { title, body: body_text, tag: table + ':' + (data.section_id || data.section || ''), url });
-        return res.status(200).json({ ok: true, targets: targets.length, subs: subs.length, ...result });
+        return res.status(200).json({ ok: true, targets: targets.length, subs: subs.length, title, body: body_text, ...result });
     } catch (err) {
         console.error('push-notify error', err);
         return res.status(500).json({ error: err.message });
