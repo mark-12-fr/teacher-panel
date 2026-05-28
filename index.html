@@ -542,8 +542,12 @@
             let fullName = profile?.full_name || googleName || 'Teacher';
             
             document.getElementById('userName').textContent = fullName;
-            localStorage.setItem('cached_user_name', fullName); 
-            
+            localStorage.setItem('cached_user_name', fullName);
+
+            // Subscribe this device to Web Push so the teacher gets OS
+            // notifications even when the panel is closed.
+            if (window.MJR_setupPush) window.MJR_setupPush('teacher', userId);
+
             const firstName = fullName.split(' ')[0];
             document.getElementById('welcomeText').innerHTML = `<i class="fa-solid fa-sun" style="color: #fbbf24;"></i> Welcome, Teacher${firstName.toLowerCase() !== 'teacher' ? ' ' + firstName : ''}!`;
             document.getElementById('aiGreeting').textContent = `Good day, Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}. I am your AI assistant. You may ask about your sections, students, schedules, notes, notices, attendance, or performance records.`;
