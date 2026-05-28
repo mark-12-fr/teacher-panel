@@ -1,5 +1,5 @@
 {
-  "name": "AcadTrack — Teacher Panel",
+  "name": "AcadTrack",
   "short_name": "AcadTrack",
   "description": "Student management system for teachers and facilitators — attendance, class records, and performance tracking.",
   "start_url": "/login.html",
