@@ -516,16 +516,6 @@
                         if (updatedSectionId == currentSectionId) {
                             loadClassRecordData(); // I-reload ang table para mag-reflect dayon ang score
                             showNotification("Records have been updated by a Facilitator!", "success");
-
-                            // Cross-device notification — skip the echo of our own save.
-                            if (window.MJR_notify && !(window.MJR_isLikelyOwnChange && window.MJR_isLikelyOwnChange())) {
-                                const sec = document.getElementById('dashSection') ? document.getElementById('dashSection').innerText : 'Section';
-                                window.MJR_notify({
-                                    title: 'Class Record updated — ' + sec,
-                                    body: 'A facilitator submitted or changed scores.',
-                                    tag: 'mjr-classrec-' + currentSectionId
-                                });
-                            }
                         }
                     }
                 )
