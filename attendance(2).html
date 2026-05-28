@@ -111,7 +111,7 @@
         .export-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-dark); padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px var(--shadow-color); transition: 0.2s; white-space: nowrap; }
         .export-btn:hover { background: var(--hover-bg); border-color: var(--accent-blue); }
 
-        .dashboard-wrapper { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card-bg); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); margin-bottom: 25px; width: 100%; align-items: start; gap: 15px; transition: background 0.3s, box-shadow 0.3s; }
+        .dashboard-wrapper { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--card-bg); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px var(--shadow-color); margin-bottom: 25px; width: 100%; align-items: start; gap: 15px; transition: background 0.3s, box-shadow 0.3s; }
         .dash-wrap { text-align: left; }
         .dash-wrap h3 { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
         .dash-wrap h4 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-dark); word-wrap: break-word; }
@@ -286,6 +286,7 @@
             <div class="dash-wrap"><h3>SEMESTER</h3><h4 id="dashSemester">Loading...</h4></div>
             <div class="dash-wrap"><h3>SUBJECT</h3><h4 id="dashSubject">Loading...</h4></div>
             <div class="dash-wrap"><h3>TOTAL STUDENTS</h3><h4 id="dashTotalStudents">0</h4></div>
+            <div class="dash-wrap"><h3>QUARTER</h3><h4 class="badge" id="dashQuarter">Q1</h4></div>
             <div class="dash-wrap"><h3>SECTION</h3><h4 class="badge" id="dashSection">Loading...</h4></div>
         </div>
 
@@ -405,6 +406,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const currentSectionId = urlParams.get('id');
     let currentSectionTitle = "";
+    let currentSectionQuarter = '1';
     let globalStudents = [];
 
     let selectedMonth = new Date().getMonth(); 
@@ -796,7 +798,10 @@
         document.getElementById('dashSubject').innerText = secData.subject || '--';
         document.getElementById('dashSection').innerText = secData.title || '--';
         document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
-        currentSectionTitle = secData.title; 
+        currentSectionTitle = secData.title;
+        currentSectionQuarter = secData.quarter ? String(secData.quarter) : '1';
+        const qEl = document.getElementById('dashQuarter');
+        if (qEl) qEl.innerText = 'Q' + currentSectionQuarter;
     }
 
     async function loadSpreadsheetAttendance() {
@@ -1001,14 +1006,15 @@
                     .maybeSingle();
                 
                 if (existing) {
-                    await supabaseClient.from('attendance').update({ status: status }).eq('id', existing.id);
+                    await supabaseClient.from('attendance').update({ status: status, quarter: currentSectionQuarter }).eq('id', existing.id);
                 } else {
                     await supabaseClient.from('attendance').insert({
                         student_id_no: studentIdNo,
                         student_name: studentName,
                         date: dateStr,
                         status: status,
-                        section: currentSectionTitle
+                        section: currentSectionTitle,
+                        quarter: currentSectionQuarter
                     });
                 }
             }

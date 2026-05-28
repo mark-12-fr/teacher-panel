@@ -221,6 +221,15 @@
             opacity: 0.4;
             font-weight: 400;
         }
+        /* Cells whose value was carried over from a previous quarter
+           (because the current quarter has no value yet). Slight italic
+           + muted hue hints "this is from a different quarter — still
+           editable, will be saved to the current quarter on change." */
+        .editable-score.carried-over {
+            opacity: 0.55;
+            font-style: italic;
+        }
+        .editable-score.carried-over:focus { opacity: 1; font-style: normal; }
 
         /* TOAST NOTIFICATION */
         .toast-notification { visibility: hidden; min-width: 280px; background-color: #10b981; color: #fff; text-align: left; border-radius: 8px; padding: 16px 20px; position: fixed; z-index: 10000; right: 30px; top: 20px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; display: flex; align-items: center; gap: 12px; }
@@ -591,11 +600,15 @@
 
                 if (studErr) throw studErr;
 
+                // Fetch ALL quarters' records for the section, not just the
+                // current one. createRow displays the current quarter's value
+                // when it exists, otherwise carries over the previous
+                // quarter's value so scores never look "wiped" after the
+                // teacher switches the section's quarter.
                 const { data: records, error: recErr } = await supabaseClient
                     .from('class_records')
                     .select('*')
-                    .eq('section_id', currentSectionId)
-                    .or(`quarter.eq.${quarter},quarter.is.null`);
+                    .eq('section_id', currentSectionId);
 
                 if (recErr) throw recErr;
 
@@ -631,50 +644,60 @@
             tr.className = 'student-data-row';
             const quarter = getCurrentQuarter();
             const studentRecs = allRecords ? allRecords.filter(r => r.student_id === student.id) : [];
-            // Prefer the row that matches the current quarter; fall back to a
-            // legacy row that doesn't have a quarter set yet.
-            const rec = studentRecs.find(r => String(r.quarter) === String(quarter))
-                        || studentRecs.find(r => r.quarter === null || r.quarter === undefined)
-                        || null;
-            
+
+            // Row matching the section's CURRENT quarter (or legacy null row).
+            const currentRec = studentRecs.find(r => String(r.quarter) === String(quarter))
+                            || studentRecs.find(r => r.quarter === null || r.quarter === undefined)
+                            || null;
+
+            // Any OTHER quarters' rows the same student has, newest quarter
+            // first — used to carry over values so scores never "disappear"
+            // when the teacher switches the section's quarter.
+            const fallbackRecs = studentRecs
+                .filter(r => r !== currentRec)
+                .sort((a, b) => Number(b.quarter || 0) - Number(a.quarter || 0));
+
+            function valueFor(field) {
+                if (currentRec) {
+                    const v = currentRec[field];
+                    if (v !== null && v !== undefined && v !== '') return v;
+                }
+                for (const r of fallbackRecs) {
+                    const v = r[field];
+                    if (v !== null && v !== undefined && v !== '') return v;
+                }
+                return null;
+            }
+
+            function carriedFromOther(field) {
+                if (currentRec) {
+                    const v = currentRec[field];
+                    if (v !== null && v !== undefined && v !== '') return false;
+                }
+                return fallbackRecs.some(r => {
+                    const v = r[field];
+                    return v !== null && v !== undefined && v !== '';
+                });
+            }
+
             let html = `<td class="sticky-col">${index}</td><td class="sticky-col text-left group-divider search-target" title="${student.full_name}"><strong>${student.full_name}</strong></td>`;
-            
-            // For Modules (1-25)
-            for(let i=1; i<=25; i++) {
-                const val = rec ? rec[`module_${i}`] : null;
+
+            function cellFor(field, extraClass) {
+                const val = valueFor(field);
                 const display = (val === null || val === undefined || val === "") ? '' : val;
-                html += `<td class="editable-score${i===25 ? ' group-divider' : ''}"
+                const carry = carriedFromOther(field) ? ' carried-over' : '';
+                const cls = 'editable-score' + (extraClass ? ' ' + extraClass : '') + carry;
+                return `<td class="${cls}"
                             contenteditable="true"
-                            data-field="module_${i}"
+                            data-field="${field}"
                             data-studentid="${student.id}"
                             onfocus="this.dataset.oldVal = this.innerText.trim()"
                             onblur="saveScore(this)">${display}</td>`;
             }
 
-            // For Activities (1-10)
-            for(let i=1; i<=10; i++) {
-                const val = rec ? rec[`activity_${i}`] : null;
-                const display = (val === null || val === undefined || val === "") ? '' : val;
-                html += `<td class="editable-score${i===10 ? ' group-divider' : ''}"
-                            contenteditable="true"
-                            data-field="activity_${i}"
-                            data-studentid="${student.id}"
-                            onfocus="this.dataset.oldVal = this.innerText.trim()"
-                            onblur="saveScore(this)">${display}</td>`;
-            }
-
-            // For Other Fields (AT, PT 1, PT 2, QE)
-            const fields = ['at', 'pt_1', 'pt_2', 'qe'];
-            fields.forEach(f => {
-                const val = rec ? rec[f] : null;
-                const display = (val === null || val === undefined || val === "") ? '' : val;
-                html += `<td class="editable-score" 
-                            contenteditable="true" 
-                            data-field="${f}" 
-                            data-studentid="${student.id}" 
-                            onfocus="this.dataset.oldVal = this.innerText.trim()" 
-                            onblur="saveScore(this)">${display}</td>`;
-            });
+            for (let i = 1; i <= 25; i++) html += cellFor('module_' + i, i === 25 ? 'group-divider' : '');
+            for (let i = 1; i <= 10; i++) html += cellFor('activity_' + i, i === 10 ? 'group-divider' : '');
+            ['at', 'pt_1', 'pt_2', 'qe'].forEach(f => { html += cellFor(f); });
 
             tr.innerHTML = html;
             return tr;
