@@ -712,7 +712,8 @@
 
             // I-display ang name sa idalom sang Teacher Panel
             document.getElementById('userName').textContent = fullName;
-            localStorage.setItem('cached_user_name', fullName); 
+            localStorage.setItem('cached_user_name', fullName);
+            if (window.MJR_setupPush) window.MJR_setupPush('teacher', userId); 
 
             // Para sa AI Chatbot greeting
             const firstName = fullName.split(' ')[0];
