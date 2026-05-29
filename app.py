@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from flask_socketio import SocketIO, emit
 from datetime import datetime, timezone
 
 load_dotenv()
@@ -37,6 +38,18 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("Missing SUPABASE_URL or SUPABASE_KEY in .env")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+socketio = SocketIO(app, cors_allowed_origins="http://127.0.0.1:5500", async_mode="threading")
+
+
+@socketio.on('connect')
+def handle_connect():
+    print("Client connected via WebSocket!")
+    emit('realtime_notification', {'message': 'Real-time server connected!'})
+
+@socketio.on('send_global_notice')
+def handle_global_notice(data):
+    emit('realtime_notification', {'message': f"New Notice: {data['notice_text']}"}, broadcast=True)
 
 
 @app.route('/')
@@ -202,6 +215,8 @@ def handle_notices():
                 'date': date,
                 'color': color
             }).execute()
+
+            socketio.emit('realtime_notification', {'message': f"New Notice Added: {text}"}, broadcast=True)
             return jsonify({"message": "Notice added!", "data": response.data}), 201
         except Exception as e:
             print(f"Insert Notice Error: {e}")
@@ -619,6 +634,15 @@ def get_attendance():
         print(f"Get Attendance Error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/facilitator/sync', methods=['POST'])
+def receive_faci_data():
+    data = request.get_json()
+    print("Data received from Facilitator Web:", data)
+    return jsonify({
+        "status": "success",
+        "message": "Data received successfully from Facilitator. Ready for processing."
+    }), 200
+
 @app.route('/api/facilitators', methods=['GET', 'POST'])
 def handle_facilitators():
     if request.method == 'POST':
@@ -779,4 +803,4 @@ def submit_record():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5000)
+    socketio.run(app, debug=False, port=5000)
