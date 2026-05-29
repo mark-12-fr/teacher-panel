@@ -1,16 +1,3 @@
-/*
- * MJR AI Assistant — shared UI behaviour layer.
- *
- * Visual styling lives in ai-assistant.css (loaded in <head>) so the
- * polished look is applied during the initial render with no flash.
- * This file only handles DOM enhancements: header avatar/subtitle,
- * suggestion chip injection, animated typing dots, focus & disabled
- * states, and the formatFacilitatorLogsHTML helper used by each
- * page's processSmartDBQuery.
- *
- * The page-level sendAIMessage / processSmartDBQuery is never
- * overridden — each page keeps its own behaviour.
- */
 (function () {
     const SUGGESTIONS = [
         { icon: 'fa-solid fa-star', label: 'Top Students', query: 'Top students' },
@@ -42,7 +29,7 @@
         header.dataset.mjrEnhanced = 'true';
 
         if (window.lucide && typeof window.lucide.createIcons === 'function') {
-            try { window.lucide.createIcons(); } catch (e) { /* ignore */ }
+            try { window.lucide.createIcons(); } catch (e) {}
         }
     }
 
@@ -91,18 +78,19 @@
 
         const latestByFaci = {};
         if (client) {
-            try {
-                const faciIds = facilitators.map(f => f.id);
-                const { data } = await client.from('facilitator_logs')
+            const results = await Promise.all(facilitators.map(f =>
+                client.from('facilitator_logs')
                     .select('facilitator_id, time_in, time_out')
-                    .in('facilitator_id', faciIds)
-                    .order('time_in', { ascending: false });
-                (data || []).forEach(log => {
-                    if (!latestByFaci[log.facilitator_id]) latestByFaci[log.facilitator_id] = log;
-                });
-            } catch (err) {
-                console.error('formatFacilitatorLogsHTML: log fetch failed', err);
-            }
+                    .eq('facilitator_id', f.id)
+                    .order('time_in', { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
+                    .then(r => (r && r.data) || null)
+                    .catch(() => null)
+            ));
+            results.forEach(log => {
+                if (log) latestByFaci[log.facilitator_id] = log;
+            });
         }
 
         const fmt = ts => ts ? new Date(ts).toLocaleString('en-US', {
