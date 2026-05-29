@@ -8,6 +8,7 @@ from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timezone
+import bcrypt
 
 load_dotenv()
 
@@ -664,7 +665,7 @@ def handle_facilitators():
                 'section': section,
                 'subject': subject,
                 'account_id': account_id,
-                'temporary_password': temporary_password
+                'password_hash': bcrypt.hashpw(temporary_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             }).execute()
 
             return jsonify({"message": "Facilitator assigned successfully!", "data": response.data}), 201
@@ -685,6 +686,16 @@ def handle_facilitators():
             print(f"Get Facilitators Error: {e}")
             return jsonify({"error": str(e)}), 500
 
+def _verify_faci_password(password, faci_data):
+    stored_hash = faci_data.get('password_hash')
+    if stored_hash:
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+        except Exception:
+            return False
+    legacy = faci_data.get('temporary_password')
+    return legacy is not None and legacy == password
+
 @app.route('/api/faci/login', methods=['POST'])
 def faci_login():
     data = request.json
@@ -702,7 +713,7 @@ def faci_login():
 
         faci_data = response.data[0]
 
-        if faci_data['temporary_password'] != password:
+        if not _verify_faci_password(password, faci_data):
             return jsonify({"error": "Incorrect Password."}), 401
 
         try:
@@ -777,7 +788,10 @@ def submit_attendance():
 
 @app.route('/api/facilitators/<fac_id>', methods=['PUT'])
 def update_facilitator(fac_id):
-    data = request.json
+    data = request.json or {}
+    pw = data.pop('temporary_password', None)
+    if pw:
+        data['password_hash'] = bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     try:
         response = supabase.table('facilitators').update(data).eq('id', fac_id).execute()
         return jsonify({"message": "Facilitator successfully updated!", "data": response.data}), 200
