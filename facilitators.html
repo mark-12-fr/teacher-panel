@@ -945,7 +945,7 @@
             </select>
 
             <div id="credentialsSection">
-                <div style="display: flex; gap: 10px;">
+                <div id="accountIdRow" style="display: flex; gap: 10px;">
                     <input type="text" id="facAccountId" class="modal-input" placeholder="Account ID (e.g. FACI-001)"
                         style="flex: 1;">
                     <button onclick="generateCredentials()"
@@ -1029,6 +1029,9 @@
         const accessToken = localStorage.getItem('access_token');
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? 'http://127.0.0.1:5000'
+            : 'https://teacher-panel-d1kw.onrender.com';
 
 
         function showNotification(message, type = 'success') {
@@ -1326,6 +1329,8 @@
             document.getElementById('facPassword').value = '';
 
             document.getElementById('credentialsSection').style.display = 'block';
+            document.getElementById('accountIdRow').style.display = 'flex';
+            document.getElementById('facPassword').placeholder = 'Temporary Password';
             await loadAvailableSections();
             toggleFacilitatorModal();
         }
@@ -1337,9 +1342,11 @@
             if (fac) {
                 document.getElementById('facName').value = fac.full_name;
                 document.getElementById('facAccountId').value = fac.account_id;
-                document.getElementById('facPassword').value = fac.temporary_password;
+                document.getElementById('facPassword').value = '';
 
-                document.getElementById('credentialsSection').style.display = 'none';
+                document.getElementById('credentialsSection').style.display = 'block';
+                document.getElementById('accountIdRow').style.display = 'none';
+                document.getElementById('facPassword').placeholder = 'Leave blank to keep current password';
 
                 await loadAvailableSections();
                 setTimeout(() => { document.getElementById('facSection').value = fac.section; }, 50);
@@ -1361,25 +1368,36 @@
                 subject = selectedOption.getAttribute('data-subject') || '';
             }
 
-            if (full_name && section && subject && account_id && temporary_password) {
-                try {
-                    let error;
-                    const payload = { teacher_id: userId, full_name, section, subject, account_id, temporary_password };
+            const baseValid = full_name && section && subject;
+            const allValid = editingFacId ? baseValid : (baseValid && account_id && temporary_password);
 
+            if (allValid) {
+                try {
+                    let res;
                     if (editingFacId) {
-                        const { error: updateError } = await supabaseClient.from('facilitators').update(payload).eq('id', editingFacId);
-                        error = updateError;
+                        const payload = { teacher_id: userId, full_name, section, subject };
+                        if (temporary_password) payload.temporary_password = temporary_password;
+                        res = await fetch(`${API_URL}/api/facilitators/${editingFacId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
                     } else {
-                        const { error: insertError } = await supabaseClient.from('facilitators').insert([payload]);
-                        error = insertError;
+                        const payload = { teacher_id: userId, full_name, section, subject, account_id, temporary_password };
+                        res = await fetch(`${API_URL}/api/facilitators`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
                     }
 
-                    if (!error) {
+                    if (res.ok) {
                         loadFacilitators();
                         toggleFacilitatorModal();
                         showNotification(editingFacId ? "Facilitator updated!" : "Facilitator assigned!");
                     } else {
-                        showNotification(error.message || "Error saving facilitator", "error");
+                        const result = await res.json().catch(() => ({}));
+                        showNotification(result.error || "Error saving facilitator", "error");
                     }
                 } catch (error) { showNotification("Server error", "error"); }
             } else { showNotification("Please fill in all details and select a section!", "error"); }
