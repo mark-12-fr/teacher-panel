@@ -945,19 +945,16 @@
             </select>
 
             <div id="credentialsSection">
-                <div id="accountIdRow" style="display: flex; gap: 10px;">
-                    <input type="text" id="facAccountId" class="modal-input" placeholder="Account ID (e.g. FACI-001)"
-                        style="flex: 1;">
-                    <button onclick="generateCredentials()"
-                        style="margin-bottom: 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--accent-blue); padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem; white-space: nowrap; transition: 0.2s;">Auto-Gen</button>
+                <div id="accountIdRow">
+                    <input type="text" id="facAccountId" class="modal-input" placeholder="Account ID (e.g. FACI-001)">
                 </div>
-                <input type="text" id="facPassword" class="modal-input" placeholder="Temporary Password">
+                <input type="text" id="facPassword" class="modal-input" placeholder="Password">
             </div>
 
             <div style="display:flex; gap:10px; margin-top: 10px;">
                 <button onclick="toggleFacilitatorModal()"
                     style="flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; background: var(--input-bg); color: var(--text-dark); font-weight: 500;">Cancel</button>
-                <button onclick="saveFacilitator()"
+                <button id="assignBtn" onclick="saveFacilitator()"
                     style="flex:2; background:#3b82f6; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:600;">Assign</button>
             </div>
         </div>
@@ -1250,13 +1247,6 @@
             } catch (err) { console.error(err); }
         }
 
-        function generateCredentials() {
-            const randomId = 'FACI-' + Math.floor(1000 + Math.random() * 9000);
-            const randomPass = Math.random().toString(36).slice(-8);
-            document.getElementById('facAccountId').value = randomId;
-            document.getElementById('facPassword').value = randomPass;
-        }
-
         async function loadFacilitators(isSilent = false) {
             const userId = localStorage.getItem('user_id');
             if (!userId) return;
@@ -1329,8 +1319,8 @@
             document.getElementById('facPassword').value = '';
 
             document.getElementById('credentialsSection').style.display = 'block';
-            document.getElementById('accountIdRow').style.display = 'flex';
-            document.getElementById('facPassword').placeholder = 'Temporary Password';
+            document.getElementById('accountIdRow').style.display = 'block';
+            document.getElementById('facPassword').placeholder = 'Password';
             await loadAvailableSections();
             toggleFacilitatorModal();
         }
@@ -1346,7 +1336,7 @@
 
                 document.getElementById('credentialsSection').style.display = 'block';
                 document.getElementById('accountIdRow').style.display = 'none';
-                document.getElementById('facPassword').placeholder = 'Leave blank to keep current password';
+                document.getElementById('facPassword').placeholder = 'Password';
 
                 await loadAvailableSections();
                 setTimeout(() => { document.getElementById('facSection').value = fac.section; }, 50);
@@ -1360,7 +1350,7 @@
             const sectionSelect = document.getElementById('facSection');
             const section = sectionSelect.value;
             const account_id = document.getElementById('facAccountId').value.trim();
-            const temporary_password = document.getElementById('facPassword').value.trim();
+            const password = document.getElementById('facPassword').value.trim();
 
             let subject = '';
             if (sectionSelect.selectedIndex >= 0) {
@@ -1369,38 +1359,54 @@
             }
 
             const baseValid = full_name && section && subject;
-            const allValid = editingFacId ? baseValid : (baseValid && account_id && temporary_password);
+            const allValid = editingFacId ? baseValid : (baseValid && account_id && password);
 
-            if (allValid) {
-                try {
-                    let res;
-                    if (editingFacId) {
-                        const payload = { teacher_id: userId, full_name, section, subject };
-                        if (temporary_password) payload.temporary_password = temporary_password;
-                        res = await fetch(`${API_URL}/api/facilitators/${editingFacId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                    } else {
-                        const payload = { teacher_id: userId, full_name, section, subject, account_id, temporary_password };
-                        res = await fetch(`${API_URL}/api/facilitators`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                    }
+            if (!allValid) {
+                showNotification("Please fill in all details and select a section!", "error");
+                return;
+            }
 
-                    if (res.ok) {
-                        loadFacilitators();
-                        toggleFacilitatorModal();
-                        showNotification(editingFacId ? "Facilitator updated!" : "Facilitator assigned!");
-                    } else {
-                        const result = await res.json().catch(() => ({}));
-                        showNotification(result.error || "Error saving facilitator", "error");
-                    }
-                } catch (error) { showNotification("Server error", "error"); }
-            } else { showNotification("Please fill in all details and select a section!", "error"); }
+            const assignBtn = document.getElementById('assignBtn');
+            assignBtn.disabled = true;
+            assignBtn.textContent = 'Saving...';
+
+            try {
+                let res;
+                if (editingFacId) {
+                    const payload = { teacher_id: userId, full_name, section, subject };
+                    if (password) payload.password = password;
+                    res = await fetch(`${API_URL}/api/facilitators/${editingFacId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    const payload = { teacher_id: userId, full_name, section, subject, account_id, password };
+                    res = await fetch(`${API_URL}/api/facilitators`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (res.ok) {
+                    loadFacilitators();
+                    toggleFacilitatorModal();
+                    showNotification(editingFacId ? "Facilitator updated!" : "Facilitator assigned!");
+                } else {
+                    const result = await res.json().catch(() => ({}));
+                    const raw = result.error || "";
+                    const msg = (raw.includes('account_id') || raw.toLowerCase().includes('duplicate') || raw.toLowerCase().includes('already'))
+                        ? "That Account ID is already taken. Please use a different one."
+                        : (raw || "Error saving facilitator");
+                    showNotification(msg, "error");
+                }
+            } catch (error) {
+                showNotification("Server error. Please try again.", "error");
+            } finally {
+                assignBtn.disabled = false;
+                assignBtn.textContent = 'Assign';
+            }
         }
 
         async function deleteFacilitator(facId) {
