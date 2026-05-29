@@ -3,23 +3,17 @@ from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 from supabase import create_client, Client
 from dotenv import load_dotenv
-
-# Security kag Real-time Imports
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
-from flask_socketio import SocketIO, emit
 from datetime import datetime, timezone
 
 load_dotenv()
 
 app = Flask(__name__)
 
-# --- 1. SECURITY CONFIGURATION ---
-# Gina-allow lang ang imo frontend port (5500)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Rate Limiter para iwas spam/bots
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -27,7 +21,6 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# Content Security Policy para protektado sa scripts
 csp = {
     'default-src': [
         '\'self\'', '*.supabase.co', '*.supabase.in', 'https://fonts.googleapis.com',
@@ -37,10 +30,6 @@ csp = {
 }
 Talisman(app, force_https=False, content_security_policy=csp)
 
-# --- 2. SOCKET.IO & DATABASE SETUP ---
-# Use threading mode so Supabase/httpx requests stay stable on Windows.
-socketio = SocketIO(app, cors_allowed_origins="http://127.0.0.1:5500", async_mode="threading")
-
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
@@ -49,17 +38,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- WEBSOCKET EVENTS ---
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected via WebSocket!")
-    emit('realtime_notification', {'message': 'Real-time server connected!'})
 
-@socketio.on('send_global_notice')
-def handle_global_notice(data):
-    emit('realtime_notification', {'message': f"New Notice: {data['notice_text']}"}, broadcast=True)
-
-# --- AUTH & USER ROUTES ---
 @app.route('/')
 def home():
     return redirect("http://127.0.0.1:5501/login.html")
@@ -80,13 +59,11 @@ def signup():
     email = data.get('email')
     password = data.get('password')
     full_name = data.get('full_name')
-    
+
     try:
-        # 1. I-register ang user sa Supabase Auth
         response = supabase.auth.sign_up({"email": email, "password": password})
-        
+
         if response.user:
-            # 2. I-insert ang detalye sa 'profiles' table
             supabase.table('profiles').insert({
                 "id": response.user.id,
                 "full_name": full_name,
@@ -95,7 +72,7 @@ def signup():
             return jsonify({"message": "Success", "user_id": response.user.id}), 201
         else:
             return jsonify({"error": "Signup failed. User not created."}), 400
-            
+
     except Exception as e:
         print(f"Signup Error: {str(e)}")
         return jsonify({"error": f"Signup failed: {str(e)}"}), 400
@@ -120,9 +97,6 @@ def get_user(user_id):
         print(f"Get User Error: {e}")
         return jsonify({"error": "Database error"}), 400
 
-# ==========================================
-# --- SCHEDULE ROUTES ---
-# ==========================================
 @app.route('/api/schedules', methods=['GET', 'POST'])
 def handle_schedules():
     if request.method == 'POST':
@@ -168,10 +142,6 @@ def delete_schedule(schedule_id):
         print(f"Delete Schedule Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-# ==========================================
-# --- NOTES ROUTES ---
-# ==========================================
 @app.route('/api/notes', methods=['GET', 'POST'])
 def handle_notes():
     if request.method == 'POST':
@@ -213,10 +183,6 @@ def delete_note(note_id):
         print(f"Delete Note Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-# ==========================================
-# --- NOTICES ROUTES ---
-# ==========================================
 @app.route('/api/notices', methods=['GET', 'POST'])
 def handle_notices():
     if request.method == 'POST':
@@ -236,8 +202,6 @@ def handle_notices():
                 'date': date,
                 'color': color
             }).execute()
-            
-            socketio.emit('realtime_notification', {'message': f"New Notice Added: {text}"}, broadcast=True)
             return jsonify({"message": "Notice added!", "data": response.data}), 201
         except Exception as e:
             print(f"Insert Notice Error: {e}")
@@ -264,10 +228,6 @@ def delete_notice(notice_id):
         print(f"Delete Notice Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-# ==========================================
-# --- SECTIONS ROUTES (WITH SEMESTER) ---
-# ==========================================
 @app.route('/api/sections', methods=['GET', 'POST'])
 def handle_sections():
     if request.method == 'POST':
@@ -287,7 +247,7 @@ def handle_sections():
                 'title': title,
                 'subject': subject,
                 'room': room,
-                'semester': semester 
+                'semester': semester
             }).execute()
             return jsonify({"message": "Section added!", "data": response.data}), 201
         except Exception as e:
@@ -312,7 +272,7 @@ def handle_single_section(section_id):
         data = request.json
         if 'students' in data:
             del data['students']
-            
+
         try:
             response = supabase.table('sections').update(data).eq('id', section_id).execute()
             return jsonify({"message": "Section updated!", "data": response.data}), 200
@@ -327,11 +287,7 @@ def handle_single_section(section_id):
         except Exception as e:
             print(f"Delete Section Error: {e}")
             return jsonify({"error": str(e)}), 500
-        
 
-# ==========================================
-# --- STUDENTS ROUTES ---
-# ==========================================
 @app.route('/api/students', methods=['GET', 'POST'])
 def handle_students():
     if request.method == 'POST':
@@ -368,9 +324,6 @@ def handle_students():
             print(f"Get Students Error: {e}")
             return jsonify({"error": str(e)}), 500
 
-# ==========================================
-# --- AI ASSISTANT ROUTE ---
-# ==========================================
 def _clean_text(value, fallback=""):
     if value is None:
         return fallback
@@ -600,11 +553,7 @@ def ai_chat():
     except Exception as e:
         print(f"AI Chat Error: {e}")
         return jsonify({"error": "AI assistant server error"}), 500
-        
 
-# ==========================================
-# --- DASHBOARD STATS ROUTE (UPDATED) ---
-# ==========================================
 @app.route('/api/dashboard/stats', methods=['GET'])
 def get_dashboard_stats():
     teacher_id = request.args.get('teacher_id')
@@ -614,12 +563,10 @@ def get_dashboard_stats():
     clean_teacher_id = teacher_id.strip().replace('"', '').replace("'", "")
 
     try:
-        # 1. Get Sections
         sections_res = supabase.table('sections').select('id, title').eq('teacher_id', clean_teacher_id).execute()
         sections_data = sections_res.data
         total_sections = len(sections_data)
-        
-        # 2. Get Students Count
+
         total_students = 0
         section_titles = []
         if total_sections > 0:
@@ -628,13 +575,11 @@ def get_dashboard_stats():
                 stud_res = supabase.table('students').select('id').eq('section_id', sec['id']).execute()
                 total_students += len(stud_res.data)
 
-        # 3. Get Today's Attendance base sa gin-submit sang Faci
-        today_date = datetime.now().strftime("%d/%m/%Y") # DD/MM/YYYY format
+        today_date = datetime.now().strftime("%d/%m/%Y")
         today_present = 0
         today_absent = 0
-        
+
         if section_titles:
-            # Pangitaon tanan nga attendance nga nagtugma sa section sang teacher kag sa petsa subong
             att_res = supabase.table('attendance').select('status').in_('section', section_titles).eq('date', today_date).execute()
             for record in att_res.data:
                 if record['status'] == 'Present':
@@ -647,108 +592,75 @@ def get_dashboard_stats():
             "total_students": total_students,
             "today_present": today_present,
             "today_absent": today_absent,
-            "top_performers": [], 
-            "overview_data": [] 
+            "top_performers": [],
+            "overview_data": []
         }), 200
 
     except Exception as e:
         print(f"Dashboard Stats Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# ==========================================
-# --- GET ATTENDANCE FOR TEACHER PANEL ---
-# ==========================================
 @app.route('/api/attendance', methods=['GET'])
 def get_attendance():
-    # GINDUGANG: I-require ang teacher_id
     teacher_id = request.args.get('teacher_id')
     if not teacher_id:
         return jsonify({"error": "Missing teacher_id parameter"}), 400
 
     try:
-        # GINDUGANG: Kuhaon anay ang mga sections nga gina-uyatan sang teacher
         sections_res = supabase.table('sections').select('title').eq('teacher_id', teacher_id).execute()
         section_titles = [sec['title'] for sec in sections_res.data]
 
-        # Kon wala sya section, matik empty ang list sang attendance
         if not section_titles:
             return jsonify({"data": []}), 200
 
-        # GINDUGANG: Kuhaon lang ang attendance nga nagatugma sa section_titles sang teacher
         response = supabase.table('attendance').select('*').in_('section', section_titles).order('created_at', desc=True).execute()
         return jsonify({"data": response.data}), 200
     except Exception as e:
         print(f"Get Attendance Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# ==========================================
-# --- FACILITATOR SYNC ROUTE (NEW) ---
-# ==========================================
-@app.route('/api/facilitator/sync', methods=['POST'])
-def receive_faci_data():
-    """
-    HANDA NA PARA SA FACI WEB.
-    Diri ma-sud ang Modules, Exams, Activity, kag Attendance halin sa mga Facilitators.
-    """
-    data = request.get_json()
-    print("Data received from Facilitator Web:", data)
-    return jsonify({
-        "status": "success",
-        "message": "Data received successfully from Facilitator. Ready for processing."
-    }), 200
-    
-# ==========================================
-# --- FACILITATORS ROUTES (NEW) ---
-# ==========================================
 @app.route('/api/facilitators', methods=['GET', 'POST'])
 def handle_facilitators():
     if request.method == 'POST':
         data = request.json
-        teacher_id = data.get('teacher_id') # GINDUGANG
+        teacher_id = data.get('teacher_id')
         full_name = data.get('full_name')
         section = data.get('section')
         subject = data.get('subject')
         account_id = data.get('account_id')
         temporary_password = data.get('temporary_password')
 
-        # I-check kon kompleto ang data halin sa form
         if not all([teacher_id, full_name, section, subject, account_id, temporary_password]):
             return jsonify({"error": "Missing required fields"}), 400
 
         try:
-            # I-save sa 'facilitators' table sa Supabase upod ang teacher_id
             response = supabase.table('facilitators').insert({
-                'teacher_id': teacher_id, # GINDUGANG
+                'teacher_id': teacher_id,
                 'full_name': full_name,
                 'section': section,
                 'subject': subject,
                 'account_id': account_id,
                 'temporary_password': temporary_password
             }).execute()
-            
+
             return jsonify({"message": "Facilitator assigned successfully!", "data": response.data}), 201
-            
+
         except Exception as e:
             print(f"Insert Facilitator Error: {e}")
             return jsonify({"error": str(e)}), 500
 
     elif request.method == 'GET':
-        # GINDUGANG: I-require ang teacher_id
         teacher_id = request.args.get('teacher_id')
         if not teacher_id:
             return jsonify({"error": "Missing teacher_id parameter"}), 400
 
         try:
-            # GINDUGANG: I-filter gamit ang teacher_id
             response = supabase.table('facilitators').select('*').eq('teacher_id', teacher_id).order('created_at', desc=True).execute()
             return jsonify({"data": response.data}), 200
         except Exception as e:
             print(f"Get Facilitators Error: {e}")
             return jsonify({"error": str(e)}), 500
-        
-# ==========================================
-# --- FACILITATOR LOGIN ROUTE (UPDATED) ---
-# ==========================================
+
 @app.route('/api/faci/login', methods=['POST'])
 def faci_login():
     data = request.json
@@ -759,20 +671,16 @@ def faci_login():
         return jsonify({"error": "Please enter both Account ID and Password."}), 400
 
     try:
-        # Pangitaon ang facilitator sa database gamit ang Account ID
         response = supabase.table('facilitators').select('*').eq('account_id', account_id).execute()
-        
-        # Kon wala may nakita nga account
+
         if not response.data:
             return jsonify({"error": "Invalid Account ID."}), 401
-        
+
         faci_data = response.data[0]
-        
-        # I-check kon nagatugma ang password
+
         if faci_data['temporary_password'] != password:
             return jsonify({"error": "Incorrect Password."}), 401
-        
-        # 🔥 UPDATE STATUS KAG LAST LOGIN DAYON PAG LOGIN 🔥
+
         try:
             supabase.table('facilitators').update({
                 'last_login': datetime.now(timezone.utc).isoformat(),
@@ -781,7 +689,6 @@ def faci_login():
         except Exception as e:
             print(f"Failed to update login status in backend: {e}")
 
-        # Kon sakto tanan, i-return ang success response dala ang details sang faci
         return jsonify({
             "message": "Login successful",
             "faci": {
@@ -795,100 +702,76 @@ def faci_login():
     except Exception as e:
         print(f"Faci Login Error: {e}")
         return jsonify({"error": "Server error. Please try again later."}), 500
-    
-# ==========================================
-# --- FACILITATOR PRESENCE / HEARTBEAT ROUTE (UPDATED) ---
-# ==========================================
+
 @app.route('/api/faci/presence', methods=['POST'])
 @limiter.exempt
 def faci_presence():
     data = request.get_json(silent=True) or {}
     faci_id = data.get('faci_id')
-    
+
     if not faci_id:
         return jsonify({"error": "Missing faci_id"}), 400
 
-    # online True -> Active (green); online False (logout) -> Inactive (gray)
     is_online = data.get('online', True)
     now_iso = datetime.now(timezone.utc).isoformat()
     status_val = 'Active' if is_online else 'Inactive'
 
     try:
-        # Update both last_login and status seamlessly
         supabase.table('facilitators').update({
             'last_login': now_iso,
             'status': status_val
         }).eq('id', faci_id).execute()
-        
+
         return jsonify({
-            "status": "success", 
+            "status": "success",
             "last_login": now_iso,
             "faci_status": status_val
         }), 200
-        
+
     except Exception as e:
         print(f"Faci Presence Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# ==========================================
-# --- DELETE FACILITATOR ROUTE ---
-# ==========================================
 @app.route('/api/facilitators/<fac_id>', methods=['DELETE'])
 def delete_facilitator(fac_id):
     try:
-        # I-delete ang record sa 'facilitators' table gamit ang ID
         response = supabase.table('facilitators').delete().eq('id', fac_id).execute()
-        
         return jsonify({"message": "Facilitator successfully deleted!"}), 200
-        
     except Exception as e:
         print(f"Delete Facilitator Error: {e}")
         return jsonify({"error": "Failed to delete facilitator. Please try again."}), 500
-    
-# ==========================================
-# --- SUBMIT ATTENDANCE ROUTE ---
-# ==========================================
+
 @app.route('/api/attendance/submit', methods=['POST'])
 def submit_attendance():
-    data = request.json # Ini nagabaton sang array sang mga estudyante halin sa frontend
+    data = request.json
     try:
-        # I-insert diretso sa Supabase ang bilog nga listahan
         response = supabase.table('attendance').insert(data).execute()
         return jsonify({"message": "Attendance successfully saved to database!"}), 201
     except Exception as e:
         print(f"Attendance Submit Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# ==========================================
-# --- UPDATE/EDIT FACILITATOR ROUTE ---
-# ==========================================
 @app.route('/api/facilitators/<fac_id>', methods=['PUT'])
 def update_facilitator(fac_id):
     data = request.json
     try:
-        # I-update ang record sa 'facilitators' table gamit ang ID
         response = supabase.table('facilitators').update(data).eq('id', fac_id).execute()
         return jsonify({"message": "Facilitator successfully updated!", "data": response.data}), 200
     except Exception as e:
         print(f"Update Facilitator Error: {e}")
         return jsonify({"error": "Failed to update facilitator. Please try again."}), 500
-    
-# ==========================================
-# --- SUBMIT CLASS RECORD SCORES ---
-# ==========================================
+
 @app.route('/api/record/submit', methods=['POST'])
 def submit_record():
-    data = request.json # Array sang mga estudyante kag ila scores
+    data = request.json
     if not data:
-         return jsonify({"error": "No data provided"}), 400
-         
+        return jsonify({"error": "No data provided"}), 400
+
     section = data[0].get('section')
-    
+
     try:
-        # Delete daan nga records sang section para i-overwrite (Upsert logic)
         supabase.table('class_records').delete().eq('section', section).execute()
-        
-        # Insert ang bag-o nga scores
+
         response = supabase.table('class_records').insert(data).execute()
         return jsonify({"message": "Class records successfully saved!"}), 201
     except Exception as e:
@@ -896,4 +779,4 @@ def submit_record():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    socketio.run(app, debug=False, port=5000)
+    app.run(debug=False, port=5000)

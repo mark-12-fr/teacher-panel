@@ -4,7 +4,5 @@ python-dotenv==1.2.2
 flask-cors==6.0.2
 Flask-Limiter==4.1.1
 flask-talisman==1.1.0
-Flask-SocketIO==5.6.0
-eventlet==0.40.4
 google-genai==1.75.0
 gunicorn

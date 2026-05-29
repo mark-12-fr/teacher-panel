@@ -1,20 +1,3 @@
-/*
- * /api/push-notify — Vercel serverless function
- *
- * Triggered by Supabase Database Webhooks on insert/update of
- * `attendance` and `class_records`. Looks up which user(s) to notify,
- * pulls their push subscriptions, and fans out OS-level push
- * notifications through Web Push.
- *
- * Required env vars on the Vercel project:
- *   VAPID_PUBLIC_KEY      — base64url public key, matches frontend
- *   VAPID_PRIVATE_KEY     — base64url private key (server only)
- *   VAPID_SUBJECT         — e.g. mailto:admin@yourdomain.com
- *   SUPABASE_URL          — your Supabase project URL
- *   SUPABASE_SERVICE_ROLE_KEY — service role key (server only)
- *   PUSH_WEBHOOK_SECRET   — optional shared secret. If set, requests
- *                           must include header x-mjr-secret matching it.
- */
 const webpush = require('web-push');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -49,7 +32,6 @@ async function sendAll(subs, payload) {
     const results = await Promise.allSettled(subs.map(s =>
         webpush.sendNotification(s.subscription, json).catch(err => {
             if (err && (err.statusCode === 404 || err.statusCode === 410)) {
-                // Subscription has expired or been unsubscribed — purge it.
                 return supabase.from('push_subscriptions').delete().eq('id', s.id).then(() => { throw err; });
             }
             throw err;
@@ -77,16 +59,6 @@ async function nameOfStudent(studentId) {
         .from('students')
         .select('full_name')
         .eq('id', studentId)
-        .maybeSingle();
-    return (data && data.full_name) || null;
-}
-
-async function nameOfTeacher(teacherId) {
-    if (!teacherId) return null;
-    const { data } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', teacherId)
         .maybeSingle();
     return (data && data.full_name) || null;
 }
