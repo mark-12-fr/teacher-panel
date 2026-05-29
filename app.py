@@ -653,9 +653,9 @@ def handle_facilitators():
         section = data.get('section')
         subject = data.get('subject')
         account_id = data.get('account_id')
-        temporary_password = data.get('temporary_password')
+        password = data.get('password')
 
-        if not all([teacher_id, full_name, section, subject, account_id, temporary_password]):
+        if not all([teacher_id, full_name, section, subject, account_id, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
         try:
@@ -665,13 +665,15 @@ def handle_facilitators():
                 'section': section,
                 'subject': subject,
                 'account_id': account_id,
-                'password_hash': bcrypt.hashpw(temporary_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                'password': bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             }).execute()
 
             return jsonify({"message": "Facilitator assigned successfully!", "data": response.data}), 201
 
         except Exception as e:
             print(f"Insert Facilitator Error: {e}")
+            if 'account_id' in str(e) or 'duplicate' in str(e).lower():
+                return jsonify({"error": "That Account ID is already taken. Please use a different one."}), 409
             return jsonify({"error": str(e)}), 500
 
     elif request.method == 'GET':
@@ -686,15 +688,14 @@ def handle_facilitators():
             print(f"Get Facilitators Error: {e}")
             return jsonify({"error": str(e)}), 500
 
-def _verify_faci_password(password, faci_data):
-    stored_hash = faci_data.get('password_hash')
-    if stored_hash:
-        try:
-            return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
-        except Exception:
-            return False
-    legacy = faci_data.get('temporary_password')
-    return legacy is not None and legacy == password
+def _verify_faci_password(attempt, faci_data):
+    stored = faci_data.get('password') or faci_data.get('password_hash')
+    if not stored:
+        return False
+    try:
+        return bcrypt.checkpw(attempt.encode('utf-8'), stored.encode('utf-8'))
+    except Exception:
+        return False
 
 @app.route('/api/faci/login', methods=['POST'])
 def faci_login():
@@ -789,9 +790,9 @@ def submit_attendance():
 @app.route('/api/facilitators/<fac_id>', methods=['PUT'])
 def update_facilitator(fac_id):
     data = request.json or {}
-    pw = data.pop('temporary_password', None)
+    pw = data.pop('password', None)
     if pw:
-        data['password_hash'] = bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        data['password'] = bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     try:
         response = supabase.table('facilitators').update(data).eq('id', fac_id).execute()
         return jsonify({"message": "Facilitator successfully updated!", "data": response.data}), 200
