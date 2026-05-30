@@ -602,15 +602,24 @@ def ai_evaluate():
             f"CLASS DATA:\n{context}\n\n"
             f"TEACHER'S QUESTION: {question}"
         )
-        model = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
-        resp = client.models.generate_content(model=model, contents=prompt)
-        reply = (getattr(resp, 'text', '') or '').strip()
-        if not reply:
-            return jsonify({"error": "The AI did not return an analysis. Please try again."}), 502
-        return jsonify({"reply": reply}), 200
+        last_err = None
+        tried = []
+        for m in [os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'), 'gemini-1.5-flash']:
+            if m in tried:
+                continue
+            tried.append(m)
+            try:
+                resp = client.models.generate_content(model=m, contents=prompt)
+                reply = (getattr(resp, 'text', '') or '').strip()
+                if reply:
+                    return jsonify({"reply": reply}), 200
+            except Exception as me:
+                last_err = me
+        print(f"AI Evaluate Error (models {tried}): {last_err}")
+        return jsonify({"error": "AI error: " + str(last_err)[:300]}), 502
     except Exception as e:
         print(f"AI Evaluate Error: {e}")
-        return jsonify({"error": "AI is temporarily unavailable. Please try again."}), 500
+        return jsonify({"error": "AI error: " + str(e)[:300]}), 500
 
 @app.route('/api/dashboard/stats', methods=['GET'])
 def get_dashboard_stats():
