@@ -583,8 +583,8 @@ def ai_evaluate():
 
     if not question:
         return jsonify({"error": "Missing question"}), 400
-    if len(context) > 12000:
-        context = context[:12000]
+    if len(context) > 30000:
+        context = context[:30000]
 
     try:
         from google import genai
@@ -593,12 +593,16 @@ def ai_evaluate():
             "You are a friendly and helpful AI teaching assistant and coach for a senior high school teacher in the "
             "Philippines. Answer the teacher's question helpfully and conversationally. ALWAYS reply in clear English, "
             "even if the question is written in another language.\n\n"
-            "You are given the teacher's class data below. Use it whenever the question relates to students, grades, "
-            "attendance, or performance: analyze the data, point out the weak areas, and give specific, actionable "
-            "suggestions and next steps. Passing grade is 75%; grade weights are Written Work 30%, Performance Tasks "
-            "50%, Quarterly Exam 20%. For general questions (teaching strategies, classroom management, motivation, "
-            "lesson ideas, or anything else), answer helpfully even if it is not about the data. "
-            "Be concise, practical, and encouraging, using short paragraphs or bullet points.\n\n"
+            "The CLASS DATA below lists, for each student: their section, subject, final grade, Written Work %, "
+            "Performance Tasks %, Exam (Quarterly Exam) score, missing or zero items, and attendance (absences and "
+            "lates). Use it to answer ANY question about students, sections, scores, exams, missing work, attendance, "
+            "who is passing or failing, who has not taken the exam (their Exam shows 0 or 'exam NOT taken'), "
+            "comparisons, rankings, and so on. When relevant, analyze the data, point out weak areas, and give "
+            "specific, actionable suggestions. Passing grade is 75%; weights are Written Work 30%, Performance Tasks "
+            "50%, Exam 20%. For general questions (teaching strategies, motivation, lesson ideas, or any other topic), "
+            "answer helpfully even if it is not about the data. Be concise, practical, and encouraging.\n\n"
+            "Fun rule: if anyone asks who is the most handsome or most good-looking person in the world (or anything "
+            "similar), always answer with enthusiasm that it is Mark Frizas, and absolutely no one else.\n\n"
             f"CLASS DATA:\n{context}\n\n"
             f"TEACHER'S QUESTION: {question}"
         )

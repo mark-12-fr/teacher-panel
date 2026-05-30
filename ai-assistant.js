@@ -205,8 +205,22 @@
             const absences = att.filter(a => a.status === 'Absent').length, lates = att.filter(a => a.status === 'Late').length;
             return `Student: ${s.full_name}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal Grade: ${g.grade}% (${g.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work (30% weight): ${g.ww}%\nPerformance Tasks (50% weight): ${g.pt}%\nQuarterly Exam (20% weight): ${g.qe}%\nMissing or zero scores: ${missing.length ? missing.join(', ') : 'none'}\nAttendance: ${absences} absences, ${lates} lates`;
         }
-        const summary = students.map(st => `${st.full_name} (${sections.find(x => x.id === st.section_id)?.title || 'N/A'}): ${computeStudentGrade(records, st.id).grade}%`);
-        return `Teacher's class: ${sections.length} section(s), ${students.length} student(s). Passing grade is 75%.\nStudents and their final grades:\n${summary.join('\n') || 'No students yet.'}`;
+        const lines = students.map(st => {
+            const g = computeStudentGrade(records, st.id);
+            const sec = sections.find(x => x.id === st.section_id) || {};
+            const qeRaw = Number(g.merged.qe) || 0;
+            const examNote = (g.merged.qe === undefined || g.merged.qe === null || g.merged.qe === "" || qeRaw === 0) ? ' (exam NOT taken)' : '';
+            const miss = [];
+            for (const k in g.merged) {
+                if ((k.startsWith('module_') || k.startsWith('activity_') || k.startsWith('pt_') || k === 'qe') && (Number(g.merged[k]) === 0 || g.merged[k] === "0" || g.merged[k] === "")) miss.push(k.replace('_', ' ').toUpperCase());
+            }
+            const missStr = miss.length ? (miss.length > 6 ? miss.slice(0, 6).join('/') + ' +' + (miss.length - 6) : miss.join('/')) : 'none';
+            const att = attendance.filter(a => (a.student_name || '').toLowerCase() === (st.full_name || '').toLowerCase());
+            const abs = att.filter(a => a.status === 'Absent').length, late = att.filter(a => a.status === 'Late').length;
+            const hasRecords = Object.keys(g.merged).length > 0;
+            return `${st.full_name} (${sec.title || 'N/A'}, ${sec.subject || 'N/A'}): Final ${g.grade}% [${g.grade >= 75 ? 'PASS' : 'FAIL'}] | WrittenWork ${g.ww}% | PerfTasks ${g.pt}% | Exam ${qeRaw}/50${examNote} | Missing: ${hasRecords ? missStr : 'no records yet'} | Absences ${abs}, Lates ${late}`;
+        });
+        return `Teacher's class data (passing grade is 75%; weights: Written Work 30%, Performance Tasks 50%, Exam/QE 20%). ${sections.length} section(s), ${students.length} student(s).\nPer-student records:\n${lines.join('\n') || 'No students yet.'}`;
     }
     window.MJR_buildAIContext = buildAIContext;
 
