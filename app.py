@@ -570,6 +570,28 @@ def ai_chat():
         print(f"AI Chat Error: {e}")
         return jsonify({"error": "AI assistant server error"}), 500
 
+_GEMINI_MODELS = None
+
+def _gemini_candidates(client):
+    global _GEMINI_MODELS
+    if _GEMINI_MODELS is not None:
+        return _GEMINI_MODELS
+    override = os.getenv('GEMINI_MODEL')
+    if override:
+        _GEMINI_MODELS = [override]
+        return _GEMINI_MODELS
+    flashes, others = [], []
+    try:
+        for mm in client.models.list():
+            nm = (getattr(mm, 'name', '') or '').split('/')[-1]
+            actions = list(getattr(mm, 'supported_actions', None) or [])
+            if nm and nm.lower().startswith('gemini') and (not actions or 'generateContent' in actions):
+                (flashes if 'flash' in nm.lower() else others).append(nm)
+    except Exception:
+        pass
+    _GEMINI_MODELS = (flashes + others) or ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest']
+    return _GEMINI_MODELS
+
 @app.route('/api/ai-evaluate', methods=['POST'])
 @limiter.limit("20 per minute")
 def ai_evaluate():
@@ -606,31 +628,8 @@ def ai_evaluate():
             f"CLASS DATA:\n{context}\n\n"
             f"TEACHER'S QUESTION: {question}"
         )
-        override = os.getenv('GEMINI_MODEL')
-        if override:
-            candidates = [override]
-        else:
-            all_models = []
-            try:
-                for mm in client.models.list():
-                    nm = (getattr(mm, 'name', '') or '').split('/')[-1]
-                    actions = list(getattr(mm, 'supported_actions', None) or [])
-                    if nm and nm.lower().startswith('gemini') and (not actions or 'generateContent' in actions):
-                        all_models.append(nm)
-            except Exception:
-                pass
-            flashes = [n for n in all_models if 'flash' in n.lower()]
-            candidates = flashes + [n for n in all_models if n not in flashes]
-            candidates = candidates or ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']
-
         last_err = None
-        tried = []
-        for m in candidates:
-            if m in tried:
-                continue
-            tried.append(m)
-            if len(tried) > 4:
-                break
+        for m in _gemini_candidates(client)[:4]:
             try:
                 resp = client.models.generate_content(model=m, contents=prompt)
                 reply = (getattr(resp, 'text', '') or '').strip()
@@ -638,7 +637,10 @@ def ai_evaluate():
                     return jsonify({"reply": reply}), 200
             except Exception as me:
                 last_err = me
-        print(f"AI Evaluate Error (tried {tried}): {last_err}")
+                es = str(me)
+                if '429' in es or 'RESOURCE_EXHAUSTED' in es:
+                    return jsonify({"error": "The AI hit its free-tier rate limit. Please wait about a minute, then try again."}), 429
+        print(f"AI Evaluate Error: {last_err}")
         return jsonify({"error": "AI error: " + (str(last_err)[:300] if last_err else "No usable Gemini model found.")}), 502
     except Exception as e:
         print(f"AI Evaluate Error: {e}")
