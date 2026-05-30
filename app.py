@@ -602,12 +602,31 @@ def ai_evaluate():
             f"CLASS DATA:\n{context}\n\n"
             f"TEACHER'S QUESTION: {question}"
         )
+        override = os.getenv('GEMINI_MODEL')
+        if override:
+            candidates = [override]
+        else:
+            all_models = []
+            try:
+                for mm in client.models.list():
+                    nm = (getattr(mm, 'name', '') or '').split('/')[-1]
+                    actions = list(getattr(mm, 'supported_actions', None) or [])
+                    if nm and nm.lower().startswith('gemini') and (not actions or 'generateContent' in actions):
+                        all_models.append(nm)
+            except Exception:
+                pass
+            flashes = [n for n in all_models if 'flash' in n.lower()]
+            candidates = flashes + [n for n in all_models if n not in flashes]
+            candidates = candidates or ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest']
+
         last_err = None
         tried = []
-        for m in [os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'), 'gemini-1.5-flash']:
+        for m in candidates:
             if m in tried:
                 continue
             tried.append(m)
+            if len(tried) > 4:
+                break
             try:
                 resp = client.models.generate_content(model=m, contents=prompt)
                 reply = (getattr(resp, 'text', '') or '').strip()
@@ -615,8 +634,8 @@ def ai_evaluate():
                     return jsonify({"reply": reply}), 200
             except Exception as me:
                 last_err = me
-        print(f"AI Evaluate Error (models {tried}): {last_err}")
-        return jsonify({"error": "AI error: " + str(last_err)[:300]}), 502
+        print(f"AI Evaluate Error (tried {tried}): {last_err}")
+        return jsonify({"error": "AI error: " + (str(last_err)[:300] if last_err else "No usable Gemini model found.")}), 502
     except Exception as e:
         print(f"AI Evaluate Error: {e}")
         return jsonify({"error": "AI error: " + str(e)[:300]}), 500
