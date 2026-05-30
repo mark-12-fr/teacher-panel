@@ -304,12 +304,80 @@
         observer.observe(widget, { attributes: true, attributeFilter: ['class'] });
     }
 
+    function chatStoreKey() {
+        const who = localStorage.getItem('user_id') || localStorage.getItem('faci_id') || 'guest';
+        return 'mjr_chat_' + who;
+    }
+
+    function todayStamp() {
+        const d = new Date();
+        return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    }
+
+    function saveChat() {
+        const chatBody = document.getElementById('aiChatBody');
+        if (!chatBody) return;
+        const msgs = [];
+        chatBody.querySelectorAll('.chat-msg').forEach(el => {
+            if (el.id === 'ai-typing-indicator' || el.id === 'aiGreeting') return;
+            if (el.classList.contains('ai-suggestions-container')) return;
+            msgs.push({ role: el.classList.contains('user') ? 'user' : 'ai', html: el.innerHTML });
+        });
+        try {
+            localStorage.setItem(chatStoreKey(), JSON.stringify({ date: todayStamp(), msgs: msgs }));
+        } catch (e) {}
+    }
+
+    function restoreChat() {
+        const chatBody = document.getElementById('aiChatBody');
+        if (!chatBody || chatBody.dataset.mjrRestored === 'true') return;
+        chatBody.dataset.mjrRestored = 'true';
+
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem(chatStoreKey()) || 'null'); } catch (e) {}
+
+        if (!saved || saved.date !== todayStamp() || !Array.isArray(saved.msgs) || saved.msgs.length === 0) {
+            if (saved && saved.date !== todayStamp()) {
+                try { localStorage.removeItem(chatStoreKey()); } catch (e) {}
+            }
+            return;
+        }
+
+        const suggestions = chatBody.querySelector('.ai-suggestions-container');
+        saved.msgs.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'chat-msg ' + (m.role === 'user' ? 'user' : 'ai');
+            div.innerHTML = m.html;
+            if (suggestions) chatBody.insertBefore(div, suggestions);
+            else chatBody.appendChild(div);
+        });
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function watchChatPersistence() {
+        const chatBody = document.getElementById('aiChatBody');
+        if (!chatBody || chatBody.dataset.mjrPersist === 'true') return;
+        chatBody.dataset.mjrPersist = 'true';
+
+        let saveTimer = null;
+        const observer = new MutationObserver(() => {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveChat, 400);
+        });
+        observer.observe(chatBody, { childList: true, subtree: true });
+    }
+    window.MJR_clearChat = function () {
+        try { localStorage.removeItem(chatStoreKey()); } catch (e) {}
+    };
+
     function setup() {
         if (!document.getElementById('aiChatWidget')) return;
         enhanceHeader();
         ensureSuggestions();
         defineSuggestedMessageHelper();
         watchTypingIndicator();
+        restoreChat();
+        watchChatPersistence();
         wireInputUx();
         wireToggleAutoFocus();
     }
