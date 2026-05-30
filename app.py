@@ -689,7 +689,7 @@ def handle_facilitators():
             return jsonify({"error": str(e)}), 500
 
 def _verify_faci_password(attempt, faci_data):
-    stored = faci_data.get('password') or faci_data.get('password_hash')
+    stored = faci_data.get('password')
     if not stored:
         return False
     try:
