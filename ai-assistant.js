@@ -155,7 +155,7 @@
     window.MJR_formatAIText = formatAIText;
 
     function isEvaluationIntent(q) {
-        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat/i.test(q || '');
+        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank/i.test(q || '');
     }
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
