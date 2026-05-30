@@ -590,12 +590,16 @@ def ai_evaluate():
         from google import genai
         client = genai.Client(api_key=api_key)
         prompt = (
-            "You are a helpful academic adviser assisting a senior high school teacher in the Philippines. "
-            "Using ONLY the student data provided, analyze the performance, point out the weakest components or "
-            "subjects, and give specific, practical, encouraging suggestions and concrete next steps so the student "
-            "can improve and avoid failing. Passing grade is 75%. Grade weights: Written Work 30%, Performance "
-            "Tasks 50%, Quarterly Exam 20%. Reply in clear English, concise, using short bullet points where helpful.\n\n"
-            f"STUDENT DATA:\n{context}\n\n"
+            "You are a friendly and helpful AI teaching assistant and coach for a senior high school teacher in the "
+            "Philippines. Answer the teacher's question helpfully and conversationally. ALWAYS reply in clear English, "
+            "even if the question is written in another language.\n\n"
+            "You are given the teacher's class data below. Use it whenever the question relates to students, grades, "
+            "attendance, or performance: analyze the data, point out the weak areas, and give specific, actionable "
+            "suggestions and next steps. Passing grade is 75%; grade weights are Written Work 30%, Performance Tasks "
+            "50%, Quarterly Exam 20%. For general questions (teaching strategies, classroom management, motivation, "
+            "lesson ideas, or anything else), answer helpfully even if it is not about the data. "
+            "Be concise, practical, and encouraging, using short paragraphs or bullet points.\n\n"
+            f"CLASS DATA:\n{context}\n\n"
             f"TEACHER'S QUESTION: {question}"
         )
         model = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')

@@ -1524,7 +1524,9 @@
                 return `<strong>Class Overview:</strong><ul class='ai-list'><li>Total Sections: <strong>${sections.length}</strong></li><li>Total Students: <strong>${students.length}</strong></li><li>Passing Rate: <strong>${passRate}%</strong></li></ul>`;
             }
 
-            return `I am your Virtual Teaching Assistant. You can tap the suggestions above or try asking:<br><ul class="ai-list"><li><em>"What is missing for [Name]?"</em></li><li><em>"Who are the top students?"</em></li><li><em>"What is my schedule?"</em></li></ul>`;
+            const aiSummary = students.map(s => `${s.full_name} (${sections.find(x => x.id === s.section_id)?.title || 'N/A'}): ${getFinalGrade(s.id)}%`).join('\n');
+            const aiContext = `Teacher's class: ${sections.length} section(s), ${students.length} student(s). Passing grade is 75%.\nStudents and their final grades:\n${aiSummary || 'No students yet.'}`;
+            return await window.MJR_callAIEvaluate(query, aiContext);
         }
 
         const noteInput = document.getElementById('noteInput'); const notesList = document.getElementById('notesList');
