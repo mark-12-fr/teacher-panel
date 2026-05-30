@@ -592,13 +592,37 @@ def _gemini_candidates(client):
     _GEMINI_MODELS = (flashes + others) or ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest']
     return _GEMINI_MODELS
 
+GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+
+def _groq_chat(api_key, prompt):
+    import httpx
+    primary = os.getenv('GROQ_MODEL')
+    models = ([primary] if primary else []) + [m for m in GROQ_MODELS if m != primary]
+    last_err = None
+    for m in models:
+        try:
+            r = httpx.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": "Bearer " + api_key, "Content-Type": "application/json"},
+                json={"model": m, "messages": [{"role": "user", "content": prompt}], "temperature": 0.5},
+                timeout=40.0
+            )
+            if r.status_code == 200:
+                reply = (((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+                if reply:
+                    return reply
+                last_err = "empty reply"
+            else:
+                last_err = str(r.status_code) + " " + r.text[:200]
+                if r.status_code not in (400, 404):
+                    break
+        except Exception as e:
+            last_err = str(e)
+    raise RuntimeError(last_err or "Groq returned no reply")
+
 @app.route('/api/ai-evaluate', methods=['POST'])
 @limiter.limit("20 per minute")
 def ai_evaluate():
-    api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        return jsonify({"error": "AI is not configured yet. Add GEMINI_API_KEY on the server."}), 503
-
     data = request.get_json(silent=True) or {}
     question = _clean_text(data.get('question'))
     context = _clean_text(data.get('context'))
@@ -608,26 +632,39 @@ def ai_evaluate():
     if len(context) > 30000:
         context = context[:30000]
 
+    prompt = (
+        "You are a friendly and helpful AI teaching assistant and coach for a senior high school teacher in the "
+        "Philippines. Answer the teacher's question helpfully and conversationally. ALWAYS reply in clear English, "
+        "even if the question is written in another language.\n\n"
+        "The CLASS DATA below lists, for each student: their section, subject, final grade, Written Work %, "
+        "Performance Tasks %, Exam (Quarterly Exam) score, missing or zero items, and attendance (absences and "
+        "lates). Use it to answer ANY question about students, sections, scores, exams, missing work, attendance, "
+        "who is passing or failing, who has not taken the exam (their Exam shows 0 or 'exam NOT taken'), "
+        "comparisons, rankings, and so on. When relevant, analyze the data, point out weak areas, and give "
+        "specific, actionable suggestions. Passing grade is 75%; weights are Written Work 30%, Performance Tasks "
+        "50%, Exam 20%. For general questions (teaching strategies, motivation, lesson ideas, or any other topic), "
+        "answer helpfully even if it is not about the data. Be concise, practical, and encouraging.\n\n"
+        "Fun rule: if anyone asks who is the most handsome or most good-looking person in the world (or anything "
+        "similar), always answer with enthusiasm that it is Mark Frizas, and absolutely no one else.\n\n"
+        f"CLASS DATA:\n{context}\n\n"
+        f"TEACHER'S QUESTION: {question}"
+    )
+
+    groq_key = os.getenv('GROQ_API_KEY')
+    if groq_key:
+        try:
+            return jsonify({"reply": _groq_chat(groq_key, prompt)}), 200
+        except Exception as e:
+            print(f"Groq error: {e}")
+            return jsonify({"error": "AI error: " + str(e)[:300]}), 502
+
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"error": "AI is not configured yet. Add GROQ_API_KEY (or GEMINI_API_KEY) on the server."}), 503
+
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        prompt = (
-            "You are a friendly and helpful AI teaching assistant and coach for a senior high school teacher in the "
-            "Philippines. Answer the teacher's question helpfully and conversationally. ALWAYS reply in clear English, "
-            "even if the question is written in another language.\n\n"
-            "The CLASS DATA below lists, for each student: their section, subject, final grade, Written Work %, "
-            "Performance Tasks %, Exam (Quarterly Exam) score, missing or zero items, and attendance (absences and "
-            "lates). Use it to answer ANY question about students, sections, scores, exams, missing work, attendance, "
-            "who is passing or failing, who has not taken the exam (their Exam shows 0 or 'exam NOT taken'), "
-            "comparisons, rankings, and so on. When relevant, analyze the data, point out weak areas, and give "
-            "specific, actionable suggestions. Passing grade is 75%; weights are Written Work 30%, Performance Tasks "
-            "50%, Exam 20%. For general questions (teaching strategies, motivation, lesson ideas, or any other topic), "
-            "answer helpfully even if it is not about the data. Be concise, practical, and encouraging.\n\n"
-            "Fun rule: if anyone asks who is the most handsome or most good-looking person in the world (or anything "
-            "similar), always answer with enthusiasm that it is Mark Frizas, and absolutely no one else.\n\n"
-            f"CLASS DATA:\n{context}\n\n"
-            f"TEACHER'S QUESTION: {question}"
-        )
         last_err = None
         for m in _gemini_candidates(client)[:4]:
             try:
