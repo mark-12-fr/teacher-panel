@@ -126,6 +126,55 @@
 
     window.formatFacilitatorLogsHTML = formatFacilitatorLogsHTML;
 
+    const MJR_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? 'http://127.0.0.1:5000'
+        : 'https://teacher-panel-d1kw.onrender.com';
+    window.MJR_API_URL = MJR_API_URL;
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatAIText(text) {
+        let html = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        const lines = html.split('\n');
+        let out = '', inList = false;
+        lines.forEach(line => {
+            const t = line.trim();
+            if (/^[-*•]\s+/.test(t)) {
+                if (!inList) { out += "<ul class='ai-list'>"; inList = true; }
+                out += '<li>' + t.replace(/^[-*•]\s+/, '') + '</li>';
+            } else {
+                if (inList) { out += '</ul>'; inList = false; }
+                if (t) out += '<p style="margin:6px 0;">' + t + '</p>';
+            }
+        });
+        if (inList) out += '</ul>';
+        return out || escapeHtml(text);
+    }
+    window.MJR_formatAIText = formatAIText;
+
+    function isEvaluationIntent(q) {
+        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat/i.test(q || '');
+    }
+    window.MJR_isEvaluationIntent = isEvaluationIntent;
+
+    async function callAIEvaluate(question, context) {
+        try {
+            const res = await fetch(MJR_API_URL + '/api/ai-evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: question, context: context })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) return escapeHtml(data.error || 'The AI assistant is unavailable right now.');
+            return formatAIText(data.reply || 'No analysis available.');
+        } catch (e) {
+            return 'Could not reach the AI service. Please check your connection and try again.';
+        }
+    }
+    window.MJR_callAIEvaluate = callAIEvaluate;
+
     function watchTypingIndicator() {
         const chatBody = document.getElementById('aiChatBody');
         if (!chatBody || chatBody.dataset.mjrObserved === 'true') return;
