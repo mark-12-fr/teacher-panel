@@ -570,6 +570,44 @@ def ai_chat():
         print(f"AI Chat Error: {e}")
         return jsonify({"error": "AI assistant server error"}), 500
 
+@app.route('/api/ai-evaluate', methods=['POST'])
+@limiter.limit("20 per minute")
+def ai_evaluate():
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"error": "AI is not configured yet. Add GEMINI_API_KEY on the server."}), 503
+
+    data = request.get_json(silent=True) or {}
+    question = _clean_text(data.get('question'))
+    context = _clean_text(data.get('context'))
+
+    if not question:
+        return jsonify({"error": "Missing question"}), 400
+    if len(context) > 12000:
+        context = context[:12000]
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        prompt = (
+            "You are a helpful academic adviser assisting a senior high school teacher in the Philippines. "
+            "Using ONLY the student data provided, analyze the performance, point out the weakest components or "
+            "subjects, and give specific, practical, encouraging suggestions and concrete next steps so the student "
+            "can improve and avoid failing. Passing grade is 75%. Grade weights: Written Work 30%, Performance "
+            "Tasks 50%, Quarterly Exam 20%. Reply in clear English, concise, using short bullet points where helpful.\n\n"
+            f"STUDENT DATA:\n{context}\n\n"
+            f"TEACHER'S QUESTION: {question}"
+        )
+        model = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+        resp = client.models.generate_content(model=model, contents=prompt)
+        reply = (getattr(resp, 'text', '') or '').strip()
+        if not reply:
+            return jsonify({"error": "The AI did not return an analysis. Please try again."}), 502
+        return jsonify({"reply": reply}), 200
+    except Exception as e:
+        print(f"AI Evaluate Error: {e}")
+        return jsonify({"error": "AI is temporarily unavailable. Please try again."}), 500
+
 @app.route('/api/dashboard/stats', methods=['GET'])
 def get_dashboard_stats():
     teacher_id = request.args.get('teacher_id')
