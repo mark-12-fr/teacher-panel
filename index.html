@@ -1375,38 +1375,8 @@
             };
 
             if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) {
-                const nameExtracted = query.split(/ni |of |si |kay |for |para /)[1]?.replace('?', '').trim();
-                const stud = nameExtracted ? students.find(s => s.full_name.toLowerCase().includes(nameExtracted)) : null;
-
-                const buildStudentCtx = (s) => {
-                    const sec = sections.find(x => x.id === s.section_id) || {};
-                    const recs = records.filter(r => r.student_id === s.id);
-                    const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; }); return acc; }, {});
-                    let totalWW = 0, totalPT = 0; const totalQE = Number(merged.qe) || 0; const missing = [];
-                    for (const k in merged) {
-                        if (k.startsWith('module_') || k.startsWith('activity_') || k === 'at') totalWW += Number(merged[k]) || 0;
-                        if (k.startsWith('pt_')) totalPT += Number(merged[k]) || 0;
-                    }
-                    for (const k in merged) {
-                        if ((k.startsWith('module_') || k.startsWith('activity_') || k.startsWith('pt_') || k === 'qe') && (Number(merged[k]) === 0 || merged[k] === "0" || merged[k] === "")) {
-                            missing.push(k.replace('_', ' ').toUpperCase());
-                        }
-                    }
-                    const ww = Math.round(Math.min(totalWW, 100)), pt = Math.round(Math.min(totalPT, 100)), qe = Math.round(Math.min((totalQE / 50) * 100, 100));
-                    const grade = getFinalGrade(s.id);
-                    const att = attendance.filter(a => (a.student_name || '').toLowerCase() === s.full_name.toLowerCase());
-                    const absences = att.filter(a => a.status === 'Absent').length, lates = att.filter(a => a.status === 'Late').length;
-                    return `Student: ${s.full_name}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal Grade: ${grade}% (${grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work (30% weight): ${ww}%\nPerformance Tasks (50% weight): ${pt}%\nQuarterly Exam (20% weight): ${qe}%\nMissing or zero scores: ${missing.length ? missing.join(', ') : 'none'}\nAttendance: ${absences} absences, ${lates} lates`;
-                };
-
-                let context;
-                if (stud) {
-                    context = buildStudentCtx(stud);
-                } else {
-                    const summary = students.map(s => `${s.full_name} (${sections.find(x => x.id === s.section_id)?.title || 'N/A'}): ${getFinalGrade(s.id)}%`);
-                    context = "Class roster with final grades (passing is 75%):\n" + summary.join('\n');
-                }
-                return await window.MJR_callAIEvaluate(query, context);
+                const aiContext = window.MJR_buildAIContext(query, { students, sections, records, attendance });
+                return await window.MJR_callAIEvaluate(query, aiContext);
             }
 
             if (query.includes('kulang') || query.includes('missing') || query.includes('wala pasa') || query.includes('wala ka kuha') || query.includes('wala na pasa')) {

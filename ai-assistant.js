@@ -155,7 +155,7 @@
     window.MJR_formatAIText = formatAIText;
 
     function isEvaluationIntent(q) {
-        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat/i.test(q || '');
+        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank/i.test(q || '');
     }
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
@@ -175,52 +175,85 @@
     }
     window.MJR_callAIEvaluate = callAIEvaluate;
 
-    function computeStudentGrade(records, studentId) {
-        const recs = (records || []).filter(r => r.student_id === studentId);
-        const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; }); return acc; }, {});
-        let totalWW = 0, totalPT = 0; const totalQE = Number(merged.qe) || 0;
-        for (const k in merged) {
-            if (k.startsWith('module_') || k.startsWith('activity_') || k === 'at') totalWW += Number(merged[k]) || 0;
-            if (k.startsWith('pt_')) totalPT += Number(merged[k]) || 0;
-        }
-        const ww = Math.min(totalWW, 100), pt = Math.min(totalPT, 100), qe = Math.min((totalQE / 50) * 100, 100);
-        return { grade: Math.round(ww * 0.3 + pt * 0.5 + qe * 0.2), ww: Math.round(ww), pt: Math.round(pt), qe: Math.round(qe), merged: merged };
-    }
-
     function buildAIContext(query, data) {
         const students = (data && data.students) || [];
         const sections = (data && data.sections) || [];
         const records = (data && data.records) || [];
         const attendance = (data && data.attendance) || [];
-        const nameExtracted = (String(query).split(/ni |of |si |kay |for |para /)[1] || '').replace('?', '').trim();
-        const s = nameExtracted ? students.find(st => (st.full_name || '').toLowerCase().includes(nameExtracted)) : null;
-        if (s) {
-            const g = computeStudentGrade(records, s.id);
-            const sec = sections.find(x => x.id === s.section_id) || {};
-            const missing = [];
-            for (const k in g.merged) {
-                if ((k.startsWith('module_') || k.startsWith('activity_') || k.startsWith('pt_') || k === 'qe') && (Number(g.merged[k]) === 0 || g.merged[k] === "0" || g.merged[k] === "")) missing.push(k.replace('_', ' ').toUpperCase());
+
+        const isAssess = k => k.startsWith('module_') || k.startsWith('activity_') || k.startsWith('pt_') || k === 'qe' || k === 'at';
+        const pretty = k => {
+            if (k.startsWith('module_')) return 'Module ' + k.slice(7);
+            if (k.startsWith('activity_')) return 'Activity ' + k.slice(9);
+            if (k.startsWith('pt_')) return 'Performance Task ' + k.slice(3);
+            if (k === 'qe') return 'Exam';
+            if (k === 'at') return 'AT';
+            return k;
+        };
+        const isEmpty = v => v === null || v === undefined || v === "" || Number(v) === 0;
+
+        const activeBySection = {};
+        records.forEach(r => {
+            const sid = r.section_id;
+            if (!activeBySection[sid]) activeBySection[sid] = new Set();
+            Object.keys(r).forEach(k => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[sid].add(k); });
+        });
+
+        const analyze = st => {
+            const recs = records.filter(r => r.student_id === st.id);
+            const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; }); return acc; }, {});
+            let totalWW = 0, totalPT = 0; const totalQE = Number(merged.qe) || 0;
+            for (const k in merged) {
+                if (k.startsWith('module_') || k.startsWith('activity_') || k === 'at') totalWW += Number(merged[k]) || 0;
+                if (k.startsWith('pt_')) totalPT += Number(merged[k]) || 0;
             }
-            const att = attendance.filter(a => (a.student_name || '').toLowerCase() === (s.full_name || '').toLowerCase());
-            const absences = att.filter(a => a.status === 'Absent').length, lates = att.filter(a => a.status === 'Late').length;
-            return `Student: ${s.full_name}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal Grade: ${g.grade}% (${g.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work (30% weight): ${g.ww}%\nPerformance Tasks (50% weight): ${g.pt}%\nQuarterly Exam (20% weight): ${g.qe}%\nMissing or zero scores: ${missing.length ? missing.join(', ') : 'none'}\nAttendance: ${absences} absences, ${lates} lates`;
-        }
-        const lines = students.map(st => {
-            const g = computeStudentGrade(records, st.id);
-            const sec = sections.find(x => x.id === st.section_id) || {};
-            const qeRaw = Number(g.merged.qe) || 0;
-            const examNote = (g.merged.qe === undefined || g.merged.qe === null || g.merged.qe === "" || qeRaw === 0) ? ' (exam NOT taken)' : '';
-            const miss = [];
-            for (const k in g.merged) {
-                if ((k.startsWith('module_') || k.startsWith('activity_') || k.startsWith('pt_') || k === 'qe') && (Number(g.merged[k]) === 0 || g.merged[k] === "0" || g.merged[k] === "")) miss.push(k.replace('_', ' ').toUpperCase());
-            }
-            const missStr = miss.length ? (miss.length > 6 ? miss.slice(0, 6).join('/') + ' +' + (miss.length - 6) : miss.join('/')) : 'none';
+            const ww = Math.round(Math.min(totalWW, 100)), pt = Math.round(Math.min(totalPT, 100)), qe = Math.round(Math.min((totalQE / 50) * 100, 100));
+            const grade = Math.round(ww * 0.3 + pt * 0.5 + qe * 0.2);
+            const active = Array.from(activeBySection[st.section_id] || []);
+            const missing = active.filter(k => isEmpty(merged[k])).map(pretty);
             const att = attendance.filter(a => (a.student_name || '').toLowerCase() === (st.full_name || '').toLowerCase());
             const abs = att.filter(a => a.status === 'Absent').length, late = att.filter(a => a.status === 'Late').length;
-            const hasRecords = Object.keys(g.merged).length > 0;
-            return `${st.full_name} (${sec.title || 'N/A'}, ${sec.subject || 'N/A'}): Final ${g.grade}% [${g.grade >= 75 ? 'PASS' : 'FAIL'}] | WrittenWork ${g.ww}% | PerfTasks ${g.pt}% | Exam ${qeRaw}/50${examNote} | Missing: ${hasRecords ? missStr : 'no records yet'} | Absences ${abs}, Lates ${late}`;
+            return { merged, active, ww, pt, qe, grade, missing, abs, late };
+        };
+
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const todays = [
+            pad(now.getDate()) + '/' + pad(now.getMonth() + 1) + '/' + now.getFullYear(),
+            now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()),
+            pad(now.getMonth() + 1) + '/' + pad(now.getDate()) + '/' + now.getFullYear()
+        ];
+        const isToday = d => d && todays.indexOf(String(d).trim()) !== -1;
+
+        const nameExtracted = (String(query).split(/ni |of |si |kay |for |para /)[1] || '').replace('?', '').trim();
+        const s = nameExtracted ? students.find(st => (st.full_name || '').toLowerCase().includes(nameExtracted)) : null;
+
+        if (s) {
+            const a = analyze(s);
+            const sec = sections.find(x => x.id === s.section_id) || {};
+            const scoreLines = a.active.map(k => {
+                const v = a.merged[k];
+                return pretty(k) + ': ' + ((v === null || v === undefined || v === '') ? 'none' : v);
+            });
+            const tAtt = attendance.filter(x => (x.student_name || '').toLowerCase() === (s.full_name || '').toLowerCase() && isToday(x.date));
+            const todayStatus = tAtt.length ? tAtt[0].status : 'no record for today';
+            return `STUDENT: ${s.full_name}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal grade: ${a.grade}% (${a.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam: ${a.qe}%\nScores per assigned assessment: ${scoreLines.join('; ') || 'none recorded'}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(', ') : 'none'}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
+        }
+
+        const todayAbsent = [], todayLate = [];
+        attendance.forEach(x => {
+            if (isToday(x.date)) {
+                if (x.status === 'Absent') todayAbsent.push(x.student_name);
+                else if (x.status === 'Late') todayLate.push(x.student_name);
+            }
         });
-        return `Teacher's class data (passing grade is 75%; weights: Written Work 30%, Performance Tasks 50%, Exam/QE 20%). ${sections.length} section(s), ${students.length} student(s).\nPer-student records:\n${lines.join('\n') || 'No students yet.'}`;
+        const lines = students.map(st => {
+            const a = analyze(st);
+            const sec = sections.find(x => x.id === st.section_id) || {};
+            const missStr = a.missing.length ? (a.missing.length > 8 ? a.missing.slice(0, 8).join('/') + ' +' + (a.missing.length - 8) : a.missing.join('/')) : 'none';
+            return `${st.full_name} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | Absences ${a.abs}, Lates ${a.late}`;
+        });
+        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}. Absent today: ${todayAbsent.length ? todayAbsent.join(', ') : 'none recorded'}. Late today: ${todayLate.length ? todayLate.join(', ') : 'none recorded'}.\nPer-student:\n${lines.join('\n') || 'No students yet.'}`;
     }
     window.MJR_buildAIContext = buildAIContext;
 
