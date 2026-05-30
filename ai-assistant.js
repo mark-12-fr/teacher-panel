@@ -175,6 +175,41 @@
     }
     window.MJR_callAIEvaluate = callAIEvaluate;
 
+    function computeStudentGrade(records, studentId) {
+        const recs = (records || []).filter(r => r.student_id === studentId);
+        const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; }); return acc; }, {});
+        let totalWW = 0, totalPT = 0; const totalQE = Number(merged.qe) || 0;
+        for (const k in merged) {
+            if (k.startsWith('module_') || k.startsWith('activity_') || k === 'at') totalWW += Number(merged[k]) || 0;
+            if (k.startsWith('pt_')) totalPT += Number(merged[k]) || 0;
+        }
+        const ww = Math.min(totalWW, 100), pt = Math.min(totalPT, 100), qe = Math.min((totalQE / 50) * 100, 100);
+        return { grade: Math.round(ww * 0.3 + pt * 0.5 + qe * 0.2), ww: Math.round(ww), pt: Math.round(pt), qe: Math.round(qe), merged: merged };
+    }
+
+    function buildAIContext(query, data) {
+        const students = (data && data.students) || [];
+        const sections = (data && data.sections) || [];
+        const records = (data && data.records) || [];
+        const attendance = (data && data.attendance) || [];
+        const nameExtracted = (String(query).split(/ni |of |si |kay |for |para /)[1] || '').replace('?', '').trim();
+        const s = nameExtracted ? students.find(st => (st.full_name || '').toLowerCase().includes(nameExtracted)) : null;
+        if (s) {
+            const g = computeStudentGrade(records, s.id);
+            const sec = sections.find(x => x.id === s.section_id) || {};
+            const missing = [];
+            for (const k in g.merged) {
+                if ((k.startsWith('module_') || k.startsWith('activity_') || k.startsWith('pt_') || k === 'qe') && (Number(g.merged[k]) === 0 || g.merged[k] === "0" || g.merged[k] === "")) missing.push(k.replace('_', ' ').toUpperCase());
+            }
+            const att = attendance.filter(a => (a.student_name || '').toLowerCase() === (s.full_name || '').toLowerCase());
+            const absences = att.filter(a => a.status === 'Absent').length, lates = att.filter(a => a.status === 'Late').length;
+            return `Student: ${s.full_name}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal Grade: ${g.grade}% (${g.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work (30% weight): ${g.ww}%\nPerformance Tasks (50% weight): ${g.pt}%\nQuarterly Exam (20% weight): ${g.qe}%\nMissing or zero scores: ${missing.length ? missing.join(', ') : 'none'}\nAttendance: ${absences} absences, ${lates} lates`;
+        }
+        const summary = students.map(st => `${st.full_name} (${sections.find(x => x.id === st.section_id)?.title || 'N/A'}): ${computeStudentGrade(records, st.id).grade}%`);
+        return `Teacher's class: ${sections.length} section(s), ${students.length} student(s). Passing grade is 75%.\nStudents and their final grades:\n${summary.join('\n') || 'No students yet.'}`;
+    }
+    window.MJR_buildAIContext = buildAIContext;
+
     function watchTypingIndicator() {
         const chatBody = document.getElementById('aiChatBody');
         if (!chatBody || chatBody.dataset.mjrObserved === 'true') return;

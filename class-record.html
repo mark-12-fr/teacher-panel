@@ -1263,6 +1263,8 @@
             const schedules = schedRes.data || [];
             const facilitators = facRes.data || [];
 
+            if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) return await window.MJR_callAIEvaluate(query, window.MJR_buildAIContext(query, { students, sections, records, attendance }));
+
             const getFinalGrade = (record) => {
                 if (!record) return 0;
                 let totalWW = 0, totalPT = 0, totalQE = Number(record.qe) || 0;
@@ -1368,13 +1370,8 @@
                     `• Overall Passing Rate: <strong>${passRate}%</strong><br><br>` +
                     `<em>Tip: You can ask me to list down the top students or those who are failing.</em>`;
             }
-            return `I am your Virtual Teaching Assistant. Here are some things I can help you with:<br><br>
-                💬 <em>"Who are the top students?"</em><br>
-                💬 <em>"What is the grade of [Student Name]?"</em><br>
-                💬 <em>"Who has missing modules?"</em><br>
-                💬 <em>"Who is frequently absent?"</em><br>
-                💬 <em>"What is my current schedule?"</em><br>
-                💬 <em>"Give me a class summary."</em>`;
+            const aiContext = window.MJR_buildAIContext(query, { students, sections, records, attendance });
+            return await window.MJR_callAIEvaluate(query, aiContext);
         }
 
 
