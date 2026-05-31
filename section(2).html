@@ -17,11 +17,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-
         if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
             window.location.replace('login.html');
         }
-
 
         if (localStorage.getItem('dashboard_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -81,7 +79,6 @@
             width: 100%;
             overflow-x: hidden;
         }
-
 
         .sidebar {
             width: 260px;
@@ -235,7 +232,6 @@
             font-size: 1.1rem;
         }
 
-
         .sidebar-overlay {
             display: none;
             position: fixed;
@@ -253,7 +249,6 @@
             display: block;
             opacity: 1;
         }
-
 
         .main-content {
             margin-left: 260px;
@@ -309,7 +304,6 @@
             margin-right: 15px;
         }
 
-
         .dashboard-wrapper {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -359,7 +353,6 @@
             font-weight: 700;
         }
 
-
         .class-list-box {
             background: var(--card-bg);
             border-radius: 12px;
@@ -400,7 +393,6 @@
             transform: translateY(-50%);
             color: var(--text-muted);
         }
-
 
         .table-responsive {
             overflow-x: auto;
@@ -473,7 +465,6 @@
             background: rgba(239, 68, 68, 0.2);
         }
 
-
         .modal {
             display: none;
             position: fixed;
@@ -484,7 +475,6 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
-
             align-items: center;
             justify-content: center;
         }
@@ -537,7 +527,6 @@
             transition: background 0.2s;
         }
 
-
         #openModal {
             position: fixed;
             right: 40px !important;
@@ -561,7 +550,6 @@
         #openModal:hover {
             transform: scale(1.1);
         }
-
 
         .toast-notification {
             visibility: hidden;
@@ -592,11 +580,10 @@
             transform: translateY(0);
         }
 
-
         .ai-floating-btn {
             position: fixed;
-            bottom: 120px;
-            right: 40px;
+            bottom: 40px !important;
+            right: 40px !important;
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -605,7 +592,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
             cursor: pointer;
             z-index: 9998;
             transition: transform 0.3s;
@@ -717,7 +704,6 @@
             align-items: center;
         }
 
-
         @media (max-width: 1024px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -805,14 +791,16 @@
 
             #openModal {
                 right: 20px !important;
-                bottom: 160px !important;
+                bottom: 90px !important;
                 width: 55px;
                 height: 55px;
             }
 
             .ai-floating-btn {
-                bottom: 90px;
-                right: 20px;
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 55px;
+                height: 55px;
             }
 
             .ai-chat-widget {
