@@ -334,3 +334,28 @@
     transition: opacity 0.2s ease;
 }
 .sidebar-school-year:empty { background: transparent; padding: 0; }
+
+
+/* === Floating buttons: raised so page content (View, delete) stays visible === */
+.ai-floating-btn {
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 2147483000 !important;
+}
+.fab-add-btn {
+    bottom: 96px !important;
+    right: 24px !important;
+    z-index: 2147483000 !important;
+}
+.main-content {
+    padding-bottom: 180px !important;
+}
+.ai-chat-widget {
+    bottom: 96px !important;
+}
+@media (max-width: 768px) {
+    .ai-floating-btn { bottom: 20px !important; right: 18px !important; }
+    .fab-add-btn { bottom: 90px !important; right: 18px !important; }
+    .main-content { padding-bottom: 170px !important; }
+    .ai-chat-widget { bottom: 158px !important; }
+}
