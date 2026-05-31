@@ -1675,16 +1675,18 @@
                 let q3_avg = q3_count > 0 ? Number((q3_totalGrade / q3_count).toFixed(2)) : null;
                 let q4_avg = q4_count > 0 ? Number((q4_totalGrade / q4_count).toFixed(2)) : null;
 
-                const isSecondSem = currentSemester.includes('2nd') || currentSemester.includes('2');
-                let pair = isSecondSem ? [q3_avg, q4_avg] : [q1_avg, q2_avg];
+                let quarters = [q1_avg, q2_avg, q3_avg, q4_avg];
 
-                // With only one quarter recorded, a single point can't form a
-                // line. Carry the value to the empty quarter so the trend draws
-                // a visible flat line instead of a lone dot.
-                if (pair[0] !== null && pair[1] === null) pair[1] = pair[0];
-                else if (pair[0] === null && pair[1] !== null) pair[0] = pair[1];
+                // If only one quarter has data, a single point can't form a
+                // line, so carry its value to the next quarter to draw a
+                // visible flat segment instead of a lone dot.
+                if (quarters.filter(v => v !== null).length === 1) {
+                    const idx = quarters.findIndex(v => v !== null);
+                    if (idx < 3) quarters[idx + 1] = quarters[idx];
+                    else quarters[idx - 1] = quarters[idx];
+                }
 
-                lineChart.data.datasets[0].data = pair;
+                lineChart.data.datasets[0].data = quarters;
                 lineChart.update();
             }
 
@@ -1727,7 +1729,7 @@
             const hasSection = await loadSectionDetails();
             if (!hasSection) return;
 
-            let lineLabels = (currentSemester.includes('2nd') || currentSemester.includes('2')) ? ['3rd Qtr', '4th Qtr'] : ['1st Qtr', '2nd Qtr'];
+            let lineLabels = ['1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr'];
 
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             new Chart(ctxLine, {
@@ -1736,7 +1738,7 @@
                     labels: lineLabels,
                     datasets: [{
                         label: 'Class Average',
-                        data: [0, 0],
+                        data: [null, null, null, null],
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 3,
