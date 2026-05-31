@@ -592,7 +592,12 @@ def _gemini_candidates(client):
     _GEMINI_MODELS = (flashes + others) or ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest']
     return _GEMINI_MODELS
 
-GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+GROQ_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']
+
+@app.route('/api/ping', methods=['GET'])
+@limiter.exempt
+def ping():
+    return jsonify({"ok": True}), 200
 
 def _groq_chat(api_key, prompt):
     import httpx

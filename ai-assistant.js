@@ -175,6 +175,12 @@
     }
     window.MJR_callAIEvaluate = callAIEvaluate;
 
+    function warmUpBackend() {
+        try { fetch(MJR_API_URL + '/api/ping', { method: 'GET', cache: 'no-store' }).catch(function () {}); }
+        catch (e) {}
+    }
+    window.MJR_warmUp = warmUpBackend;
+
     function buildAIContext(query, data) {
         const students = (data && data.students) || [];
         const sections = (data && data.sections) || [];
@@ -372,6 +378,7 @@
 
     function setup() {
         if (!document.getElementById('aiChatWidget')) return;
+        warmUpBackend();
         enhanceHeader();
         ensureSuggestions();
         defineSuggestedMessageHelper();
