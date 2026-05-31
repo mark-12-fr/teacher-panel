@@ -1592,21 +1592,35 @@
                 let computed_final_grade = (ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2);
                 let final_rounded = Math.round(computed_final_grade);
 
-                let qtr = String(mergedScores.quarter || '1');
-
-                if (qtr === '1' || qtr === '1st') {
-                    q1_totalGrade += final_rounded;
-                    q1_count++;
-                } else if (qtr === '2' || qtr === '2nd') {
-                    q2_totalGrade += final_rounded;
-                    q2_count++;
-                } else if (qtr === '3' || qtr === '3rd') {
-                    q3_totalGrade += final_rounded;
-                    q3_count++;
-                } else if (qtr === '4' || qtr === '4th') {
-                    q4_totalGrade += final_rounded;
-                    q4_count++;
-                }
+                // Per-quarter trend: compute each quarter's grade from THAT
+                // quarter's own record (not the merged one), and only count a
+                // quarter that has at least one real score, so empty rows don't
+                // create a misplaced point on the trend line.
+                const quarterBuckets = {
+                    '1': { t: 0, c: 0 }, '2': { t: 0, c: 0 },
+                    '3': { t: 0, c: 0 }, '4': { t: 0, c: 0 }
+                };
+                studentRecords.forEach(rec => {
+                    let ww = 0, pt = 0, qe = Number(rec.qe) || 0, hasScore = false;
+                    for (let key in rec) {
+                        const val = rec[key];
+                        if (val === null || val === undefined || val === "") continue;
+                        if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') { ww += Number(val) || 0; if (Number(val) > 0) hasScore = true; }
+                        else if (key.startsWith('pt_')) { pt += Number(val) || 0; if (Number(val) > 0) hasScore = true; }
+                        else if (key === 'qe' && Number(val) > 0) hasScore = true;
+                    }
+                    if (!hasScore) return;
+                    const wwS = Math.min((ww / 100) * 100, 100) || 0;
+                    const ptS = Math.min((pt / 100) * 100, 100) || 0;
+                    const qeS = Math.min((qe / 50) * 100, 100) || 0;
+                    const g = Math.round((wwS * 0.3) + (ptS * 0.5) + (qeS * 0.2));
+                    const qk = String(rec.quarter || '1').replace(/[^1-4]/g, '') || '1';
+                    if (quarterBuckets[qk]) { quarterBuckets[qk].t += g; quarterBuckets[qk].c++; }
+                });
+                q1_totalGrade += quarterBuckets['1'].t; q1_count += quarterBuckets['1'].c;
+                q2_totalGrade += quarterBuckets['2'].t; q2_count += quarterBuckets['2'].c;
+                q3_totalGrade += quarterBuckets['3'].t; q3_count += quarterBuckets['3'].c;
+                q4_totalGrade += quarterBuckets['4'].t; q4_count += quarterBuckets['4'].c;
 
                 const att = attendanceFor(student);
                 const attTotal = att ? att.total : 0;
@@ -1675,18 +1689,9 @@
                 let q3_avg = q3_count > 0 ? Number((q3_totalGrade / q3_count).toFixed(2)) : null;
                 let q4_avg = q4_count > 0 ? Number((q4_totalGrade / q4_count).toFixed(2)) : null;
 
-                let quarters = [q1_avg, q2_avg, q3_avg, q4_avg];
-
-                // If only one quarter has data, a single point can't form a
-                // line, so carry its value to the next quarter to draw a
-                // visible flat segment instead of a lone dot.
-                if (quarters.filter(v => v !== null).length === 1) {
-                    const idx = quarters.findIndex(v => v !== null);
-                    if (idx < 3) quarters[idx + 1] = quarters[idx];
-                    else quarters[idx - 1] = quarters[idx];
-                }
-
-                lineChart.data.datasets[0].data = quarters;
+                // Plot each quarter exactly where it has data. Empty quarters
+                // stay null; spanGaps connects the quarters that do have data.
+                lineChart.data.datasets[0].data = [q1_avg, q2_avg, q3_avg, q4_avg];
                 lineChart.update();
             }
 
