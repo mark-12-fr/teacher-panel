@@ -160,17 +160,27 @@
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
     async function callAIEvaluate(question, context) {
-        try {
-            const res = await fetch(MJR_API_URL + '/api/ai-evaluate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: question, context: context })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) return escapeHtml(data.error || 'The AI assistant is unavailable right now.');
-            return formatAIText(data.reply || 'No analysis available.');
-        } catch (e) {
-            return 'Could not reach the AI service. Please check your connection and try again.';
+        const payload = JSON.stringify({ question: question, context: context });
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(function () { controller.abort(); }, 60000);
+                const res = await fetch(MJR_API_URL + '/api/ai-evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload,
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) return formatAIText(data.reply || 'No analysis available.');
+                if (res.status === 429) return escapeHtml(data.error || 'Please wait a moment and try again.');
+                if (attempt === 0) continue;
+                return escapeHtml(data.error || 'The AI assistant is unavailable right now.');
+            } catch (e) {
+                if (attempt === 0) { await new Promise(r => setTimeout(r, 1200)); continue; }
+                return 'The server is waking up and took too long. Please send your question again.';
+            }
         }
     }
     window.MJR_callAIEvaluate = callAIEvaluate;
