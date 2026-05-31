@@ -1670,16 +1670,21 @@
 
             const lineChart = Chart.getChart("lineChart");
             if (lineChart) {
-                let q1_avg = q1_count > 0 ? (q1_totalGrade / q1_count).toFixed(2) : null;
-                let q2_avg = q2_count > 0 ? (q2_totalGrade / q2_count).toFixed(2) : null;
-                let q3_avg = q3_count > 0 ? (q3_totalGrade / q3_count).toFixed(2) : null;
-                let q4_avg = q4_count > 0 ? (q4_totalGrade / q4_count).toFixed(2) : null;
+                let q1_avg = q1_count > 0 ? Number((q1_totalGrade / q1_count).toFixed(2)) : null;
+                let q2_avg = q2_count > 0 ? Number((q2_totalGrade / q2_count).toFixed(2)) : null;
+                let q3_avg = q3_count > 0 ? Number((q3_totalGrade / q3_count).toFixed(2)) : null;
+                let q4_avg = q4_count > 0 ? Number((q4_totalGrade / q4_count).toFixed(2)) : null;
 
-                if (currentSemester.includes('2nd') || currentSemester.includes('2')) {
-                    lineChart.data.datasets[0].data = [q3_avg, q4_avg];
-                } else {
-                    lineChart.data.datasets[0].data = [q1_avg, q2_avg];
-                }
+                const isSecondSem = currentSemester.includes('2nd') || currentSemester.includes('2');
+                let pair = isSecondSem ? [q3_avg, q4_avg] : [q1_avg, q2_avg];
+
+                // With only one quarter recorded, a single point can't form a
+                // line. Carry the value to the empty quarter so the trend draws
+                // a visible flat line instead of a lone dot.
+                if (pair[0] !== null && pair[1] === null) pair[1] = pair[0];
+                else if (pair[0] === null && pair[1] !== null) pair[0] = pair[1];
+
+                lineChart.data.datasets[0].data = pair;
                 lineChart.update();
             }
 
@@ -1740,7 +1745,8 @@
                         pointBorderWidth: 2,
                         pointRadius: 5,
                         fill: true,
-                        tension: 0.3
+                        tension: 0.3,
+                        spanGaps: true
                     }]
                 },
                 options: {
