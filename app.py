@@ -147,7 +147,8 @@ def faci_login():
                 "id": faci_data['id'],
                 "full_name": faci_data['full_name'],
                 "section": faci_data['section'],
-                "subject": faci_data['subject']
+                "subject": faci_data['subject'],
+                "teacher_id": faci_data.get('teacher_id')
             }
         }), 200
     except Exception as e:
