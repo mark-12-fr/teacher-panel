@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -42,7 +42,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.route('/')
 def home():
-    return redirect("http://127.0.0.1:5501/login.html")
+    return jsonify({"status": "ok", "service": "AcadTrack API"}), 200
 
 @app.route('/api/ping', methods=['GET'])
 @limiter.exempt
