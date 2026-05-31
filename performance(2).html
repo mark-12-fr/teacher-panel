@@ -1710,7 +1710,7 @@
                 } else {
                     const rate = student.attendance_rate;
                     const rateColor = rate >= 90 ? '#16a34a' : (rate >= 75 ? '#f59e0b' : '#ef4444');
-                    attCell = `<td><strong style="color:${rateColor};">${rate}%</strong> <small style="color: var(--text-muted);">(${student.attendance_present}/${student.attendance_total})</small></td>`;
+                    attCell = `<td><strong style="color:${rateColor};">${rate}%</strong></td>`;
                 }
 
                 tbody.innerHTML += `
