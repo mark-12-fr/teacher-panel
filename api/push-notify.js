@@ -2,7 +2,7 @@ const webpush = require('web-push');
 const { createClient } = require('@supabase/supabase-js');
 
 webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
+    process.env.VAPID_SUBJECT || 'mailto:mjrvertex@gmail.com',
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
 );
