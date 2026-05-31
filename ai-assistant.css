@@ -336,26 +336,34 @@
 .sidebar-school-year:empty { background: transparent; padding: 0; }
 
 
-/* === Floating buttons: raised so page content (View, delete) stays visible === */
+/* === Floating buttons: high-specificity so page-level !important rules cannot
+   re-cover the View / delete controls. Brain sits in the corner, the plus
+   sits above it, and content gets enough bottom room to scroll clear. === */
+button.ai-floating-btn,
 .ai-floating-btn {
     bottom: 24px !important;
     right: 24px !important;
     z-index: 2147483000 !important;
 }
+button.fab-add-btn,
 .fab-add-btn {
     bottom: 96px !important;
     right: 24px !important;
     z-index: 2147483000 !important;
 }
+.layout .main-content,
 .main-content {
-    padding-bottom: 180px !important;
+    padding-bottom: 210px !important;
 }
 .ai-chat-widget {
     bottom: 96px !important;
 }
 @media (max-width: 768px) {
-    .ai-floating-btn { bottom: 20px !important; right: 18px !important; }
-    .fab-add-btn { bottom: 90px !important; right: 18px !important; }
-    .main-content { padding-bottom: 170px !important; }
-    .ai-chat-widget { bottom: 158px !important; }
+    button.ai-floating-btn,
+    .ai-floating-btn { bottom: 18px !important; right: 16px !important; }
+    button.fab-add-btn,
+    .fab-add-btn { bottom: 86px !important; right: 16px !important; }
+    .layout .main-content,
+    .main-content { padding-bottom: 210px !important; }
+    .ai-chat-widget { bottom: 152px !important; }
 }
