@@ -1183,6 +1183,7 @@
         const currentSectionId = urlParams.get('id');
         let currentSectionTitle = "";
         let currentSectionQuarter = '1';
+        let currentSectionSubject = "";
         let globalStudents = [];
 
         let selectedMonth = new Date().getMonth();
@@ -1571,6 +1572,7 @@
             document.getElementById('dashSection').innerText = secData.title || '--';
             document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
             currentSectionTitle = secData.title;
+            currentSectionSubject = secData.subject || '';
             currentSectionQuarter = secData.quarter ? String(secData.quarter) : '1';
             const qEl = document.getElementById('dashQuarter');
             if (qEl) qEl.innerText = 'Q' + currentSectionQuarter;
@@ -1790,6 +1792,7 @@
                             date: dateStr,
                             status: status,
                             section: currentSectionTitle,
+                            subject: currentSectionSubject,
                             quarter: currentSectionQuarter
                         });
                         if (error) throw error;
