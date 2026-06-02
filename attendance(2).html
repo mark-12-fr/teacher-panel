@@ -1183,6 +1183,7 @@
         const currentSectionId = urlParams.get('id');
         let currentSectionTitle = "";
         let currentSectionQuarter = '1';
+        let currentSectionSubject = "";
         let globalStudents = [];
 
         let selectedMonth = new Date().getMonth();
@@ -1571,6 +1572,7 @@
             document.getElementById('dashSection').innerText = secData.title || '--';
             document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
             currentSectionTitle = secData.title;
+            currentSectionSubject = secData.subject || '';
             currentSectionQuarter = secData.quarter ? String(secData.quarter) : '1';
             const qEl = document.getElementById('dashQuarter');
             if (qEl) qEl.innerText = 'Q' + currentSectionQuarter;
@@ -1763,30 +1765,37 @@
 
             try {
                 if (status === 'None') {
-                    await supabaseClient.from('attendance')
+                    const { error } = await supabaseClient.from('attendance')
                         .delete()
                         .eq('student_name', studentName)
                         .eq('date', dateStr)
                         .eq('section', currentSectionTitle);
+                    if (error) throw error;
                 } else {
-                    const { data: existing } = await supabaseClient.from('attendance')
+                    const { data: existing, error: selErr } = await supabaseClient.from('attendance')
                         .select('id')
                         .eq('student_name', studentName)
                         .eq('date', dateStr)
                         .eq('section', currentSectionTitle)
                         .maybeSingle();
+                    if (selErr) throw selErr;
 
                     if (existing) {
-                        await supabaseClient.from('attendance').update({ status: status, quarter: currentSectionQuarter }).eq('id', existing.id);
+                        const { error } = await supabaseClient.from('attendance')
+                            .update({ status: status, quarter: currentSectionQuarter })
+                            .eq('id', existing.id);
+                        if (error) throw error;
                     } else {
-                        await supabaseClient.from('attendance').insert({
+                        const { error } = await supabaseClient.from('attendance').insert({
                             student_id_no: studentIdNo,
                             student_name: studentName,
                             date: dateStr,
                             status: status,
                             section: currentSectionTitle,
+                            subject: currentSectionSubject,
                             quarter: currentSectionQuarter
                         });
+                        if (error) throw error;
                     }
                 }
             } catch (err) {
@@ -1794,7 +1803,7 @@
                 cellElement.innerHTML = previousHTML;
                 cellElement.className = previousClass;
                 recalculateSummaryUI();
-                showNotification("Error saving attendance", "error");
+                showNotification("Save failed: " + (err.message || err.hint || err.details || "check permissions"), "error");
             } finally {
                 cellElement.removeAttribute('data-updating');
             }
