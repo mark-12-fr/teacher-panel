@@ -244,6 +244,11 @@
         const nameExtracted = (String(query).split(/ni |of |si |kay |for |para /)[1] || '').replace('?', '').trim();
         const s = nameExtracted ? students.find(st => (st.full_name || '').toLowerCase().includes(nameExtracted)) : null;
 
+        // Student names are stored "Lastname, Firstname"; that internal comma
+        // confuses the AI's comma-separated lists (it counts each half as its own
+        // person, e.g. "Cadiz, Mishle" -> 2). Replace the comma with a space.
+        const cleanNm = v => String(v == null ? '' : v).replace(/\s*,\s*/g, ' ').trim();
+
         if (s) {
             const a = analyze(s);
             const sec = sections.find(x => x.id === s.section_id) || {};
@@ -253,23 +258,23 @@
             });
             const tAtt = attendance.filter(x => (x.student_name || '').toLowerCase() === (s.full_name || '').toLowerCase() && isToday(x.date));
             const todayStatus = tAtt.length ? tAtt[0].status : 'no record for today';
-            return `STUDENT: ${s.full_name}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal grade: ${a.grade}% (${a.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam: ${a.qe}%\nScores per assigned assessment: ${scoreLines.join('; ') || 'none recorded'}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(', ') : 'none'}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
+            return `STUDENT: ${cleanNm(s.full_name)}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal grade: ${a.grade}% (${a.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam: ${a.qe}%\nScores per assigned assessment: ${scoreLines.join('; ') || 'none recorded'}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(', ') : 'none'}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
         }
 
         const todayAbsent = [], todayLate = [];
         attendance.forEach(x => {
             if (isToday(x.date)) {
-                if (x.status === 'Absent') todayAbsent.push(x.student_name);
-                else if (x.status === 'Late') todayLate.push(x.student_name);
+                if (x.status === 'Absent') todayAbsent.push(cleanNm(x.student_name));
+                else if (x.status === 'Late') todayLate.push(cleanNm(x.student_name));
             }
         });
         const lines = students.map(st => {
             const a = analyze(st);
             const sec = sections.find(x => x.id === st.section_id) || {};
             const missStr = a.missing.length ? (a.missing.length > 8 ? a.missing.slice(0, 8).join('/') + ' +' + (a.missing.length - 8) : a.missing.join('/')) : 'none';
-            return `${st.full_name} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | Absences ${a.abs}, Lates ${a.late}`;
+            return `${cleanNm(st.full_name)} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | TotalAbsences-allDates ${a.abs}, TotalLates ${a.late}`;
         });
-        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}. Absent today: ${todayAbsent.length ? todayAbsent.join(', ') : 'none recorded'}. Late today: ${todayLate.length ? todayLate.join(', ') : 'none recorded'}.\nPer-student:\n${lines.join('\n') || 'No students yet.'}`;
+        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student (these totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}`;
     }
     window.MJR_buildAIContext = buildAIContext;
 
