@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /$
+Allow: /privacy
+Allow: /terms
+Allow: /home
+Allow: /logo.jpg
+
+# Application pages (require sign-in) — no value in indexing
+Disallow: /index
+Disallow: /section
+Disallow: /class-record
+Disallow: /attendance
+Disallow: /performance
+Disallow: /facilitators
+Disallow: /about
+Disallow: /help
+
+Sitemap: https://acadtrack.asia/sitemap.xml
