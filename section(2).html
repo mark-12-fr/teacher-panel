@@ -1060,13 +1060,6 @@
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Escapes user/DB text before it is placed into innerHTML (stored-XSS guard).
-        function escapeHtml(s) {
-            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-            });
-        }
-
 
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('customToast');
@@ -1316,7 +1309,7 @@
                 }).sort((a, b) => b.grade - a.grade).slice(0, 5);
 
                 let res = "<strong>Here are your top performing students:</strong><br><br>";
-                scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${escapeHtml(s.name)}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(s.section)})</span><br>`; });
+                scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
                 return res;
             }
             else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
@@ -1328,7 +1321,7 @@
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
                 let res = "<strong>The following students are currently falling behind (Below 75%):</strong><br><br>";
-                failing.forEach(f => res += `- <strong>${escapeHtml(f.name)}</strong> (${f.grade}%)<br>`);
+                failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`);
                 return res;
             }
             else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
@@ -1342,21 +1335,21 @@
                     }
                 });
                 if (missingStudents.length === 0) return "All students have submitted their recorded modules and activities.";
-                return `<strong>The following students have missing requirements:</strong><br><br>- ` + missingStudents.map(n => escapeHtml(n)).join('<br>- ');
+                return `<strong>The following students have missing requirements:</strong><br><br>- ` + missingStudents.join('<br>- ');
             }
             else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
                 let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
                 if (!nameExtracted) return "Please specify the student's name. Example: <em>'What is the grade of Mark?'</em>";
 
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `I could not find a student named "<strong>${escapeHtml(nameExtracted)}</strong>" in your class lists.`;
+                if (!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your class lists.`;
 
                 let rec = records.find(r => r.student_id === stud.id);
-                if (!rec) return `There are no grade records entered for <strong>${escapeHtml(stud.full_name)}</strong> yet.`;
+                if (!rec) return `There are no grade records entered for <strong>${stud.full_name}</strong> yet.`;
 
                 let grade = getFinalGrade(rec);
                 let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
-                return `The current calculated grade for <strong>${escapeHtml(stud.full_name)}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
+                return `The current calculated grade for <strong>${stud.full_name}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
             }
             else if (query.includes('absent') || query.includes('attendance')) {
                 if (attendance.length === 0) return "I couldn't find any attendance records in your lists.";
@@ -1366,13 +1359,13 @@
                 if (sortedAbsents.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
 
                 let res = "<strong>Attendance Report (Frequently Absent):</strong><br><br>";
-                sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${escapeHtml(name)}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
+                sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${name}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
             else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
                 if (schedules.length === 0) return "You do not have any schedules recorded. Would you like to add one via the Dashboard?";
                 let res = "<strong>Here is your current class schedule:</strong><br><br>";
-                schedules.forEach(s => { res += `📅 <strong>${escapeHtml(s.subject)}</strong><br><small>${escapeHtml(s.time)} | ${escapeHtml(s.details)}</small><br><br>`; });
+                schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; });
                 return res;
             }
             else if (query.includes('facilitator') || query.includes('faci')) {
@@ -1386,8 +1379,8 @@
                 if (!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
 
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `I couldn't locate "<strong>${escapeHtml(nameExtracted)}</strong>" in the database.`;
-                return `The ID number for <strong>${escapeHtml(stud.full_name)}</strong> is: <strong>${stud.id}</strong>.`;
+                if (!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the database.`;
+                return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
             }
             else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let totalStuds = students.length; let passCount = 0;
@@ -1459,7 +1452,7 @@
                 const encodedData = encodeURIComponent(JSON.stringify(stud));
                 tr.innerHTML = `
                 <td>${stud.id_no}</td>
-                <td>${escapeHtml(stud.full_name)}</td>
+                <td>${stud.full_name}</td>
                 <td>${stud.gender}</td>
                 <td> 
                     <div class="action-btns">
