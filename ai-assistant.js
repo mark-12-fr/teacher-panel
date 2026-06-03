@@ -113,7 +113,7 @@
                     : '<span style="color:#f59e0b;">Not signed out</span>');
 
             res += `<li style="margin-bottom:12px; background:rgba(0,0,0,0.03); padding:12px; border-radius:8px;">
-                👤 <strong>${f.full_name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section || 'Unassigned'})</span><br>
+                👤 <strong>${escapeHtml(f.full_name)}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${escapeHtml(f.section || 'Unassigned')})</span><br>
                 <div style="font-size:0.85rem; margin-top:8px; display:flex; flex-direction:column; gap:5px;">
                     <span><i class="fa-solid fa-arrow-right-to-bracket" style="color:#10b981; width:16px;"></i> Time In: <strong>${timeIn}</strong></span>
                     <span><i class="fa-solid fa-arrow-right-from-bracket" style="color:#ef4444; width:16px;"></i> Time Out: <strong>${timeOut}</strong></span>

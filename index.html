@@ -1209,6 +1209,13 @@
         const accessToken = localStorage.getItem('access_token');
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // Escapes user/DB text before it is placed into innerHTML (stored-XSS guard).
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[c]);
+        }
+
         let todayAttendanceData = [];
         let globalSectionsData = [];
 
@@ -1264,7 +1271,7 @@
                 if (window.MJR_setupPush) window.MJR_setupPush('teacher', userId);
 
                 const firstName = fullName.split(' ')[0];
-                document.getElementById('welcomeText').innerHTML = `<i class="fa-solid fa-sun" style="color: #fbbf24;"></i> Welcome, Teacher${firstName.toLowerCase() !== 'teacher' ? ' ' + firstName : ''}!`;
+                document.getElementById('welcomeText').innerHTML = `<i class="fa-solid fa-sun" style="color: #fbbf24;"></i> Welcome, Teacher${firstName.toLowerCase() !== 'teacher' ? ' ' + escapeHtml(firstName) : ''}!`;
                 document.getElementById('aiGreeting').textContent = `Good day, Teacher ${firstName.toLowerCase() !== 'teacher' ? firstName : ''}. I am your AI assistant. You may ask about your sections, students, schedules, notes, notices, attendance, or performance records.`;
 
                 let finalAvatarSrc = profile?.avatar_url || googleAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=3b82f6&color=fff&size=128`;
@@ -1385,12 +1392,12 @@
                     return "Please specify the student's name to check their missing requirements.<br><br>💡 <strong>Example:</strong><br>💬 <em>'What is missing for John?'</em><br>💬 <em>'Ano ang wala napasa ni Anna?'</em>";
                 }
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your list. Please check the spelling.`;
+                if (!stud) return `I could not find a student named "<strong>${escapeHtml(nameExtracted)}</strong>" in your list. Please check the spelling.`;
 
                 let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
                 let studRecs = records.filter(r => r.student_id === stud.id);
 
-                if (studRecs.length === 0) return `<strong>${stud.full_name} (${studentSection})</strong> currently has no recorded activities or grades in the system.`;
+                if (studRecs.length === 0) return `<strong>${escapeHtml(stud.full_name)} (${escapeHtml(studentSection)})</strong> currently has no recorded activities or grades in the system.`;
 
                 let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
 
@@ -1403,7 +1410,7 @@
                     }
                 }
 
-                let res = `<strong>Performance Report for ${stud.full_name} (${studentSection}):</strong><br>`;
+                let res = `<strong>Performance Report for ${escapeHtml(stud.full_name)} (${escapeHtml(studentSection)}):</strong><br>`;
                 if (missing.length > 0) {
                     res += `<br>The student has missing or zero scores in the following:<ul class="ai-list">`;
                     missing.forEach(m => res += `<li style="color:#ef4444;">${m}</li>`);
@@ -1417,7 +1424,7 @@
                 if (students.length === 0) return "You don't have any students registered yet.";
                 let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown Section' })).sort((a, b) => b.grade - a.grade).slice(0, 5);
                 let res = "<strong>Top Performing Students:</strong><ul class='ai-list'>";
-                scored.forEach((s, i) => { res += `<li><strong>#${i + 1} ${s.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${s.section})</span> - ${s.grade}%</li>`; });
+                scored.forEach((s, i) => { res += `<li><strong>#${i + 1} ${escapeHtml(s.name)}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${escapeHtml(s.section)})</span> - ${s.grade}%</li>`; });
                 res += "</ul>";
                 return res;
 
@@ -1432,7 +1439,7 @@
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
                 let res = "<strong>Students falling behind (Below 75%):</strong><ul class='ai-list'>";
-                failing.forEach(f => res += `<li><strong>${f.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section})</span> - ${f.grade}%</li>`);
+                failing.forEach(f => res += `<li><strong>${escapeHtml(f.name)}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${escapeHtml(f.section)})</span> - ${f.grade}%</li>`);
                 res += "</ul>";
                 return res;
 
@@ -1440,12 +1447,12 @@
                 let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
                 if (!nameExtracted) return "Please specify the student's name.";
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `Could not find "<strong>${nameExtracted}</strong>" in your class lists.`;
+                if (!stud) return `Could not find "<strong>${escapeHtml(nameExtracted)}</strong>" in your class lists.`;
 
                 let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
                 let grade = getFinalGrade(stud.id);
                 let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
-                return `Grade for <strong>${stud.full_name} (${studentSection})</strong>: <strong>${grade}%</strong> - ${status}.`;
+                return `Grade for <strong>${escapeHtml(stud.full_name)} (${escapeHtml(studentSection)})</strong>: <strong>${grade}%</strong> - ${status}.`;
 
             } else if (query.includes('absent') || query.includes('attendance') || query.includes('wala nag sulod')) {
                 if (attendance.length === 0) return "No attendance records found.";
@@ -1465,14 +1472,14 @@
 
                 let res = "<strong>Frequently Absent Students:</strong><ul class='ai-list'>";
                 sorted.slice(0, 5).forEach(n => {
-                    res += `<li><strong>${n}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${ac[n].section})</span> <span style="color:#ef4444;">(${ac[n].count} absences)</span></li>`;
+                    res += `<li><strong>${escapeHtml(n)}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${escapeHtml(ac[n].section)})</span> <span style="color:#ef4444;">(${ac[n].count} absences)</span></li>`;
                 });
                 res += "</ul>";
                 return res;
 
             } else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
                 if (schedules.length === 0) return "No schedules recorded yet.";
-                let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; }); return res;
+                let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${escapeHtml(s.subject)}</strong><br><small>${escapeHtml(s.time)} | ${escapeHtml(s.details)}</small><br><br>`; }); return res;
 
 
             } else if (query.includes('facilitator') || query.includes('faci') || query.includes('logs')) {
@@ -1484,10 +1491,10 @@
                 let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
                 if (!nameExtracted) return "Please specify the student.";
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `Couldn't locate "<strong>${nameExtracted}</strong>".`;
+                if (!stud) return `Couldn't locate "<strong>${escapeHtml(nameExtracted)}</strong>".`;
 
                 let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
-                return `ID for <strong>${stud.full_name} (${studentSection})</strong>: <strong>${stud.id}</strong>.`;
+                return `ID for <strong>${escapeHtml(stud.full_name)} (${escapeHtml(studentSection)})</strong>: <strong>${stud.id}</strong>.`;
             } else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let passCount = 0; students.forEach(s => { if (getFinalGrade(s.id) >= 75) passCount++; });
                 let passRate = students.length > 0 ? Math.round((passCount / students.length) * 100) : 0;
@@ -1506,7 +1513,7 @@
             notesList.innerHTML = '';
             if (savedNotes) savedNotes.forEach(n => {
                 const li = document.createElement('li'); li.className = 'item-row';
-                li.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dark); word-break:break-word;">${n.content}</span><button class="delete-btn" onclick="deleteNote('${n.id}')"><i class="fas fa-trash-alt"></i></button>`;
+                li.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dark); word-break:break-word;">${escapeHtml(n.content)}</span><button class="delete-btn" onclick="deleteNote('${n.id}')"><i class="fas fa-trash-alt"></i></button>`;
                 notesList.appendChild(li);
             });
         }
@@ -1541,7 +1548,7 @@
                 }
 
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${n.text}</div></td><td><div class="notice-date">${displayDateTime}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
+                tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${escapeHtml(n.text)}</div></td><td><div class="notice-date">${displayDateTime}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
                 noticeTableBody.appendChild(tr);
             });
         }
@@ -1578,7 +1585,7 @@
             if (!savedScheds || savedScheds.length === 0) { scheduleList.innerHTML = '<li class="empty-msg" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No classes for today.</li>'; return; }
             savedScheds.forEach(s => {
                 const li = document.createElement('li'); li.className = 'item-row';
-                li.innerHTML = `<div><strong style="color:var(--text-dark);">${s.subject}</strong><br><small style="color:var(--text-muted);">${s.time} | ${s.details}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
+                li.innerHTML = `<div><strong style="color:var(--text-dark);">${escapeHtml(s.subject)}</strong><br><small style="color:var(--text-muted);">${escapeHtml(s.time)} | ${escapeHtml(s.details)}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
                 scheduleList.appendChild(li);
             });
         }
@@ -1760,7 +1767,7 @@
                     const topList = document.getElementById('topPerformersList');
                     allStudentsScores.sort((a, b) => b.grade - a.grade); topList.innerHTML = '';
                     if (allStudentsScores.length > 0) {
-                        allStudentsScores.slice(0, 5).forEach(s => { topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${s.name} <small style="color:var(--text-muted);">(${s.section})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; });
+                        allStudentsScores.slice(0, 5).forEach(s => { topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${escapeHtml(s.name)} <small style="color:var(--text-muted);">(${escapeHtml(s.section)})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; });
                     } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
                 } else { initDashboardChart([0, 0, 0, 0]); }
                 document.getElementById('val-total-sections').textContent = totalSections; document.getElementById('val-total-students').textContent = totalStudents;
@@ -1779,7 +1786,7 @@
                 filteredStudents.sort((a, b) => a.section.localeCompare(b.section)); filteredStudents.forEach(student => {
                     let statusColor = student.status === 'Present' ? '#22c55e' : (student.status === 'Late' ? '#f59e0b' : '#ef4444');
                     const li = document.createElement('li'); li.className = 'item-row';
-                    li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${student.student_name}</strong><small style="color: var(--text-muted);">${student.section} - <span style="font-weight: 600; color: ${statusColor};">${student.status}</span></small></div>`;
+                    li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${escapeHtml(student.student_name)}</strong><small style="color: var(--text-muted);">${escapeHtml(student.section)} - <span style="font-weight: 600; color: ${statusColor};">${escapeHtml(student.status)}</span></small></div>`;
                     listContainer.appendChild(li);
                 });
             }
@@ -1794,7 +1801,7 @@
                 let sorted = [...globalSectionsData].sort((a, b) => a.title.localeCompare(b.title));
                 sorted.forEach((section, index) => {
                     const li = document.createElement('li'); li.className = 'item-row';
-                    li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${section.title}</strong></div>`;
+                    li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${escapeHtml(section.title)}</strong></div>`;
                     listContainer.appendChild(li);
                 });
             }
