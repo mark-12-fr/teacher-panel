@@ -554,12 +554,6 @@
                 document.getElementById('email').value = savedEmail;
                 document.getElementById('rememberMe').checked = true;
             }
-
-            // Reflect any existing lockout immediately, and update it live as the
-            // user edits the email field.
-            const emailEl = document.getElementById('email');
-            if (emailEl) emailEl.addEventListener('input', refreshLockUI);
-            refreshLockUI();
         });
 
 
@@ -621,82 +615,6 @@
         }
 
 
-        // ---- Account lockout (brute-force protection) ----
-        // After 3 failed email/password attempts, that email is locked on this
-        // device for 15 minutes, with a live countdown on the Login button. A
-        // successful login or a password reset clears the lock. Google sign-in
-        // is unaffected (it has no password to verify).
-        const LOCK_KEY = 'at_login_locks';
-        const LOCK_MAX_ATTEMPTS = 3;
-        const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-        let authInFlight = false;
-
-        function _readLocks() {
-            try { return JSON.parse(localStorage.getItem(LOCK_KEY)) || {}; }
-            catch (e) { return {}; }
-        }
-        function _writeLocks(obj) { localStorage.setItem(LOCK_KEY, JSON.stringify(obj)); }
-        function _lockKey(email) { return (email || '').trim().toLowerCase(); }
-
-        function lockRemainingMs(email) {
-            const k = _lockKey(email);
-            if (!k) return 0;
-            const rec = _readLocks()[k];
-            if (!rec || !rec.lockedUntil) return 0;
-            const rem = rec.lockedUntil - Date.now();
-            return rem > 0 ? rem : 0;
-        }
-
-        function registerFailedAttempt(email) {
-            const k = _lockKey(email);
-            if (!k) return { locked: false, attemptsLeft: LOCK_MAX_ATTEMPTS };
-            const locks = _readLocks();
-            const rec = locks[k] || { count: 0, lockedUntil: 0 };
-            rec.count = (rec.count || 0) + 1;
-            if (rec.count >= LOCK_MAX_ATTEMPTS) {
-                rec.lockedUntil = Date.now() + LOCK_DURATION_MS;
-                rec.count = 0; // counter resets; the timed lock now governs access
-            }
-            locks[k] = rec;
-            _writeLocks(locks);
-            return {
-                locked: (rec.lockedUntil || 0) > Date.now(),
-                attemptsLeft: Math.max(0, LOCK_MAX_ATTEMPTS - rec.count)
-            };
-        }
-
-        function clearLockout(email) {
-            const k = _lockKey(email);
-            if (!k) return;
-            const locks = _readLocks();
-            if (locks[k]) { delete locks[k]; _writeLocks(locks); }
-        }
-
-        function formatCountdown(ms) {
-            const s = Math.ceil(ms / 1000);
-            const m = Math.floor(s / 60);
-            const ss = (s % 60).toString().padStart(2, '0');
-            return `${m}:${ss}`;
-        }
-
-        // Keeps the Login button in sync with the lock state of the typed email.
-        function refreshLockUI() {
-            if (authInFlight) return;
-            const btn = document.getElementById('loginBtn');
-            if (!btn) return;
-            const email = document.getElementById('email').value;
-            const rem = lockRemainingMs(email);
-            if (rem > 0) {
-                btn.disabled = true;
-                btn.innerHTML = `<i class="fa-solid fa-lock"></i> Locked (${formatCountdown(rem)})`;
-            } else if (btn.disabled) {
-                btn.disabled = false;
-                btn.innerText = 'Login';
-            }
-        }
-        setInterval(refreshLockUI, 1000);
-
-
         async function handleLogin(event) {
             event.preventDefault();
 
@@ -705,15 +623,6 @@
             const rememberChecked = document.getElementById('rememberMe').checked;
             const btn = document.getElementById("loginBtn");
 
-            // Block the attempt entirely while this email is locked out.
-            const remBefore = lockRemainingMs(emailInput);
-            if (remBefore > 0) {
-                showToast(`Too many failed attempts. Try again in ${formatCountdown(remBefore)}.`, "error");
-                refreshLockUI();
-                return;
-            }
-
-            authInFlight = true;
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
 
@@ -729,23 +638,10 @@
             });
 
             if (error) {
-                authInFlight = false;
-                const res = registerFailedAttempt(emailInput);
-                if (res.locked) {
-                    const rem = lockRemainingMs(emailInput);
-                    showToast("Too many failed attempts. Account locked for 15 minutes.", "error");
-                    btn.disabled = true;
-                    btn.innerHTML = `<i class="fa-solid fa-lock"></i> Locked (${formatCountdown(rem)})`;
-                } else {
-                    const left = res.attemptsLeft;
-                    showToast(`Incorrect email or password. ${left} attempt${left === 1 ? '' : 's'} left.`, "error");
-                    btn.disabled = false;
-                    btn.innerText = "Login";
-                }
+                showToast("Incorrect email or password. Please try again.", "error");
+                btn.disabled = false;
+                btn.innerText = "Login";
             } else {
-                clearLockout(emailInput);
-                // keep authInFlight = true so the countdown ticker won't overwrite
-                // the success state before the redirect fires
                 localStorage.removeItem('faci_id');
                 localStorage.setItem('access_token', data.session.access_token);
                 localStorage.setItem('user_id', data.user.id);
@@ -905,8 +801,6 @@
                 return;
             }
 
-
-            clearLockout(otpEmail);
 
             await supabaseClient.auth.signOut();
             localStorage.removeItem('access_token');
