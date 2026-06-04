@@ -1695,7 +1695,10 @@
                 lineChart.update();
             }
 
-            const sortedStudents = [...students].sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0));
+            const sortedStudents = [...students].sort((a, b) =>
+                ((b.final_grade || 0) - (a.final_grade || 0))
+                || ((b.written_works + b.perf_task + b.quarterly_exam) - (a.written_works + a.perf_task + a.quarterly_exam))
+                || String(a.full_name || '').localeCompare(String(b.full_name || '')));
 
             tbody.innerHTML = '';
 
