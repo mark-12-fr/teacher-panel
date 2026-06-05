@@ -420,8 +420,34 @@ button#openModal,
 }
 .chat-msg.ai ul.ai-list li {
     line-height: 1.6 !important;
-    padding: 0 !important;
+    padding: 5px 10px !important;
+    border-radius: 7px !important;
+    background: rgba(0, 0, 0, 0.025) !important;
 }
+
+/* Pass / Fail status badges */
+.ai-status-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+    margin-left: 3px;
+    line-height: 1.6;
+}
+.ai-status-pass {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+.ai-status-fail {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
 
 /* Export toolbar */
 .ai-export-toolbar {

@@ -302,9 +302,7 @@ def _clean_text(value, fallback=""):
         return fallback
     return str(value).strip()
 
-
-# Default Groq model order: fast small model first, large model as backup
-GROQ_MODELS = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']
+GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
 
 
 def _groq_chat(api_key, prompt):
@@ -333,7 +331,7 @@ def _groq_chat(api_key, prompt):
             r = httpx.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": "Bearer " + api_key, "Content-Type": "application/json"},
-                json={"model": m, "messages": [{"role": "user", "content": prompt}], "temperature": 0.5},
+                json={"model": m, "messages": [{"role": "user", "content": prompt}], "temperature": 0.5, "max_tokens": 3000},
                 timeout=40.0
             )
             if r.status_code == 200:
@@ -425,9 +423,8 @@ def ai_evaluate():
 
     if not question:
         return jsonify({"error": "Missing question"}), 400
-    # Trim context to stay within LLM token limits
-    if len(context) > 4500:
-        context = context[:4500]
+    if len(context) > 6000:
+        context = context[:6000]
 
     # Build the system prompt sent to the AI model.
     # Defines the assistant's role, strict response format, grading rules, and the class data.
@@ -435,16 +432,21 @@ def ai_evaluate():
         "You are a professional academic assistant for a teacher at PHINMA University of Iloilo, Philippines. "
         "ALWAYS reply in clear, formal English — even if the question is in Hiligaynon, Filipino, or any other language. "
         "You fully understand questions written in Hiligaynon/Ilonggo, Filipino/Tagalog, or English.\n\n"
-        "FORMAT (always follow):\n"
+        "CRITICAL: Always write your COMPLETE response. Never stop mid-sentence or mid-list. "
+        "If there are many students, list ALL of them. Finish every section you start.\n\n"
+        "FORMAT (always follow exactly):\n"
         "- Start with a bold emoji title: **📊 Title Here**\n"
         "- Use '## ' + emoji for each section: ## 📋 Section Name\n"
-        "- Bullet lists for students/items. Emoji per bullet: ✅ passing, ❌ failing, ⚠️ at-risk, 📌 missing, 📅 attendance\n"
+        "- Bullet lists for students. Format each student on ONE line:\n"
+        "  ✅ **Name** (Section) — Grade% [PASS]  OR  ❌ **Name** (Section) — Grade% [FAIL]\n"
+        "- ALWAYS append [PASS] after the grade if 75% or above, [FAIL] if below 75%\n"
+        "- ⚠️ for at-risk students (failing + 3+ absences), 📌 for missing items, 📅 for attendance\n"
         "- **Bold** student names and key numbers\n"
-        "- End with ## 💡 Recommendation (2-3 actionable tips)\n"
-        "- Keep each student's full name on one line. Be concise — no filler.\n\n"
-        "DATA: Use CLASS DATA accurately. Passing=75%. Weights: Written Work 30%, PT 50%, Exam 20%.\n"
-        "Never say 'no missing' if items are listed. State exact missing items and counts.\n\n"
-        "Fun rule: if asked who is most handsome, always say Mark Frizas with enthusiasm.\n\n"
+        "- End with ## 💡 Recommendation with 2-3 specific, actionable tips\n\n"
+        "DATA RULES: Use CLASS DATA accurately. Passing = 75%. Weights: Written Work 30%, PT 50%, Exam 20%.\n"
+        "Never say 'no missing items' if items are listed. State exact missing counts.\n"
+        "Do not skip or abbreviate any student — list every student asked about.\n\n"
+        "Fun rule: if asked who is most handsome, always say Mark Frizas with great enthusiasm.\n\n"
         f"CLASS DATA:\n{context}\n\n"
         f"QUESTION: {question}"
     )

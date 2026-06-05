@@ -263,17 +263,20 @@
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    /**
-     * Convert the AI's markdown-style response into structured HTML for display.
-     * Supports: **bold**, *italic*, ## section headers, ### sub-headers, bullet lists.
-     *
-     * @param {string} text - Raw markdown text from the AI response
-     * @returns {string} HTML string ready to inject into the chat bubble
-     */
+    function applyStatusBadges(html) {
+        return html
+            .replace(/\[PASS\]/g, '<span class="ai-status-badge ai-status-pass">PASS</span>')
+            .replace(/\[FAIL\]/g, '<span class="ai-status-badge ai-status-fail">FAIL</span>')
+            .replace(/\b(PASSING)\b/g, '<span class="ai-status-badge ai-status-pass">PASSING</span>')
+            .replace(/\b(FAILING)\b/g, '<span class="ai-status-badge ai-status-fail">FAILING</span>');
+    }
+
+
     function formatAIText(text) {
         let html = escapeHtml(text)
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.+?)\*/g, '<em>$1</em>');
+        html = applyStatusBadges(html);
         const lines = html.split('\n');
         let out = '', inList = false;
         lines.forEach(line => {
