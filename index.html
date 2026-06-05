@@ -1661,7 +1661,7 @@
             const avgEl = document.getElementById('chartOverallAvg');
             if (!container) return;
             const semLabel = activeSem === '2nd Sem' ? '2nd Semester' : activeSem === '1st Sem' ? '1st Semester' : 'All Quarters';
-            const qtrLabel = activeSem === '2nd Sem' ? 'Q3 &amp; Q4' : activeSem === '1st Sem' ? 'Q1 &amp; Q2' : 'Q1 – Q4';
+            const qtrLabel = 'Q1 – Q4';
             container.innerHTML =
                 `<span class="chart-badge chart-badge-sem"><i class="fa-regular fa-calendar" style="font-size:0.65rem;"></i> ${semLabel}</span>` +
                 `<span class="chart-badge chart-badge-qtr"><i class="fa-solid fa-layer-group" style="font-size:0.65rem;"></i> ${qtrLabel}</span>` +
@@ -1695,11 +1695,8 @@
             gradient.addColorStop(0.65, isDark ? 'rgba(59, 130, 246, 0.07)' : 'rgba(99, 102, 241, 0.06)');
             gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
-            let labels;
-            if (semester === '1st Sem') labels = ['1st Quarter', '2nd Quarter'];
-            else if (semester === '2nd Sem') labels = ['3rd Quarter', '4th Quarter'];
-            else labels = ['Q1', 'Q2', 'Q3', 'Q4'];
-            const chartData = dataArray || Array(labels.length).fill(null);
+            const labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+            const chartData = dataArray || [null, null, null, null];
 
             window.dashBarChart = new Chart(ctx, {
                 type: 'line',
@@ -1866,7 +1863,7 @@
                     const q2avg = q2_c > 0 ? Number((q2_t / q2_c).toFixed(2)) : null;
                     const q3avg = q3_c > 0 ? Number((q3_t / q3_c).toFixed(2)) : null;
                     const q4avg = q4_c > 0 ? Number((q4_t / q4_c).toFixed(2)) : null;
-                    const chartData = activeSem === '1st Sem' ? [q1avg, q2avg] : activeSem === '2nd Sem' ? [q3avg, q4avg] : [q1avg, q2avg, q3avg, q4avg];
+                    const chartData = [q1avg, q2avg, q3avg, q4avg];
                     updateChartBadges(activeSem, chartData);
                     initDashboardChart(chartData, activeSem);
                     const topList = document.getElementById('topPerformersList');
