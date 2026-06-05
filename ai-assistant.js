@@ -163,17 +163,25 @@
     }
 
     function formatAIText(text) {
-        let html = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        let html = escapeHtml(text)
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>');
         const lines = html.split('\n');
         let out = '', inList = false;
         lines.forEach(line => {
             const t = line.trim();
-            if (/^[-*•]\s+/.test(t)) {
+            if (/^###\s+/.test(t)) {
+                if (inList) { out += '</ul>'; inList = false; }
+                out += '<div class="ai-subheader">' + t.replace(/^###\s+/, '') + '</div>';
+            } else if (/^##\s+/.test(t)) {
+                if (inList) { out += '</ul>'; inList = false; }
+                out += '<div class="ai-section-header">' + t.replace(/^##\s+/, '') + '</div>';
+            } else if (/^[-*•]\s+/.test(t)) {
                 if (!inList) { out += "<ul class='ai-list'>"; inList = true; }
                 out += '<li>' + t.replace(/^[-*•]\s+/, '') + '</li>';
             } else {
                 if (inList) { out += '</ul>'; inList = false; }
-                if (t) out += '<p style="margin:6px 0;">' + t + '</p>';
+                if (t) out += '<p style="margin:5px 0;">' + t + '</p>';
             }
         });
         if (inList) out += '</ul>';

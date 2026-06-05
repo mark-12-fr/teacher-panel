@@ -385,6 +385,26 @@ button#openModal,
     .ai-chat-msg, .chat-msg { animation: none !important; }
 }
 
+/* AI reply formatting */
+.ai-section-header {
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    color: #1e40af !important;
+    margin: 10px 0 5px !important;
+    padding: 5px 0 5px !important;
+    border-bottom: 1.5px solid rgba(30, 64, 175, 0.18) !important;
+    line-height: 1.4 !important;
+}
+.ai-subheader {
+    font-weight: 600 !important;
+    font-size: 0.84rem !important;
+    color: #374151 !important;
+    margin: 8px 0 3px !important;
+}
+.chat-msg.ai .ai-section-header { color: #1e40af !important; }
+.chat-msg.ai ul.ai-list { margin: 4px 0 6px 4px !important; padding-left: 8px !important; }
+.chat-msg.ai ul.ai-list li { margin-bottom: 4px !important; line-height: 1.5 !important; }
+
 /* Export toolbar */
 .ai-export-toolbar {
     display: flex !important;
