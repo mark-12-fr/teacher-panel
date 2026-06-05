@@ -1689,9 +1689,9 @@
                 let q3_avg = q3_count > 0 ? Number((q3_totalGrade / q3_count).toFixed(2)) : null;
                 let q4_avg = q4_count > 0 ? Number((q4_totalGrade / q4_count).toFixed(2)) : null;
 
-                // Plot each quarter exactly where it has data. Empty quarters
-                // stay null; spanGaps connects the quarters that do have data.
-                lineChart.data.datasets[0].data = [q1_avg, q2_avg, q3_avg, q4_avg];
+                lineChart.data.datasets[0].data = (currentSemester === '2nd Sem')
+                    ? [q3_avg, q4_avg]
+                    : [q1_avg, q2_avg];
                 lineChart.update();
             }
 
@@ -1737,7 +1737,9 @@
             const hasSection = await loadSectionDetails();
             if (!hasSection) return;
 
-            let lineLabels = ['1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr'];
+            let lineLabels = (currentSemester === '2nd Sem')
+                ? ['3rd Qtr', '4th Qtr']
+                : ['1st Qtr', '2nd Qtr'];
 
             const ctxLine = document.getElementById('lineChart').getContext('2d');
             new Chart(ctxLine, {
@@ -1746,7 +1748,7 @@
                     labels: lineLabels,
                     datasets: [{
                         label: 'Class Average',
-                        data: [null, null, null, null],
+                        data: [null, null],
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 3,
