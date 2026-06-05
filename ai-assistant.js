@@ -4,6 +4,10 @@
         { icon: 'fa-solid fa-user-xmark', label: "Today's Absences", query: 'Who is absent today?' },
         { icon: 'fa-solid fa-chart-line', label: 'Failing Students', query: 'Failing students' },
         { icon: 'fa-solid fa-chart-pie', label: 'Class Summary', query: 'Class summary' },
+        { icon: 'fa-solid fa-trophy', label: 'Honor Roll', query: 'Show honor roll students' },
+        { icon: 'fa-solid fa-medal', label: 'Perfect Attendance', query: 'Who has perfect attendance?' },
+        { icon: 'fa-solid fa-chart-line', label: 'Most Improved', query: 'Most improved students' },
+        { icon: 'fa-solid fa-calendar-check', label: 'Monthly Attendance', query: 'Monthly attendance summary' },
         { icon: 'fa-solid fa-triangle-exclamation', label: 'At-Risk Students', query: 'Show me students at risk of failing' },
         { icon: 'fa-solid fa-envelope-open-text', label: 'Parent Message', query: 'Draft a message for parents of failing students' },
         { icon: 'fa-solid fa-clipboard-list', label: 'Remediation Plan', query: 'Suggest remediation plan for failing students' },
@@ -190,7 +194,7 @@
     window.MJR_formatAIText = formatAIText;
 
     function isEvaluationIntent(q) {
-        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank|at.?risk|risk.*fail|parent.*message|message.*parent|draft.*message|draft.*parent|remediation|remediation plan|pattern|trend|compare|section comparison|predict|prediction|weekly|monthly|summary report|generate.*report|weekly summary|missing requirement|sin-?o.*wala|pila.*absent|pila.*late|pila.*fail|pila.*pass|palya|nagapalya|nakapalya|grade.*sang|kantidad|listahan|mga.*estudyante|estudyante.*nga|taas.*grado|manugsulat|rekomendasyon|bulig|suliran|kulang.*sang|wala.*sang|ngaa.*bagsak|pwede.*mag|ano.*mangin/i.test(q || '');
+        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank|at.?risk|risk.*fail|parent.*message|message.*parent|draft.*message|draft.*parent|remediation|remediation plan|pattern|trend|compare|section comparison|predict|prediction|weekly|monthly|summary report|generate.*report|weekly summary|missing requirement|sin-?o.*wala|pila.*absent|pila.*late|pila.*fail|pila.*pass|palya|nagapalya|nakapalya|grade.*sang|kantidad|listahan|mga.*estudyante|estudyante.*nga|taas.*grado|manugsulat|rekomendasyon|bulig|suliran|kulang.*sang|wala.*sang|ngaa.*bagsak|pwede.*mag|ano.*mangin|honor.?roll|honor list|perfect.*attendance|perfect attendance|wala.*absent|zero.*absent|most.*improv|improv.*most|nag.?improv|progress.*student|monthly.*attendance|attendance.*month|monthly.*summary|month.*summary/i.test(q || '');
     }
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
@@ -360,6 +364,67 @@
             const passingCount = students.filter(st => analyze(st).grade >= 75).length;
             const avgGrade = students.length ? Math.round(students.reduce((sum, st) => sum + analyze(st).grade, 0) / students.length) : 0;
             extraContext += `\n\nWEEKLY SUMMARY (last 7 days):\nAttendance: ${weeklyAbsent} absence records, ${weeklyLate} late records\nGrades: ${passingCount} passing, ${failingCount} failing, class average=${avgGrade}%\nTotal students: ${students.length} across ${sections.length} section(s)`;
+        }
+
+        // Honor Roll (90%+)
+        if (/honor.?roll|honor list|grade.*90|above.*90/.test(q)) {
+            const honorRoll = students
+                .map(st => ({ st, a: analyze(st), sec: sections.find(x => x.id === st.section_id) || {} }))
+                .filter(({ a }) => a.grade >= 90)
+                .sort((a, b) => b.a.grade - a.a.grade);
+            extraContext += `\n\nHONOR ROLL (grade 90%+, count=${honorRoll.length}):\n` +
+                (honorRoll.map(({ st, a, sec }) => `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): ${a.grade}%`).join('\n') || 'No students with 90%+ yet.');
+        }
+
+        // Perfect Attendance
+        if (/perfect.*attendance|perfect attendance|wala.*absent|zero.*absent/.test(q)) {
+            const perfect = students.filter(st => { const a = analyze(st); return a.abs === 0 && a.late === 0; });
+            const nearPerfect = students.filter(st => { const a = analyze(st); return a.abs === 0 && a.late > 0; });
+            extraContext += `\n\nPERFECT ATTENDANCE (0 absences, 0 lates, count=${perfect.length}):\n` +
+                (perfect.map(st => { const sec = sections.find(x => x.id === st.section_id) || {}; return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'})`; }).join('\n') || 'None found.');
+            if (nearPerfect.length) {
+                extraContext += `\n\nNEAR-PERFECT (0 absences but has lates, count=${nearPerfect.length}):\n` +
+                    nearPerfect.map(st => { const a = analyze(st); const sec = sections.find(x => x.id === st.section_id) || {}; return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): ${a.late} late(s)`; }).join('\n');
+            }
+        }
+
+        // Monthly Attendance Summary
+        if (/monthly|month.*attendance|attendance.*month|monthly.*summary|month.*summary/.test(q)) {
+            const monthMap = {};
+            attendance.forEach(a => {
+                if (!a.date) return;
+                const d = new Date(a.date);
+                if (isNaN(d.getTime())) return;
+                const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                const monthName = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                if (!monthMap[key]) monthMap[key] = { name: monthName, absent: 0, late: 0, present: 0 };
+                if (a.status === 'Absent') monthMap[key].absent++;
+                else if (a.status === 'Late') monthMap[key].late++;
+                else monthMap[key].present++;
+            });
+            const monthSummary = Object.entries(monthMap)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([, m]) => `- ${m.name}: ${m.absent} absences, ${m.late} lates, ${m.present} present`);
+            extraContext += `\n\nMONTHLY ATTENDANCE SUMMARY (${monthSummary.length} month(s)):\n` + (monthSummary.join('\n') || 'No attendance records yet.');
+        }
+
+        // Most Improved Students (early modules vs recent modules)
+        if (/most.*improv|improv.*most|nag.?improv|progress.*student/.test(q)) {
+            const improved = students.map(st => {
+                const recs = records.filter(r => r.student_id === st.id);
+                const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {});
+                const moduleKeys = Object.keys(merged).filter(k => k.startsWith('module_')).sort((a, b) => (parseInt(a.replace('module_', '')) || 0) - (parseInt(b.replace('module_', '')) || 0));
+                if (moduleKeys.length < 2) return null;
+                const half = Math.ceil(moduleKeys.length / 2);
+                const earlyAvg = moduleKeys.slice(0, half).reduce((s, k) => s + (Number(merged[k]) || 0), 0) / half;
+                const recentAvg = moduleKeys.slice(half).reduce((s, k) => s + (Number(merged[k]) || 0), 0) / (moduleKeys.length - half);
+                const improvement = recentAvg - earlyAvg;
+                const sec = sections.find(x => x.id === st.section_id) || {};
+                const a = analyze(st);
+                return { name: cleanNm(st.full_name), section: sec.title || 'N/A', early: Math.round(earlyAvg), recent: Math.round(recentAvg), diff: Math.round(improvement), grade: a.grade };
+            }).filter(x => x && x.diff > 0).sort((a, b) => b.diff - a.diff).slice(0, 10);
+            extraContext += `\n\nMOST IMPROVED STUDENTS (early vs recent module scores, count=${improved.length}):\n` +
+                (improved.map(x => `- ${x.name} (${x.section}): early avg=${x.early}pts → recent avg=${x.recent}pts (+${x.diff}pts) | final grade=${x.grade}%`).join('\n') || 'Not enough module data to determine improvement yet.');
         }
 
         // Grade Prediction: current grade + potential if missing items submitted
