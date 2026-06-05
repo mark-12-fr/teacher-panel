@@ -1773,13 +1773,23 @@
                             borderWidth: 1,
                             padding: 12,
                             cornerRadius: 10,
-                            displayColors: true,
-                            titleFont: { size: 12, family: 'Inter', weight: '600' },
+                            displayColors: false,
+                            titleFont: { size: 12, family: 'Inter', weight: '700' },
                             bodyFont: { size: 12, family: 'Inter' },
+                            footerColor: isDark ? '#9ca3af' : '#6b7280',
+                            footerFont: { size: 11, family: 'Inter', weight: '500' },
+                            footerMarginTop: 8,
                             callbacks: {
+                                title: items => items[0].label,
                                 label: ctx => {
-                                    if (ctx.dataset.label === 'Passing (75%)') return '  Passing: 75%';
-                                    return ctx.parsed.y !== null ? `  Class Avg: ${ctx.parsed.y.toFixed(1)}%` : '  No data yet';
+                                    if (ctx.dataset.label === 'Passing (75%)') return null;
+                                    return ctx.parsed.y !== null ? `Class Average: ${ctx.parsed.y.toFixed(1)}%` : 'No data yet';
+                                },
+                                footer: items => {
+                                    const qtrKey = ['Q1', 'Q2', 'Q3', 'Q4'][items[0].dataIndex];
+                                    const secs = window.dashSectionAverages?.[qtrKey] || [];
+                                    if (secs.length === 0) return [];
+                                    return ['── Sections ──', ...secs.map(s => `${s.sec}:  ${s.avg}%`)];
                                 }
                             }
                         }
@@ -1808,6 +1818,8 @@
 
                     const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
                     let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; let allStudentsScores = [];
+                    const secQtr = { Q1: {}, Q2: {}, Q3: {}, Q4: {} };
+                    function trackSec(map, key, grade) { if (!map[key]) map[key] = { t: 0, c: 0 }; map[key].t += grade; map[key].c++; }
 
                     function gradeFromRow(row) {
                         let totalWW = 0, totalPT = 0;
@@ -1838,10 +1850,11 @@
                                 if (!hasScore) return;
                                 const qtr = String(row.quarter || '1');
                                 const grade = gradeFromRow(row);
-                                if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; }
-                                else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; }
-                                else if (qtr === '3' || qtr === '3rd') { q3_t += grade; q3_c++; }
-                                else if (qtr === '4' || qtr === '4th') { q4_t += grade; q4_c++; }
+                                const secTitle = sectionMap[student.section_id] || 'Unknown';
+                                if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; trackSec(secQtr.Q1, secTitle, grade); }
+                                else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; trackSec(secQtr.Q2, secTitle, grade); }
+                                else if (qtr === '3' || qtr === '3rd') { q3_t += grade; q3_c++; trackSec(secQtr.Q3, secTitle, grade); }
+                                else if (qtr === '4' || qtr === '4th') { q4_t += grade; q4_c++; trackSec(secQtr.Q4, secTitle, grade); }
                             });
 
 
@@ -1854,6 +1867,8 @@
                             allStudentsScores.push({ name: student.full_name || 'No Name', section: sectionMap[student.section_id], grade: gradeFromRow(merged) });
                         });
                     }
+                    const toSecArr = map => Object.entries(map).map(([sec, d]) => ({ sec, avg: Math.round(d.t / d.c) })).sort((a, b) => b.avg - a.avg);
+                    window.dashSectionAverages = { Q1: toSecArr(secQtr.Q1), Q2: toSecArr(secQtr.Q2), Q3: toSecArr(secQtr.Q3), Q4: toSecArr(secQtr.Q4) };
                     const semCounts = {};
                     sections.forEach(s => { if (s.semester) semCounts[s.semester] = (semCounts[s.semester] || 0) + 1; });
                     let activeSem = 'both';
