@@ -777,6 +777,125 @@
             }
         }
 
+        /* Faci avatar hover */
+        .faci-avatar {
+            cursor: zoom-in;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .faci-avatar:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Pulse animation for active status */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.85); opacity: 1; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+        .pulse-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #16a34a;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 50%;
+            background: #16a34a;
+            animation: pulse-ring 1.6s ease-out infinite;
+        }
+        .status-cell {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Subject badge */
+        .badge-subject {
+            display: inline-block;
+            background: rgba(168, 85, 247, 0.08);
+            color: #9333ea;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(168, 85, 247, 0.18);
+        }
+        [data-theme="dark"] .badge-subject {
+            background: rgba(168, 85, 247, 0.18);
+            color: #d8b4fe;
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        /* Copy ID button */
+        .copy-id-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 1px 4px;
+            border-radius: 4px;
+            transition: 0.15s;
+            font-size: 0.7rem;
+            vertical-align: middle;
+            line-height: 1;
+        }
+        .copy-id-btn:hover { color: var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
+
+        /* Photo viewer lightbox */
+        .photo-viewer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.82);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .photo-viewer-inner {
+            position: relative;
+            text-align: center;
+            animation: fadeInContent 0.2s ease;
+        }
+        .photo-viewer-inner img {
+            max-width: min(380px, 88vw);
+            max-height: 72vh;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            object-fit: cover;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            display: block;
+        }
+        .photo-viewer-close {
+            position: absolute;
+            top: -44px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+        .photo-viewer-close:hover { background: rgba(255, 255, 255, 0.28); transform: scale(1.1); }
+        .photo-viewer-name {
+            color: rgba(255, 255, 255, 0.92);
+            margin-top: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
         @media (max-width: 640px) {
             .topbar-left h1 {
                 position: absolute;
@@ -953,6 +1072,32 @@
                 <button id="assignBtn" onclick="saveFacilitator()"
                     style="flex:2; background:#3b82f6; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:600;">Assign</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:360px; text-align:center;">
+            <div style="width:54px;height:54px;border-radius:50%;background:rgba(239,68,68,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 15px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;font-size:1.4rem;"></i>
+            </div>
+            <h4 style="margin-bottom:8px;color:var(--text-dark);">Remove Facilitator?</h4>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:22px;line-height:1.5;">
+                <strong id="deleteConfirmName" style="color:var(--text-dark);"></strong>'s access will be permanently removed.
+            </p>
+            <div style="display:flex;gap:10px;">
+                <button onclick="closeDeleteConfirm()" style="flex:1;padding:11px;border-radius:8px;border:none;cursor:pointer;background:var(--input-bg);color:var(--text-dark);font-weight:500;font-family:'Inter',sans-serif;font-size:0.9rem;">Cancel</button>
+                <button onclick="confirmDeleteFacilitator()" style="flex:1;padding:11px;border-radius:8px;border:none;cursor:pointer;background:#ef4444;color:white;font-weight:600;font-family:'Inter',sans-serif;font-size:0.9rem;">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Photo Viewer -->
+    <div id="photoViewerOverlay" class="photo-viewer-overlay" style="display:none;" onclick="closePhotoViewer()">
+        <div class="photo-viewer-inner" onclick="event.stopPropagation()">
+            <button class="photo-viewer-close" onclick="closePhotoViewer()"><i class="fa-solid fa-xmark"></i></button>
+            <img id="photoViewerImg" src="" alt="Facilitator Photo">
+            <div class="photo-viewer-name" id="photoViewerName"></div>
         </div>
     </div>
 
@@ -1162,44 +1307,51 @@
             }
 
             savedFacilitators.forEach((fac) => {
-                let avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
+                const avatarSrc = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=128`;
+                const { text: lastSeenText, isActive } = getLastSeenText(fac.last_login);
 
+                const statusHtml = isActive
+                    ? `<div class="status-cell">
+                           <div class="pulse-dot"></div>
+                           <div style="text-align:left;">
+                               <div style="color:#16a34a;font-weight:700;font-size:0.82rem;line-height:1.2;">Active</div>
+                               <div style="color:var(--text-muted);font-size:0.72rem;">${lastSeenText}</div>
+                           </div>
+                       </div>`
+                    : `<div class="status-cell">
+                           <div style="width:9px;height:9px;border-radius:50%;background:#9ca3af;flex-shrink:0;"></div>
+                           <div style="text-align:left;">
+                               <div style="color:#9ca3af;font-weight:600;font-size:0.82rem;line-height:1.2;">Inactive</div>
+                               <div style="color:var(--text-muted);font-size:0.72rem;">${lastSeenText}</div>
+                           </div>
+                       </div>`;
 
-                const HEARTBEAT_TIMEOUT_MIN = 3;
-                let isFaciActive = false;
-
-                if (fac.last_login) {
-                    let rawLogin = String(fac.last_login).trim().replace(' ', 'T');
-                    if (!/(z|[+-]\d{2}:?\d{2})$/i.test(rawLogin)) rawLogin += 'Z';
-                    const lastLoginDate = new Date(rawLogin);
-                    if (!isNaN(lastLoginDate.getTime())) {
-                        const diffInMinutes = (new Date() - lastLoginDate) / (1000 * 60);
-                        const recent = diffInMinutes < HEARTBEAT_TIMEOUT_MIN;
-                        const statusActive = fac.status && fac.status.toLowerCase() === 'active';
-
-                        isFaciActive = recent && (statusActive || !fac.status);
-                    }
-                }
-
-                let statusHtml = isFaciActive
-                    ? `<span style="color: #16a34a; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Active</span>`
-                    : `<span style="color: #9ca3af; font-weight:600;"><i class="fa-solid fa-circle-minus"></i> Inactive</span>`;
+                const accountIdHtml = fac.account_id
+                    ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:3px;">
+                           <i class="fa-solid fa-id-badge" style="font-size:0.62rem;"></i>
+                           <span style="font-family:monospace;letter-spacing:0.02em;">${fac.account_id}</span>
+                           <button class="copy-id-btn" onclick="copyAccountId('${fac.account_id}',event)" title="Copy Account ID"><i class="fa-regular fa-copy"></i></button>
+                       </div>`
+                    : '';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                 <td>
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <img src="${avatarSrc}" alt="${fac.full_name}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(59, 130, 246, 0.3);">
-                        <strong>${fac.full_name}</strong>
+                        <img class="faci-avatar" src="${avatarSrc}" alt="${fac.full_name}" onclick="viewFacilitatorPhoto('${fac.id}')" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(59, 130, 246, 0.3);">
+                        <div>
+                            <div style="font-weight:600;color:var(--text-dark);">${fac.full_name}</div>
+                            ${accountIdHtml}
+                        </div>
                     </div>
                 </td>
                 <td><span class="badge-section">${fac.section}</span></td>
-                <td>${fac.subject}</td>
+                <td><span class="badge-subject">${fac.subject}</span></td>
                 <td>${statusHtml}</td>
                 <td>
                     <div class="action-btns">
                         <button class="action-btn edit" onclick="editFacilitator('${fac.id}')">Edit</button>
-                        <button class="action-btn delete" onclick="deleteFacilitator('${fac.id}')">Delete</button>
+                        <button class="action-btn delete" onclick="openDeleteConfirm('${fac.id}')">Delete</button>
                     </div>
                 </td>
             `;
@@ -1285,6 +1437,62 @@
                     facilitatorList.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#ef4444;">Failed to load facilitators from Supabase. Please check your connection.</td></tr>';
                 }
             }
+        }
+
+        function getLastSeenText(lastLogin) {
+            if (!lastLogin) return { text: 'Never logged in', isActive: false };
+            let raw = String(lastLogin).trim().replace(' ', 'T');
+            if (!/(z|[+-]\d{2}:?\d{2})$/i.test(raw)) raw += 'Z';
+            const d = new Date(raw);
+            if (isNaN(d.getTime())) return { text: 'Unknown', isActive: false };
+            const diffMin = Math.round((new Date() - d) / 60000);
+            const isActive = diffMin < 3;
+            let text;
+            if (diffMin < 1) text = 'Active now';
+            else if (diffMin < 60) text = `${diffMin} min ago`;
+            else if (diffMin < 1440) text = `${Math.floor(diffMin / 60)}h ago`;
+            else if (diffMin < 2880) text = 'Yesterday';
+            else text = `${Math.floor(diffMin / 1440)} days ago`;
+            return { text, isActive };
+        }
+
+        function copyAccountId(id, e) {
+            e.stopPropagation();
+            navigator.clipboard.writeText(id).then(() => showNotification('Account ID copied to clipboard!'));
+        }
+
+        function viewFacilitatorPhoto(facId) {
+            const fac = (window.currentFacilitators || []).find(f => f.id === facId);
+            if (!fac) return;
+            const src = fac.avatar_url || fac.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.full_name)}&background=3b82f6&color=fff&size=256`;
+            document.getElementById('photoViewerImg').src = src;
+            document.getElementById('photoViewerName').textContent = fac.full_name;
+            document.getElementById('photoViewerOverlay').style.display = 'flex';
+        }
+        function closePhotoViewer() {
+            document.getElementById('photoViewerOverlay').style.display = 'none';
+        }
+
+        let deleteTargetId = null;
+        function openDeleteConfirm(facId) {
+            const fac = (window.currentFacilitators || []).find(f => f.id === facId);
+            deleteTargetId = facId;
+            document.getElementById('deleteConfirmName').textContent = fac ? fac.full_name : 'this facilitator';
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+        }
+        function closeDeleteConfirm() {
+            deleteTargetId = null;
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+        }
+        async function confirmDeleteFacilitator() {
+            if (!deleteTargetId) return;
+            const facId = deleteTargetId;
+            closeDeleteConfirm();
+            try {
+                const { error } = await supabaseClient.from('facilitators').delete().eq('id', facId);
+                if (!error) { loadFacilitators(); showNotification('Facilitator access removed.'); }
+                else showNotification('Failed to delete facilitator.', 'error');
+            } catch (err) { console.error(err); }
         }
 
         function filterTable() {
@@ -1405,20 +1613,6 @@
             }
         }
 
-        async function deleteFacilitator(facId) {
-            if (confirm("Are you sure you want to remove this facilitator's access?")) {
-                try {
-                    const { error } = await supabaseClient.from('facilitators').delete().eq('id', facId);
-
-                    if (!error) {
-                        loadFacilitators();
-                        showNotification("Facilitator access removed.");
-                    } else {
-                        showNotification("Failed to delete facilitator.", "error");
-                    }
-                } catch (error) { console.error(error); }
-            }
-        }
 
 
         function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
