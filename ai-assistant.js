@@ -26,6 +26,25 @@
                 </span>
             `;
         }
+
+        const closeBtn = header.querySelector('button');
+        if (closeBtn && !header.querySelector('.ai-export-toolbar')) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'ai-export-toolbar';
+            toolbar.innerHTML = `
+                <button class="ai-export-btn ai-export-pdf" title="Export as PDF" onclick="if(typeof window.MJR_exportPDF==='function')window.MJR_exportPDF()">
+                    <i class="fa-solid fa-file-pdf"></i>
+                </button>
+                <button class="ai-export-btn ai-export-excel" title="Export as Excel" onclick="if(typeof window.MJR_exportExcel==='function')window.MJR_exportExcel()">
+                    <i class="fa-solid fa-file-excel"></i>
+                </button>
+                <button class="ai-export-btn ai-export-docs" title="Export as Word Doc" onclick="if(typeof window.MJR_exportDOCS==='function')window.MJR_exportDOCS()">
+                    <i class="fa-solid fa-file-word"></i>
+                </button>
+            `;
+            header.insertBefore(toolbar, closeBtn);
+        }
+
         header.dataset.mjrEnhanced = 'true';
 
         if (window.lucide && typeof window.lucide.createIcons === 'function') {
