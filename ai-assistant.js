@@ -190,7 +190,7 @@
     window.MJR_formatAIText = formatAIText;
 
     function isEvaluationIntent(q) {
-        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank|at.?risk|risk.*fail|parent.*message|message.*parent|draft.*message|draft.*parent|remediation|remediation plan|pattern|trend|compare|section comparison|predict|prediction|weekly|monthly|summary report|generate.*report|weekly summary|missing requirement/i.test(q || '');
+        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank|at.?risk|risk.*fail|parent.*message|message.*parent|draft.*message|draft.*parent|remediation|remediation plan|pattern|trend|compare|section comparison|predict|prediction|weekly|monthly|summary report|generate.*report|weekly summary|missing requirement|sin-?o.*wala|pila.*absent|pila.*late|pila.*fail|pila.*pass|palya|nagapalya|nakapalya|grade.*sang|kantidad|listahan|mga.*estudyante|estudyante.*nga|taas.*grado|manugsulat|rekomendasyon|bulig|suliran|kulang.*sang|wala.*sang|ngaa.*bagsak|pwede.*mag|ano.*mangin/i.test(q || '');
     }
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
