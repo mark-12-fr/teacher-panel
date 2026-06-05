@@ -855,6 +855,48 @@
             }
         }
 
+        .chart-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+        .chart-badge-sem {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        [data-theme="dark"] .chart-badge-sem {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border-color: rgba(59, 130, 246, 0.35);
+        }
+        .chart-badge-qtr {
+            background: rgba(168, 85, 247, 0.1);
+            color: #9333ea;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        [data-theme="dark"] .chart-badge-qtr {
+            background: rgba(168, 85, 247, 0.2);
+            color: #d8b4fe;
+            border-color: rgba(168, 85, 247, 0.35);
+        }
+        .chart-badge-pass {
+            background: rgba(34, 197, 94, 0.1);
+            color: #15803d;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        [data-theme="dark"] .chart-badge-pass {
+            background: rgba(34, 197, 94, 0.18);
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.35);
+        }
+
         @media (max-width: 768px) {
             .dashboard-grid {
                 gap: 15px;
@@ -1040,9 +1082,14 @@
                 </div>
 
                 <div class="dash-card main-chart">
-                    <h4 style="margin-bottom:15px">Class Performance Overview</h4>
-                    <div style="position: relative; height: 250px; width: 100%;"><canvas
-                            id="dashboardBarChart"></canvas></div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; gap: 12px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 7px; color: var(--text-dark);">Class Performance Overview</h4>
+                            <div id="chartSemBadges" style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;"></div>
+                        </div>
+                        <div id="chartOverallAvg" style="display: none; text-align: right; flex-shrink: 0;"></div>
+                    </div>
+                    <div style="position: relative; height: 230px; width: 100%;"><canvas id="dashboardBarChart"></canvas></div>
                 </div>
 
                 <div class="dash-card side-list">
@@ -1609,42 +1656,94 @@
         }
         setInterval(updateTime, 1000); updateTime();
 
-        function initDashboardChart(dataArray) {
+        function updateChartBadges(activeSem, dataArray) {
+            const container = document.getElementById('chartSemBadges');
+            const avgEl = document.getElementById('chartOverallAvg');
+            if (!container) return;
+            const semLabel = activeSem === '2nd Sem' ? '2nd Semester' : activeSem === '1st Sem' ? '1st Semester' : 'All Quarters';
+            const qtrLabel = activeSem === '2nd Sem' ? 'Q3 &amp; Q4' : activeSem === '1st Sem' ? 'Q1 &amp; Q2' : 'Q1 – Q4';
+            container.innerHTML =
+                `<span class="chart-badge chart-badge-sem"><i class="fa-regular fa-calendar" style="font-size:0.65rem;"></i> ${semLabel}</span>` +
+                `<span class="chart-badge chart-badge-qtr"><i class="fa-solid fa-layer-group" style="font-size:0.65rem;"></i> ${qtrLabel}</span>` +
+                `<span class="chart-badge chart-badge-pass"><i class="fa-solid fa-minus" style="font-size:0.65rem;"></i> 75% Passing</span>`;
+            const validData = (dataArray || []).filter(v => v !== null && v !== undefined && v > 0);
+            if (validData.length > 0 && avgEl) {
+                const avg = Math.round(validData.reduce((sum, v) => sum + v, 0) / validData.length);
+                const color = avg >= 75 ? '#16a34a' : '#dc2626';
+                avgEl.style.display = 'block';
+                avgEl.innerHTML = `<div style="font-size:0.7rem;color:var(--text-muted);font-weight:500;margin-bottom:1px;">Overall Avg</div><div style="font-size:1.55rem;font-weight:800;color:${color};line-height:1;">${avg}%</div>`;
+            } else if (avgEl) {
+                avgEl.style.display = 'none';
+            }
+        }
+
+        function initDashboardChart(dataArray, semester) {
             const canvas = document.getElementById('dashboardBarChart');
             const ctx = canvas.getContext('2d');
             if (window.dashBarChart) window.dashBarChart.destroy();
 
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(15, 23, 42, 0.06)';
+            const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(15, 23, 42, 0.06)';
             const labelColor = isDark ? '#9ca3af' : '#64748b';
             const tooltipBg = isDark ? '#1f2937' : '#ffffff';
             const tooltipTitle = isDark ? '#f9fafb' : '#111827';
             const tooltipBody = isDark ? '#d1d5db' : '#374151';
             const tooltipBorder = isDark ? '#374151' : '#e5e7eb';
 
+            const gradient = ctx.createLinearGradient(0, 0, 0, 230);
+            gradient.addColorStop(0, isDark ? 'rgba(99, 102, 241, 0.28)' : 'rgba(59, 130, 246, 0.22)');
+            gradient.addColorStop(0.65, isDark ? 'rgba(59, 130, 246, 0.07)' : 'rgba(99, 102, 241, 0.06)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+            let labels;
+            if (semester === '1st Sem') labels = ['1st Quarter', '2nd Quarter'];
+            else if (semester === '2nd Sem') labels = ['3rd Quarter', '4th Quarter'];
+            else labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+            const chartData = dataArray || Array(labels.length).fill(null);
+
             window.dashBarChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-                    datasets: [{
-                        label: 'Class Average',
-                        data: dataArray || [null, null, null, null],
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.12)',
-                        borderWidth: 3,
-                        pointBackgroundColor: '#ffffff',
-                        pointBorderColor: '#3b82f6',
-                        pointBorderWidth: 2,
-                        pointRadius: 5,
-                        fill: true,
-                        tension: 0.3,
-                        spanGaps: true
-                    }]
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Class Average',
+                            data: chartData,
+                            borderColor: isDark ? '#818cf8' : '#3b82f6',
+                            backgroundColor: gradient,
+                            borderWidth: 2.5,
+                            pointBackgroundColor: isDark ? '#818cf8' : '#3b82f6',
+                            pointBorderColor: isDark ? '#1f2937' : '#ffffff',
+                            pointBorderWidth: 3,
+                            pointRadius: 6,
+                            pointHoverRadius: 9,
+                            pointHoverBackgroundColor: isDark ? '#a5b4fc' : '#2563eb',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            spanGaps: true
+                        },
+                        {
+                            label: 'Passing (75%)',
+                            data: Array(labels.length).fill(75),
+                            borderColor: 'rgba(34, 197, 94, 0.6)',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            fill: false,
+                            tension: 0,
+                            spanGaps: true
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: { padding: { top: 8 } },
+                    layout: { padding: { top: 8, right: 4 } },
+                    interaction: { mode: 'index', intersect: false },
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -1677,16 +1776,18 @@
                             borderWidth: 1,
                             padding: 12,
                             cornerRadius: 10,
-                            displayColors: false,
+                            displayColors: true,
                             titleFont: { size: 12, family: 'Inter', weight: '600' },
-                            bodyFont: { size: 13, family: 'Inter' },
+                            bodyFont: { size: 12, family: 'Inter' },
                             callbacks: {
-                                title: items => 'Quarter ' + items[0].label.replace('Q', ''),
-                                label: ctx => 'Class Average: ' + ctx.parsed.y.toFixed(1) + '%'
+                                label: ctx => {
+                                    if (ctx.dataset.label === 'Passing (75%)') return '  Passing: 75%';
+                                    return ctx.parsed.y !== null ? `  Class Avg: ${ctx.parsed.y.toFixed(1)}%` : '  No data yet';
+                                }
                             }
                         }
                     },
-                    animation: { duration: 700, easing: 'easeOutQuart' }
+                    animation: { duration: 800, easing: 'easeOutQuart' }
                 }
             });
         }
@@ -1695,7 +1796,7 @@
             let teacherId = localStorage.getItem('user_id'); if (!teacherId) return;
             teacherId = teacherId.replace(/['"]+/g, '');
             try {
-                const { data: sections } = await supabaseClient.from('sections').select('id, title').eq('teacher_id', teacherId);
+                const { data: sections } = await supabaseClient.from('sections').select('id, title, semester').eq('teacher_id', teacherId);
                 globalSectionsData = sections || [];
                 let totalSections = sections ? sections.length : 0;
                 let sectionTitles = []; let sectionMap = {}; let totalStudents = 0; let present = 0; let absentOrLate = 0;
@@ -1756,13 +1857,24 @@
                             allStudentsScores.push({ name: student.full_name || 'No Name', section: sectionMap[student.section_id], grade: gradeFromRow(merged) });
                         });
                     }
-                    initDashboardChart([q1_c > 0 ? Number((q1_t / q1_c).toFixed(2)) : null, q2_c > 0 ? Number((q2_t / q2_c).toFixed(2)) : null, q3_c > 0 ? Number((q3_t / q3_c).toFixed(2)) : null, q4_c > 0 ? Number((q4_t / q4_c).toFixed(2)) : null]);
+                    const semCounts = {};
+                    sections.forEach(s => { if (s.semester) semCounts[s.semester] = (semCounts[s.semester] || 0) + 1; });
+                    let activeSem = 'both';
+                    if (semCounts['2nd Sem'] > 0 && !semCounts['1st Sem']) activeSem = '2nd Sem';
+                    else if (semCounts['1st Sem'] > 0 && !semCounts['2nd Sem']) activeSem = '1st Sem';
+                    const q1avg = q1_c > 0 ? Number((q1_t / q1_c).toFixed(2)) : null;
+                    const q2avg = q2_c > 0 ? Number((q2_t / q2_c).toFixed(2)) : null;
+                    const q3avg = q3_c > 0 ? Number((q3_t / q3_c).toFixed(2)) : null;
+                    const q4avg = q4_c > 0 ? Number((q4_t / q4_c).toFixed(2)) : null;
+                    const chartData = activeSem === '1st Sem' ? [q1avg, q2avg] : activeSem === '2nd Sem' ? [q3avg, q4avg] : [q1avg, q2avg, q3avg, q4avg];
+                    updateChartBadges(activeSem, chartData);
+                    initDashboardChart(chartData, activeSem);
                     const topList = document.getElementById('topPerformersList');
                     allStudentsScores.sort((a, b) => b.grade - a.grade); topList.innerHTML = '';
                     if (allStudentsScores.length > 0) {
                         allStudentsScores.slice(0, 5).forEach(s => { topList.innerHTML += `<li class="item-row"><span style="font-size:0.9rem;">${s.name} <small style="color:var(--text-muted);">(${s.section})</small></span><span style="font-weight:700; color:var(--accent-blue);">${s.grade}</span></li>`; });
                     } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
-                } else { initDashboardChart([0, 0, 0, 0]); }
+                } else { updateChartBadges('both', []); initDashboardChart([null, null, null, null], 'both'); }
                 document.getElementById('val-total-sections').textContent = totalSections; document.getElementById('val-total-students').textContent = totalStudents;
                 document.getElementById('val-todays-present').textContent = present; document.getElementById('val-todays-absent').textContent = absentOrLate;
             } catch (error) { console.error(error); initDashboardChart([0, 0, 0, 0]); }
