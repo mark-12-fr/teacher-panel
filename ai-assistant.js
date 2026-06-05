@@ -181,7 +181,7 @@
                 out += '<li>' + t.replace(/^[-*•]\s+/, '') + '</li>';
             } else {
                 if (inList) { out += '</ul>'; inList = false; }
-                if (t) out += '<p style="margin:5px 0;">' + t + '</p>';
+                if (t) out += '<p>' + t + '</p>';
             }
         });
         if (inList) out += '</ul>';
