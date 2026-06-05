@@ -4,6 +4,14 @@
         { icon: 'fa-solid fa-user-xmark', label: "Today's Absences", query: 'Who is absent today?' },
         { icon: 'fa-solid fa-chart-line', label: 'Failing Students', query: 'Failing students' },
         { icon: 'fa-solid fa-chart-pie', label: 'Class Summary', query: 'Class summary' },
+        { icon: 'fa-solid fa-triangle-exclamation', label: 'At-Risk Students', query: 'Show me students at risk of failing' },
+        { icon: 'fa-solid fa-envelope-open-text', label: 'Parent Message', query: 'Draft a message for parents of failing students' },
+        { icon: 'fa-solid fa-clipboard-list', label: 'Remediation Plan', query: 'Suggest remediation plan for failing students' },
+        { icon: 'fa-solid fa-calendar-week', label: 'Attendance Pattern', query: 'Attendance pattern analysis' },
+        { icon: 'fa-solid fa-code-compare', label: 'Section Comparison', query: 'Compare all sections' },
+        { icon: 'fa-solid fa-arrow-trend-up', label: 'Grade Prediction', query: 'Predict final grades for all students' },
+        { icon: 'fa-solid fa-file-lines', label: 'Weekly Summary', query: 'Generate weekly summary report' },
+        { icon: 'fa-solid fa-list-check', label: 'Missing Requirements', query: 'Who has missing requirements?' },
         { icon: 'fa-solid fa-calendar-days', label: 'My Schedule', query: 'What is my schedule?' },
         { icon: 'fa-solid fa-users', label: 'Total Population', query: 'How many students do I have?' },
         { icon: 'fa-solid fa-chalkboard-user', label: 'Assigned Facilitators', query: 'Who are my facilitators?' },
@@ -174,7 +182,7 @@
     window.MJR_formatAIText = formatAIText;
 
     function isEvaluationIntent(q) {
-        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank/i.test(q || '');
+        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank|at.?risk|risk.*fail|parent.*message|message.*parent|draft.*message|draft.*parent|remediation|remediation plan|pattern|trend|compare|section comparison|predict|prediction|weekly|monthly|summary report|generate.*report|weekly summary|missing requirement/i.test(q || '');
     }
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
@@ -293,7 +301,71 @@
             const missStr = a.missing.length ? (a.missing.length > 8 ? a.missing.slice(0, 8).join('/') + ' +' + (a.missing.length - 8) : a.missing.join('/')) : 'none';
             return `${cleanNm(st.full_name)} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | TotalAbsences-allDates ${a.abs}, TotalLates ${a.late}`;
         });
-        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student (these totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}`;
+
+        const q = (query || '').toLowerCase();
+        let extraContext = '';
+
+        // At-Risk Students: failing grade AND 3+ absences
+        if (/at.?risk|risk.*fail|posible.*fail/.test(q)) {
+            const atRisk = students.filter(st => { const a = analyze(st); return a.grade < 75 && a.abs >= 3; });
+            extraContext += `\n\nAT-RISK STUDENTS (grade below 75 AND 3+ absences, count=${atRisk.length}):\n` +
+                (atRisk.map(st => { const a = analyze(st); const sec = sections.find(x => x.id === st.section_id) || {}; return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): grade=${a.grade}%, absences=${a.abs}, missing=${a.missing.length} items`; }).join('\n') || 'None found.');
+        }
+
+        // Section Comparison
+        if (/compare|section.*comparison|comparison.*section/.test(q)) {
+            const sectionAvgs = sections.map(sec => {
+                const ss = students.filter(st => st.section_id === sec.id);
+                if (!ss.length) return null;
+                const grades = ss.map(st => analyze(st).grade);
+                const avg = Math.round(grades.reduce((a, b) => a + b, 0) / grades.length);
+                const passing = grades.filter(g => g >= 75).length;
+                const failing = grades.filter(g => g < 75).length;
+                const topStudent = ss.map(st => ({ name: cleanNm(st.full_name), grade: analyze(st).grade })).sort((a, b) => b.grade - a.grade)[0];
+                return `- ${sec.title || 'N/A'} (${sec.subject || 'N/A'}): avg=${avg}%, passing=${passing}, failing=${failing}, total=${ss.length}, top student=${topStudent ? topStudent.name + ' ' + topStudent.grade + '%' : 'N/A'}`;
+            }).filter(Boolean);
+            extraContext += `\n\nSECTION COMPARISON:\n${sectionAvgs.join('\n') || 'No sections yet.'}`;
+        }
+
+        // Attendance Pattern (day-of-week analysis)
+        if (/pattern|trend|always.*absent|day.*absent/.test(q)) {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const absByDay = {};
+            attendance.filter(a => a.status === 'Absent').forEach(a => {
+                const d = new Date(a.date);
+                if (!isNaN(d.getTime())) { const day = dayNames[d.getDay()]; absByDay[day] = (absByDay[day] || 0) + 1; }
+            });
+            const dayPattern = Object.entries(absByDay).sort((a, b) => b[1] - a[1]).map(([d, c]) => `${d}: ${c} absences`).join(', ');
+            const topAbsent = students.map(st => { const a = analyze(st); return { name: cleanNm(st.full_name), abs: a.abs }; })
+                .filter(x => x.abs > 0).sort((a, b) => b.abs - a.abs).slice(0, 10)
+                .map(x => `${x.name} (${x.abs} absences)`);
+            extraContext += `\n\nATTENDANCE PATTERNS:\nAbsences by day of week: ${dayPattern || 'no data'}\nMost absent students: ${topAbsent.join('; ') || 'none'}`;
+        }
+
+        // Weekly Summary (last 7 days)
+        if (/weekly|summary report|generate.*report|weekly summary/.test(q)) {
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const recentAtt = attendance.filter(a => { const d = new Date(a.date); return !isNaN(d.getTime()) && d >= sevenDaysAgo; });
+            const weeklyAbsent = recentAtt.filter(a => a.status === 'Absent').length;
+            const weeklyLate = recentAtt.filter(a => a.status === 'Late').length;
+            const failingCount = students.filter(st => analyze(st).grade < 75).length;
+            const passingCount = students.filter(st => analyze(st).grade >= 75).length;
+            const avgGrade = students.length ? Math.round(students.reduce((sum, st) => sum + analyze(st).grade, 0) / students.length) : 0;
+            extraContext += `\n\nWEEKLY SUMMARY (last 7 days):\nAttendance: ${weeklyAbsent} absence records, ${weeklyLate} late records\nGrades: ${passingCount} passing, ${failingCount} failing, class average=${avgGrade}%\nTotal students: ${students.length} across ${sections.length} section(s)`;
+        }
+
+        // Grade Prediction: current grade + potential if missing items submitted
+        if (/predict|prediction|final grade.*all|all.*final grade/.test(q)) {
+            const predictions = students.map(st => {
+                const a = analyze(st);
+                const sec = sections.find(x => x.id === st.section_id) || {};
+                const potential = Math.min(100, a.grade + a.missing.length * 3);
+                return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): current=${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}], potential if missing submitted=~${potential}% [${potential >= 75 ? 'PASS' : 'FAIL'}], missing=${a.missing.length} items`;
+            });
+            extraContext += `\n\nGRADE PREDICTIONS (current vs potential if all missing items submitted):\n${predictions.join('\n') || 'No data.'}`;
+        }
+
+        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student (these totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}${extraContext}`;
     }
     window.MJR_buildAIContext = buildAIContext;
 
