@@ -243,20 +243,29 @@ def ai_evaluate():
     )
 
     groq_key = os.getenv('GROQ_API_KEY')
+    gemini_key = os.getenv('GEMINI_API_KEY')
+    groq_err = None
+
+    # Try Groq first
     if groq_key:
         try:
             return jsonify({"reply": _groq_chat(groq_key, prompt)}), 200
         except Exception as e:
-            print(f"Groq error: {e}")
-            return jsonify({"error": "AI error: " + str(e)[:300]}), 502
+            groq_err = str(e)
+            is_limit = any(x in groq_err for x in ['429', '413', 'limit', 'rate', 'token', 'quota'])
+            if gemini_key and is_limit:
+                print(f"Groq limited — falling back to Gemini: {groq_err[:120]}")
+            else:
+                print(f"Groq error: {groq_err}")
+                return jsonify({"error": "AI error: " + groq_err[:300]}), 502
 
-    api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
+    # Gemini fallback (used when Groq hits rate/token limit, or when only Gemini key is set)
+    if not gemini_key:
         return jsonify({"error": "AI is not configured yet. Add GROQ_API_KEY (or GEMINI_API_KEY) on the server."}), 503
 
     try:
         from google import genai
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=gemini_key)
         last_err = None
         for m in _gemini_candidates(client)[:4]:
             try:
@@ -268,8 +277,8 @@ def ai_evaluate():
                 last_err = me
                 es = str(me)
                 if '429' in es or 'RESOURCE_EXHAUSTED' in es:
-                    return jsonify({"error": "The AI hit its free-tier rate limit. Please wait about a minute, then try again."}), 429
-        print(f"AI Evaluate Error: {last_err}")
+                    return jsonify({"error": "The AI hit its free-tier rate limit. Please wait a moment and try again."}), 429
+        print(f"Gemini error: {last_err}")
         return jsonify({"error": "AI error: " + (str(last_err)[:300] if last_err else "No usable Gemini model found.")}), 502
     except Exception as e:
         print(f"AI Evaluate Error: {e}")
