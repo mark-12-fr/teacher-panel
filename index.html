@@ -1780,10 +1780,12 @@
                 }
                 const li = document.createElement('li');
                 li.className = `item-row${status === 'current' ? ' sched-now' : ''}`;
-                if (status === 'past') { li.style.opacity = '0.5'; li.style.filter = 'grayscale(30%)'; }
+                const subjectColor  = status === 'past' ? 'var(--text-muted)' : 'var(--text-dark)';
+                const detailColor   = status === 'past' ? 'var(--text-muted)' : 'var(--text-dark)';
+                const subjectWeight = status === 'current' ? '700' : '600';
                 const nowTag = status === 'current'
-                    ? `<span style="font-size:0.65rem;color:#22c55e;font-weight:700;background:rgba(34,197,94,0.12);padding:2px 7px;border-radius:4px;vertical-align:middle;margin-left:6px;">NOW</span>` : '';
-                li.innerHTML = `<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><strong style="color:var(--text-dark);font-size:0.88rem;">${s.subject}</strong>${nowTag}</div><small style="color:var(--text-muted);">${s.time}${s.details ? ' · ' + s.details : ''}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
+                    ? `<span style="font-size:0.65rem;color:#22c55e;font-weight:700;background:rgba(34,197,94,0.12);padding:2px 7px;border-radius:4px;margin-left:6px;">NOW</span>` : '';
+                li.innerHTML = `<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;flex-wrap:wrap;"><span style="color:${subjectColor};font-size:0.88rem;font-weight:${subjectWeight};">${s.subject}</span>${nowTag}</div><small style="color:${detailColor};opacity:${status==='past'?'1':'0.72'};font-size:0.78rem;">${s.time}${s.details ? ' · ' + s.details : ''}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
                 scheduleList.appendChild(li);
             });
         }
