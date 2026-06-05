@@ -1,7 +1,7 @@
 # 🎓Teacher Management Portal
 **A Modern, AI-Powered Dashboard for Academic Excellence**
 
-The **PHINMA UI Teacher Management Portal** is a high-performance web application designed specifically for educators at PHINMA University of Iloilo. It streamlines classroom management, attendance tracking, and student performance analytics through a clean, intuitive, and mobile-responsive interface.
+The **Teacher Management Portal** is a high-performance web application designed specifically for educators at PHINMA University of Iloilo. It streamlines classroom management, attendance tracking, and student performance analytics through a clean, intuitive, and mobile-responsive interface.
 
 ---
 
