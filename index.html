@@ -315,32 +315,106 @@
         }
 
         @keyframes gradientMove {
-            0% {
-                background-position: 0% 50%;
-            }
+            0%   { background-position: 0% 60%; }
+            33%  { background-position: 60% 100%; }
+            66%  { background-position: 100% 30%; }
+            100% { background-position: 0% 60%; }
+        }
 
-            50% {
-                background-position: 100% 50%;
-            }
+        @keyframes orb-drift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50%       { transform: translate(28px, -32px) scale(1.12); }
+        }
 
-            100% {
-                background-position: 0% 50%;
-            }
+        @keyframes orb-drift-2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50%       { transform: translate(-22px, 20px) scale(0.9); }
+        }
+
+        @keyframes shine-slide {
+            0%   { transform: translateX(-100%) skewX(-15deg); }
+            100% { transform: translateX(400%) skewX(-15deg); }
         }
 
         .div-banner {
             grid-column: span 8;
-            background: linear-gradient(-45deg, #3b82f6, #6366f1, #8b5cf6, #3b82f6);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(
+                135deg,
+                #04071a 0%,
+                #0c1445 25%,
+                #1a0b55 50%,
+                #0e1040 75%,
+                #04071a 100%
+            );
             background-size: 400% 400%;
-            animation: gradientMove 10s ease infinite;
-            border-radius: 15px;
+            animation: gradientMove 18s ease infinite;
+            border-radius: 22px;
             color: white;
             padding: 35px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2);
+            box-shadow:
+                0 30px 60px -12px rgba(79, 70, 229, 0.45),
+                0 0 0 1px rgba(99, 102, 241, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
             margin-bottom: 10px;
+        }
+
+        /* Large indigo/violet orb — top right */
+        .div-banner::before {
+            content: '';
+            position: absolute;
+            width: 480px;
+            height: 480px;
+            border-radius: 50%;
+            background: radial-gradient(circle,
+                rgba(99, 102, 241, 0.5)  0%,
+                rgba(139, 92, 246, 0.25) 40%,
+                transparent              70%);
+            top: -190px;
+            right: -70px;
+            animation: orb-drift 13s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        /* Smaller cyan/blue orb — bottom centre-left */
+        .div-banner::after {
+            content: '';
+            position: absolute;
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            background: radial-gradient(circle,
+                rgba(56, 189, 248, 0.28)  0%,
+                rgba(59, 130, 246, 0.12)  40%,
+                transparent               70%);
+            bottom: -120px;
+            left: 28%;
+            animation: orb-drift-2 19s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        /* Subtle one-shot shine sweep */
+        .div-banner .banner-shine {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            border-radius: inherit;
+        }
+        .div-banner .banner-shine::after {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 60px;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.06),
+                transparent);
+            animation: shine-slide 8s ease-in-out infinite 2s;
         }
 
         .welcome-text h2 {
@@ -1040,6 +1114,7 @@
 
             <div class="dashboard-grid">
                 <div class="div-banner">
+                    <div class="banner-shine"></div>
                     <div class="welcome-text">
                         <h2 id="welcomeText"><i class="fa-solid fa-sun" style="color: #fbbf24;"></i> Welcome!</h2>
                         <p style="font-size: 0.95rem; opacity: 0.9;">Here's a quick overview of your classes today.</p>
