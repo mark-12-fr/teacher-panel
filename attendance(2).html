@@ -1269,30 +1269,7 @@
             background: var(--hover-bg) !important;
         }
 
-        /* ── Per-row mini stats at the end of each student row ── */
-        .row-stats {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            font-size: 0.72rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-        .row-stat-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 2px 7px;
-            border-radius: 10px;
-        }
-        .row-stat-p { background: rgba(22, 163, 74, 0.12); color: #15803d; }
-        .row-stat-a { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
-        .row-stat-l { background: rgba(202, 138, 4, 0.16); color: #a16207; }
-        .row-stat-e { background: rgba(126, 34, 206, 0.12); color: #7e22ce; }
-        [data-theme="dark"] .row-stat-p { background: rgba(22, 163, 74, 0.22); color: #86efac; }
-        [data-theme="dark"] .row-stat-a { background: rgba(220, 38, 38, 0.22); color: #fca5a5; }
-        [data-theme="dark"] .row-stat-l { background: rgba(202, 138, 4, 0.28); color: #fde68a; }
-        [data-theme="dark"] .row-stat-e { background: rgba(126, 34, 206, 0.22); color: #d8b4fe; }
+        /* Per-row mini stats removed per user request. */
 
         /* ── Month nav "today" quick-jump button ── */
         .month-today-btn {
@@ -1411,6 +1388,20 @@
             .sticky-col-1, .sticky-col-2 { z-index: 5; }
         }
 
+        /* Centered summary box: icon on top, text centered below.
+           Overrides the default .dat-box flex-row layout that put the
+           icon on the left and pushed the number to the right. */
+        .dat-box-centered {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 6px;
+        }
+        .dat-box-centered .dat-icon { margin: 0 auto 4px; }
+        .dat-box-centered h4 { margin: 0 !important; }
+        .dat-box-centered p { margin: 0; }
+
         /* ── Toast: bottom-right (less obstructive) ── */
         .toast-notification {
             top: auto !important;
@@ -1520,21 +1511,25 @@
             </div>
 
             <div class="inf-summary">
-                <div class="dat-box">
+                <div class="dat-box dat-box-centered">
                     <div class="dat-icon dat-icon-total"><i class="fa-solid fa-users"></i></div>
-                    <div><h4>TOTAL STUDENTS</h4><p class="txt-total" id="summaryTotal"><span class="skeleton-stat"></span></p></div>
+                    <h4>TOTAL STUDENTS</h4>
+                    <p class="txt-total" id="summaryTotal"><span class="skeleton-stat"></span></p>
                 </div>
-                <div class="dat-box">
+                <div class="dat-box dat-box-centered">
                     <div class="dat-icon dat-icon-present"><i class="fa-solid fa-user-check"></i></div>
-                    <div><h4>TODAY'S PRESENT</h4><p class="txt-present" id="summaryPresent"><span class="skeleton-stat"></span></p></div>
+                    <h4>TODAY'S PRESENT</h4>
+                    <p class="txt-present" id="summaryPresent"><span class="skeleton-stat"></span></p>
                 </div>
-                <div class="dat-box">
+                <div class="dat-box dat-box-centered">
                     <div class="dat-icon dat-icon-absent"><i class="fa-solid fa-user-xmark"></i></div>
-                    <div><h4>TODAY'S ABSENT</h4><p class="txt-absent" id="summaryAbsent"><span class="skeleton-stat"></span></p></div>
+                    <h4>TODAY'S ABSENT</h4>
+                    <p class="txt-absent" id="summaryAbsent"><span class="skeleton-stat"></span></p>
                 </div>
-                <div class="dat-box">
+                <div class="dat-box dat-box-centered">
                     <div class="dat-icon dat-icon-late"><i class="fa-solid fa-clock"></i></div>
-                    <div><h4>TODAY'S LATE</h4><p class="txt-late" id="summaryLate"><span class="skeleton-stat"></span></p></div>
+                    <h4>TODAY'S LATE</h4>
+                    <p class="txt-late" id="summaryLate"><span class="skeleton-stat"></span></p>
                 </div>
             </div>
 
@@ -2210,9 +2205,6 @@
             const isCurrentMonth = (selectedMonth === todayObj.getMonth() && selectedYear === todayObj.getFullYear());
             const todayDay = todayObj.getDate();
 
-            // Per-row mini stats: P, A, L, E counts for this row.
-            let rowP = 0, rowA = 0, rowL = 0, rowE = 0;
-
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayStr = day.toString().padStart(2, '0');
                 const monthStr = (selectedMonth + 1).toString().padStart(2, '0');
@@ -2222,10 +2214,10 @@
 
                 let mark = '-'; let markClass = 'mark-none';
                 if (record) {
-                    if (record.status === 'Present') { mark = 'P'; markClass = 'mark-p'; rowP++; }
-                    else if (record.status === 'Absent') { mark = 'A'; markClass = 'mark-a'; rowA++; }
-                    else if (record.status === 'Late') { mark = 'L'; markClass = 'mark-l'; rowL++; }
-                    else if (record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; rowE++; }
+                    if (record.status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
+                    else if (record.status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
+                    else if (record.status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
+                    else if (record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
                 }
 
                 // Mark today's column with .today-col so the CSS can tint it.
@@ -2237,16 +2229,6 @@
                         data-date="${targetDate}"
                         title="Click to cycle or Type P, A, L, E"><span class="mark-letter">${mark}</span></td>`;
             }
-            // Append a per-row stats cell at the very end. The CSS makes it
-            // appear inside the same .student-data-row, so it rounds with it.
-            html += `<td class="row-stats-cell" style="position:sticky;right:0;background:var(--card-bg);z-index:2;">
-                <div class="row-stats">
-                    <span class="row-stat-pill row-stat-p" title="Present">P ${rowP}</span>
-                    <span class="row-stat-pill row-stat-a" title="Absent">A ${rowA}</span>
-                    <span class="row-stat-pill row-stat-l" title="Late">L ${rowL}</span>
-                    <span class="row-stat-pill row-stat-e" title="Excused">E ${rowE}</span>
-                </div>
-            </td>`;
             tr.innerHTML = html;
             return tr;
         }
