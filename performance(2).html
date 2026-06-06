@@ -1727,7 +1727,7 @@
         let chartInstances = {};
 
         // State for table filtering/sorting (declared once, mutated in place)
-        const tableState = { filter: 'all', search: '', sortKey: 'rank', sortDir: 'desc' };
+        const tableState = { filter: 'all', search: '', sortKey: 'grade', sortDir: 'desc' };
 
         async function loadSectionDetails() {
             const userId = localStorage.getItem('user_id');
@@ -1913,30 +1913,6 @@
                 const attScore = att ? (att.present + 0.5 * (att.late + att.excused)) : 0;
                 const attRate = attTotal > 0 ? Math.round((attScore / attTotal) * 100) : null;
 
-                // Percentage-based component scores (each 0–100) for fair tie-breaking.
-                // The raw totals above depend on how many items a teacher graded,
-                // so summing the raws would unfairly favour students with more
-                // entries. Percentages put every student on equal footing.
-                const wwPct = Math.min((totalWW_raw / GRADING_CONFIG.WW_PERFECT) * 100, 100) || 0;
-                const ptPct = Math.min((totalPT_raw / GRADING_CONFIG.PT_PERFECT) * 100, 100) || 0;
-                const qePct = Math.min((totalQE_raw / GRADING_CONFIG.QE_PERFECT) * 100, 100) || 0;
-                const componentPctSum = wwPct + ptPct + qePct;       // 0–300
-                // Treat null attendance as 0 so the score remains comparable.
-                const attForScore = attRate == null ? 0 : attRate;   // 0–100
-
-                // Composite score used for ranking / tie-breaking.
-                // Weighting: final grade dominates (×1000 puts it ahead of any
-                // attendance or component-pct variation), then attendance, then
-                // the sum of component percentages. This guarantees that:
-                //   1) a higher final grade always ranks above a lower one,
-                //   2) among equal final grades, higher attendance wins,
-                //   3) among equal grade+attendance, the student with the
-                //      stronger performance across WW/PT/QE wins.
-                const compositeScore =
-                    final_rounded * 1000 +
-                    attForScore * 10 +
-                    componentPctSum;
-
                 return {
                     full_name: student.full_name || 'No Name',
                     written_works: totalWW_raw,
@@ -1945,9 +1921,7 @@
                     final_grade: final_rounded,
                     attendance_present: att ? att.present : 0,
                     attendance_total: attTotal,
-                    attendance_rate: attRate,
-                    component_pct_sum: componentPctSum,
-                    composite_score: compositeScore
+                    attendance_rate: attRate
                 };
             });
 
@@ -2117,9 +2091,9 @@
                 let av, bv;
                 switch (key) {
                     case 'rank':
-                        // Rank = composite score desc (uses final_grade +
-                        // attendance + component percentage tie-breakers).
-                        return ((b.composite_score || 0) - (a.composite_score || 0)) * dir;
+                        // rank sort uses grade desc by default
+                        av = a.final_grade || 0; bv = b.final_grade || 0;
+                        return (bv - av) * dir;
                     case 'name':
                         av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase();
                         return av.localeCompare(bv) * dir;
@@ -2129,23 +2103,9 @@
                     case 'att': av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir;
                     case 'grade':
                     default:
-                        // Primary: final_grade desc. Tie-breakers (in order):
-                        //  1) attendance rate desc
-                        //  2) sum of WW/PT/QE percentages desc
-                        //  3) composite score (same as primary + tie-breakers, kept for stability)
-                        //  4) full name asc (alphabetical — final, deterministic fallback)
                         av = a.final_grade || 0; bv = b.final_grade || 0;
-                        if (av !== bv) return (bv - av) * dir;
-                        const aAtt = a.attendance_rate == null ? -1 : a.attendance_rate;
-                        const bAtt = b.attendance_rate == null ? -1 : b.attendance_rate;
-                        if (aAtt !== bAtt) return (bAtt - aAtt) * dir;
-                        const aPct = a.component_pct_sum || 0;
-                        const bPct = b.component_pct_sum || 0;
-                        if (aPct !== bPct) return (bPct - aPct) * dir;
-                        const aScore = a.composite_score || 0;
-                        const bScore = b.composite_score || 0;
-                        if (aScore !== bScore) return (bScore - aScore) * dir;
-                        return String(a.full_name || '').localeCompare(String(b.full_name || ''));
+                        if (av !== bv) return (av - bv) * dir;
+                        return ((b.written_works + b.perf_task + b.quarterly_exam) - (a.written_works + a.perf_task + a.quarterly_exam)) * dir;
                 }
             });
 
@@ -2215,9 +2175,6 @@
             const dir = tableState.sortDir === 'asc' ? 1 : -1;
             const key = tableState.sortKey;
             rows.sort((a, b) => {
-                if (key === 'rank') {
-                    return ((b.composite_score || 0) - (a.composite_score || 0)) * dir;
-                }
                 let av, bv;
                 if (key === 'name') { av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase(); return av.localeCompare(bv) * dir; }
                 if (key === 'ww')  { av = a.written_works || 0; bv = b.written_works || 0; return (av - bv) * dir; }
@@ -2225,14 +2182,7 @@
                 if (key === 'qe')  { av = a.quarterly_exam || 0; bv = b.quarterly_exam || 0; return (av - bv) * dir; }
                 if (key === 'att') { av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir; }
                 av = a.final_grade || 0; bv = b.final_grade || 0;
-                if (av !== bv) return (bv - av) * dir;
-                const aAtt = a.attendance_rate == null ? -1 : a.attendance_rate;
-                const bAtt = b.attendance_rate == null ? -1 : b.attendance_rate;
-                if (aAtt !== bAtt) return (bAtt - aAtt) * dir;
-                const aPct = a.component_pct_sum || 0;
-                const bPct = b.component_pct_sum || 0;
-                if (aPct !== bPct) return (bPct - aPct) * dir;
-                return ((b.composite_score || 0) - (a.composite_score || 0));
+                return (av - bv) * dir;
             });
 
             const csvRows = [headers.join(',')];
