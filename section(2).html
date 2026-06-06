@@ -411,30 +411,67 @@
 
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0 8px;
             text-align: center;
         }
 
         th,
         td {
             white-space: nowrap;
-            padding: 15px;
-            border-bottom: 1px solid var(--border-color);
+            padding: 14px 16px;
             text-align: center;
         }
 
-        th {
-            background: var(--input-bg);
+        /* thead: top of card — sticky so it stays visible on scroll */
+        thead th {
+            background: var(--card-bg);
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
-        td {
+        /* tbody rows: card-like with rounded corners and soft border */
+        tbody tr {
+            background: var(--card-bg);
+            box-shadow: 0 1px 2px var(--shadow-color);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        tbody tr:hover {
+            background: var(--hover-bg);
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+        tbody td {
             font-size: 0.95rem;
             color: var(--text-dark);
             font-weight: 500;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        /* Round only the outer cells so each row looks like a card */
+        tbody tr td:first-child {
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+            border-left: 1px solid var(--border-color);
+        }
+        tbody tr td:last-child {
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+            border-right: 1px solid var(--border-color);
+        }
+        /* Alternating row tint for easier scanning (very subtle) */
+        tbody tr:nth-child(even) td {
+            background-color: rgba(0, 0, 0, 0.015);
+        }
+        [data-theme="dark"] tbody tr:nth-child(even) td {
+            background-color: rgba(255, 255, 255, 0.02);
         }
 
         .action-btns {
@@ -833,6 +870,139 @@
                 padding: 12px 10px;
                 font-size: 0.85rem;
             }
+        }
+
+        /* ── Gender badges (UI only) ── */
+        .gender-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            line-height: 1.4;
+        }
+        .gender-badge-male {
+            background: rgba(59, 130, 246, 0.12);
+            color: #1e40af;
+        }
+        .gender-badge-female {
+            background: rgba(236, 72, 153, 0.12);
+            color: #be185d;
+        }
+        [data-theme="dark"] .gender-badge-male {
+            background: rgba(59, 130, 246, 0.22);
+            color: #93c5fd;
+        }
+        [data-theme="dark"] .gender-badge-female {
+            background: rgba(236, 72, 153, 0.22);
+            color: #f9a8d4;
+        }
+
+        /* ── Icon-only action buttons with tooltips (UI only) ── */
+        .action-btns {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+            position: relative;
+        }
+        .icon-btn:hover {
+            transform: translateY(-1px);
+        }
+        .icon-btn-edit {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+        .icon-btn-edit:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+        .icon-btn-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+        .icon-btn-delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+        /* Tooltip on hover — pure CSS using a data-attribute via ::after */
+        .icon-btn[data-tip]::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: #1f2937;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 5px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            z-index: 5;
+        }
+        .icon-btn[data-tip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        [data-theme="dark"] .icon-btn-edit {
+            background: rgba(59, 130, 246, 0.18);
+            color: #93c5fd;
+        }
+        [data-theme="dark"] .icon-btn-edit:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+        [data-theme="dark"] .icon-btn-delete {
+            background: rgba(239, 68, 68, 0.18);
+            color: #fca5a5;
+        }
+        [data-theme="dark"] .icon-btn-delete:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        /* ── Empty state (UI only) ── */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--input-bg);
+            color: var(--text-muted);
+        }
+        .empty-state-icon i {
+            font-size: 1.6rem;
+            opacity: 0.6;
+        }
+        .empty-state-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+        .empty-state-msg {
+            font-size: 0.82rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
@@ -1443,21 +1613,34 @@
             tbody.innerHTML = '';
 
             if (students.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);">No students added yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="padding:0;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
+                        <div class="empty-state-title">No students yet</div>
+                        <div class="empty-state-msg">Click the + button to add your first student.</div>
+                    </div>
+                </td></tr>`;
                 return;
             }
 
             students.forEach(stud => {
                 const tr = document.createElement('tr');
                 const encodedData = encodeURIComponent(JSON.stringify(stud));
+                // Gender badge class varies by value; fall back to plain
+                // text if a third value ever appears.
+                const gLower = (stud.gender || '').toString().trim().toLowerCase();
+                const genderBadge = gLower === 'male' || gLower === 'female'
+                    ? `<span class="gender-badge gender-badge-${gLower}">${gLower === 'male' ? 'Male' : 'Female'}</span>`
+                    : (stud.gender || '');
+                // UI #4: icon-only action buttons with hover tooltips.
                 tr.innerHTML = `
                 <td>${stud.id_no}</td>
                 <td>${stud.full_name}</td>
-                <td>${stud.gender}</td>
-                <td> 
+                <td>${genderBadge}</td>
+                <td>
                     <div class="action-btns">
-                        <button class="editBtn-trigger" onclick="openEditModal('${encodedData}')">Edit</button>
-                        <button class="deleteBtn" onclick="deleteStudent('${stud.id}')">Delete</button>
+                        <button class="icon-btn icon-btn-edit" data-tip="Edit" onclick="openEditModal('${encodedData}')"><i class="fa-solid fa-pen"></i></button>
+                        <button class="icon-btn icon-btn-delete" data-tip="Delete" onclick="deleteStudent('${stud.id}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             `;
