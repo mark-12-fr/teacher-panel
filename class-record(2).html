@@ -876,8 +876,6 @@
         [data-theme="dark"] .header-group.header-at         { background: rgba(245, 158, 11, 0.22); color: #fde68a; }
         [data-theme="dark"] .header-group.header-pt         { background: rgba(249, 115, 22, 0.20); color: #fed7aa; }
         [data-theme="dark"] .header-group.header-qe         { background: rgba(168, 85, 247, 0.20); color: #d8b4fe; }
-        .header-group.header-final     { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
-        [data-theme="dark"] .header-group.header-final  { background: rgba(99, 102, 241, 0.22); color: #c7d2fe; }
         .header-group {
             font-weight: 800 !important;
             letter-spacing: 0.6px !important;
@@ -960,22 +958,7 @@
             background: var(--hover-bg) !important;
         }
 
-        /* ── Final grade column (UI #5) ──
-           Read-only cell appended to each row. Color-coded by threshold. */
-        .final-grade-cell {
-            font-weight: 800;
-            text-align: center;
-            min-width: 60px;
-            border-radius: 999px !important;
-            padding: 6px 10px !important;
-        }
-        .final-grade-good { background: rgba(22, 163, 74, 0.14); color: #15803d; }
-        .final-grade-warn { background: rgba(245, 158, 11, 0.16); color: #a16207; }
-        .final-grade-bad  { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
-        .final-grade-none { background: var(--input-bg); color: var(--text-muted); }
-        [data-theme="dark"] .final-grade-good { background: rgba(22, 163, 74, 0.22); color: #86efac; }
-        [data-theme="dark"] .final-grade-warn { background: rgba(245, 158, 11, 0.24); color: #fde68a; }
-        [data-theme="dark"] .final-grade-bad  { background: rgba(220, 38, 38, 0.22); color: #fca5a5; }
+        /* Final grade column removed per user request. */
     </style>
 </head>
 
@@ -1088,7 +1071,6 @@
                                 <th class="header-group header-pt">PT 1</th>
                                 <th class="header-group header-pt">PT 2</th>
                                 <th class="header-group header-qe">QE</th>
-                                <th rowspan="2" class="header-group header-final" style="background: rgba(99, 102, 241, 0.14); color: #4338ca; min-width: 80px;">FINAL</th>
                             </tr>
                             <tr id="subHeaderRow">
                                 <th>1</th>
@@ -1333,21 +1315,13 @@
 
                 let count = 1;
                 if (males.length > 0) {
-                    // colspan = 25 (modules) + 10 (activities) + 4 (AT/PT1/PT2/QE) + 1 (final) = 40
-                    tbody.innerHTML += `<tr class="category-row"><td class="sticky-col"></td><td class="sticky-col text-left group-divider">MALE</td><td colspan="40"></td></tr>`;
-                    males.forEach(s => {
-                        const row = createRow(s, count++, records);
-                        tbody.appendChild(row);
-                        refreshFinalGradeForRow(row);
-                    });
+                    // colspan = 25 (modules) + 10 (activities) + 4 (AT/PT1/PT2/QE) = 39
+                    tbody.innerHTML += `<tr class="category-row"><td class="sticky-col"></td><td class="sticky-col text-left group-divider">MALE</td><td colspan="39"></td></tr>`;
+                    males.forEach(s => tbody.appendChild(createRow(s, count++, records)));
                 }
                 if (females.length > 0) {
-                    tbody.innerHTML += `<tr class="category-row"><td class="sticky-col"></td><td class="sticky-col text-left group-divider" style="color: var(--text-dark);">FEMALE</td><td colspan="40"></td></tr>`;
-                    females.forEach(s => {
-                        const row = createRow(s, count++, records);
-                        tbody.appendChild(row);
-                        refreshFinalGradeForRow(row);
-                    });
+                    tbody.innerHTML += `<tr class="category-row"><td class="sticky-col"></td><td class="sticky-col text-left group-divider" style="color: var(--text-dark);">FEMALE</td><td colspan="39"></td></tr>`;
+                    females.forEach(s => tbody.appendChild(createRow(s, count++, records)));
                 }
 
             } catch (e) {
@@ -1414,60 +1388,12 @@
             for (let i = 1; i <= 10; i++) html += cellFor('activity_' + i, i === 10 ? 'group-divider' : '');
             ['at', 'pt_1', 'pt_2', 'qe'].forEach(f => { html += cellFor(f); });
 
-            // UI #5: append a read-only final-grade cell. The actual grade
-            // is filled in by refreshFinalGradeForRow() which we call right
-            // after the row is attached to the DOM. data-field is set to
-            // a sentinel value so saveScore() can be told to skip it if
-            // it ever reaches here.
-            html += `<td class="final-grade-cell final-grade-none" data-field="_final" data-studentid="${student.id}">--</td>`;
-
             tr.innerHTML = html;
             return tr;
         }
 
 
-        /**
-         * UI #5: re-derive the final grade for one row from its module,
-         * activity, AT, PT, and QE values, then paint the .final-grade-cell
-         * with a color-coded badge. Called on initial render and after
-         * every saveScore() that touches a grade cell in the row.
-         */
-        function refreshFinalGradeForRow(row) {
-            if (!row) return;
-            const cell = row.querySelector('.final-grade-cell');
-            if (!cell) return;
-            // Same weighting as computeFinalGrade() in performance(2).html
-            // / dashboard: WW 30%, PT 50%, QE 20%, perfect scores 100/100/50.
-            let totalWW = 0, totalPT = 0, totalQE = 0;
-            row.querySelectorAll('.editable-score').forEach(c => {
-                const f = c.dataset.field;
-                const v = parseFloat(c.innerText.trim());
-                if (isNaN(v) || v <= 0) return;
-                if (f && (f.startsWith('module_') || f.startsWith('activity_') || f === 'at')) totalWW += v;
-                else if (f && f.startsWith('pt_')) totalPT += v;
-                else if (f === 'qe') totalQE = v;
-            });
-            const ww = Math.min((totalWW / 100) * 100, 100) || 0;
-            const pt = Math.min((totalPT / 100) * 100, 100) || 0;
-            const qe = Math.min((totalQE / 50)  * 100, 100) || 0;
-            const final = Math.round((ww * 0.30) + (pt * 0.50) + (qe * 0.20));
-
-            cell.classList.remove('final-grade-good', 'final-grade-warn', 'final-grade-bad', 'final-grade-none');
-            if (ww === 0 && pt === 0 && qe === 0) {
-                cell.classList.add('final-grade-none');
-                cell.textContent = '--';
-            } else {
-                cell.textContent = final + '%';
-                // Binary pass/fail: >=75 = green, <75 = red. No warn state.
-                if (final >= 75) cell.classList.add('final-grade-good');
-                else              cell.classList.add('final-grade-bad');
-            }
-        }
-
         async function saveScore(cell) {
-            // UI #5: the final-grade cell is read-only — if focus ever
-            // lands on it (shouldn't, but be defensive), do nothing.
-            if (cell.dataset.field === '_final') return;
             const studentId = cell.dataset.studentid;
             const field = cell.dataset.field;
             let newValue = cell.innerText.trim();
@@ -1522,9 +1448,6 @@
                 cell.dataset.oldVal = newValue;
                 cell.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
                 setTimeout(() => cell.style.backgroundColor = 'transparent', 1000);
-
-                // Refresh the final-grade cell in the same row.
-                refreshFinalGradeForRow(cell.parentElement);
 
             } catch (error) {
                 console.error("Error saving score:", error);
