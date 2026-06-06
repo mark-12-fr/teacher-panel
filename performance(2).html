@@ -1164,10 +1164,7 @@
                 </div>
                 <div class="topbar-actions">
                     <select id="quarterSelect" class="quarter-select" title="Filter by quarter">
-                        <option value="1" selected>Q1 Only</option>
-                        <option value="2">Q2 Only</option>
-                        <option value="3">Q3 Only</option>
-                        <option value="4">Q4 Only</option>
+                        <option value="all" selected>All Quarters</option>
                     </select>
                     <button class="export-btn" id="exportCsvBtn" title="Export to CSV"><i class="fa-solid fa-file-csv"></i> <span
                             class="export-text">Export CSV</span></button>
@@ -1250,7 +1247,8 @@
                     <h3>All Students Ranking</h3>
                     <div class="table-controls">
                         <input type="text" id="tableSearch" class="table-search" placeholder="Search student...">
-                        <button class="filter-btn active" data-filter="pass">Passing</button>
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pass">Passing</button>
                         <button class="filter-btn" data-filter="fail">Failing</button>
                         <button class="filter-btn" data-filter="top10">Top 10</button>
                     </div>
@@ -1733,7 +1731,7 @@
         let chartInstances = {};
 
         // State for table filtering/sorting (declared once, mutated in place)
-        const tableState = { filter: 'pass', search: '', sortKey: 'grade', sortDir: 'desc' };
+        const tableState = { filter: 'all', search: '', sortKey: 'grade', sortDir: 'desc' };
 
         async function loadSectionDetails() {
             const userId = localStorage.getItem('user_id');
