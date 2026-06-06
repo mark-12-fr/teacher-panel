@@ -1131,6 +1131,299 @@
                 top: 20px;
             }
         }
+
+        /* ── Status cell pill badges (UI polish) ──
+           Keeps the existing colored letter but wraps it in a soft
+           rounded pill so the cell looks like a status badge instead
+           of plain text. */
+        .editable-cell {
+            position: relative;
+            vertical-align: middle !important;
+        }
+        .editable-cell .mark-letter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 24px;
+            padding: 0 7px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.78rem;
+            line-height: 1;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .editable-cell.mark-p .mark-letter {
+            background: rgba(22, 163, 74, 0.14);
+            color: #15803d;
+        }
+        .editable-cell.mark-a .mark-letter {
+            background: rgba(220, 38, 38, 0.14);
+            color: #b91c1c;
+        }
+        .editable-cell.mark-l .mark-letter {
+            background: rgba(202, 138, 4, 0.16);
+            color: #a16207;
+        }
+        .editable-cell.mark-e .mark-letter {
+            background: rgba(126, 34, 206, 0.14);
+            color: #7e22ce;
+        }
+        .editable-cell.mark-none .mark-letter {
+            background: transparent;
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+        [data-theme="dark"] .editable-cell.mark-p .mark-letter { background: rgba(22, 163, 74, 0.22); color: #86efac; }
+        [data-theme="dark"] .editable-cell.mark-a .mark-letter { background: rgba(220, 38, 38, 0.22); color: #fca5a5; }
+        [data-theme="dark"] .editable-cell.mark-l .mark-letter { background: rgba(202, 138, 4, 0.28); color: #fde68a; }
+        [data-theme="dark"] .editable-cell.mark-e .mark-letter { background: rgba(126, 34, 206, 0.22); color: #d8b4fe; }
+
+        /* Click feedback: quick scale pulse on the pill */
+        @keyframes markPulse {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.18); }
+            100% { transform: scale(1); }
+        }
+        .editable-cell.flash .mark-letter {
+            animation: markPulse 0.32s ease-out;
+        }
+
+        /* ── Today column highlight ── */
+        .today-col {
+            background: rgba(59, 130, 246, 0.06) !important;
+        }
+        .today-col-header {
+            background: rgba(59, 130, 246, 0.14) !important;
+            color: var(--accent-blue) !important;
+            font-weight: 800 !important;
+            position: relative;
+        }
+        .today-col-header::after {
+            content: 'TODAY';
+            position: absolute;
+            top: -1px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            background: var(--accent-blue);
+            color: white;
+            font-size: 0.55rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            padding: 2px 6px;
+            border-radius: 4px 4px 0 0;
+            line-height: 1;
+        }
+        [data-theme="dark"] .today-col { background: rgba(59, 130, 246, 0.12) !important; }
+
+        /* ── Summary box icons (UI polish) ── */
+        .dat-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dat-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.05rem;
+        }
+        .dat-icon-total    { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
+        .dat-icon-present  { background: rgba(22, 163, 74, 0.14);  color: #15803d; }
+        .dat-icon-absent   { background: rgba(220, 38, 38, 0.14);  color: #b91c1c; }
+        .dat-icon-late     { background: rgba(202, 138, 4, 0.16);  color: #a16207; }
+        [data-theme="dark"] .dat-icon-total   { background: rgba(59, 130, 246, 0.22); color: #93c5fd; }
+        [data-theme="dark"] .dat-icon-present { background: rgba(22, 163, 74, 0.22);  color: #86efac; }
+        [data-theme="dark"] .dat-icon-absent  { background: rgba(220, 38, 38, 0.22);  color: #fca5a5; }
+        [data-theme="dark"] .dat-icon-late    { background: rgba(202, 138, 4, 0.28);  color: #fde68a; }
+
+        /* ── Student row card style + sticky columns ── */
+        .student-data-row td {
+            transition: background-color 0.15s ease;
+        }
+        .student-data-row:hover td {
+            background-color: var(--hover-bg) !important;
+        }
+        /* Round the outer cells of each row to make it look like a card */
+        .student-data-row td:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+        .student-data-row td:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        .sticky-col-1, .sticky-col-2 {
+            position: sticky;
+            background: var(--card-bg);
+            z-index: 2;
+        }
+        .sticky-col-1 { left: 0; }
+        .sticky-col-2 { left: 50px; }  /* approx width of sticky-col-1 */
+        .student-data-row:hover .sticky-col-1,
+        .student-data-row:hover .sticky-col-2 {
+            background: var(--hover-bg) !important;
+        }
+
+        /* ── Per-row mini stats at the end of each student row ── */
+        .row-stats {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .row-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 7px;
+            border-radius: 10px;
+        }
+        .row-stat-p { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+        .row-stat-a { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+        .row-stat-l { background: rgba(202, 138, 4, 0.16); color: #a16207; }
+        .row-stat-e { background: rgba(126, 34, 206, 0.12); color: #7e22ce; }
+        [data-theme="dark"] .row-stat-p { background: rgba(22, 163, 74, 0.22); color: #86efac; }
+        [data-theme="dark"] .row-stat-a { background: rgba(220, 38, 38, 0.22); color: #fca5a5; }
+        [data-theme="dark"] .row-stat-l { background: rgba(202, 138, 4, 0.28); color: #fde68a; }
+        [data-theme="dark"] .row-stat-e { background: rgba(126, 34, 206, 0.22); color: #d8b4fe; }
+
+        /* ── Month nav "today" quick-jump button ── */
+        .month-today-btn {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 6px;
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .month-today-btn:hover {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        /* ── Search bar pill style + clear button ── */
+        .search-container {
+            position: relative;
+        }
+        .search-clear {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--hover-bg);
+            border: none;
+            color: var(--text-muted);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+        .search-clear.visible { display: flex; }
+        .search-clear:hover { background: var(--accent-blue); color: white; }
+        /* Highlight matched text in the name column */
+        .name-clickable mark {
+            background: rgba(245, 158, 11, 0.4);
+            color: inherit;
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+
+        /* ── Legend pill-style badges ── */
+        .legend-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .legend-pill-p { background: rgba(22, 163, 74, 0.14); color: #15803d; }
+        .legend-pill-a { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
+        .legend-pill-l { background: rgba(202, 138, 4, 0.16); color: #a16207; }
+        .legend-pill-e { background: rgba(126, 34, 206, 0.14); color: #7e22ce; }
+
+        /* ── Skeleton loaders for table + summary ── */
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-cell {
+            background: linear-gradient(90deg, var(--input-bg) 25%, var(--hover-bg) 50%, var(--input-bg) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            border-radius: 4px;
+        }
+        .skeleton-stat {
+            background: linear-gradient(90deg, var(--input-bg) 25%, var(--hover-bg) 50%, var(--input-bg) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            border-radius: 4px;
+            height: 18px;
+            width: 36px;
+            display: inline-block;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--input-bg);
+            color: var(--text-muted);
+        }
+        .empty-state-icon i { font-size: 1.6rem; opacity: 0.6; }
+        .empty-state-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+        .empty-state-msg { font-size: 0.82rem; }
+
+        /* ── Mobile: compact mode + sticky first column ── */
+        @media (max-width: 768px) {
+            .editable-cell .mark-letter { min-width: 22px; height: 22px; font-size: 0.7rem; }
+            .sticky-col-1, .sticky-col-2 { z-index: 5; }
+        }
+
+        /* ── Toast: bottom-right (less obstructive) ── */
+        .toast-notification {
+            top: auto !important;
+            bottom: 30px !important;
+            right: 30px !important;
+        }
+        @media (max-width: 640px) {
+            .toast-notification {
+                right: 20px !important;
+                left: 20px !important;
+                bottom: 20px !important;
+            }
+        }
     </style>
 </head>
 
@@ -1228,20 +1521,20 @@
 
             <div class="inf-summary">
                 <div class="dat-box">
-                    <h4>TOTAL STUDENTS</h4>
-                    <p class="txt-total" id="summaryTotal">0</p>
+                    <div class="dat-icon dat-icon-total"><i class="fa-solid fa-users"></i></div>
+                    <div><h4>TOTAL STUDENTS</h4><p class="txt-total" id="summaryTotal"><span class="skeleton-stat"></span></p></div>
                 </div>
                 <div class="dat-box">
-                    <h4>TODAY'S PRESENT</h4>
-                    <p class="txt-present" id="summaryPresent">0</p>
+                    <div class="dat-icon dat-icon-present"><i class="fa-solid fa-user-check"></i></div>
+                    <div><h4>TODAY'S PRESENT</h4><p class="txt-present" id="summaryPresent"><span class="skeleton-stat"></span></p></div>
                 </div>
                 <div class="dat-box">
-                    <h4>TODAY'S ABSENT</h4>
-                    <p class="txt-absent" id="summaryAbsent">0</p>
+                    <div class="dat-icon dat-icon-absent"><i class="fa-solid fa-user-xmark"></i></div>
+                    <div><h4>TODAY'S ABSENT</h4><p class="txt-absent" id="summaryAbsent"><span class="skeleton-stat"></span></p></div>
                 </div>
                 <div class="dat-box">
-                    <h4>TODAY'S LATE</h4>
-                    <p class="txt-late" id="summaryLate">0</p>
+                    <div class="dat-icon dat-icon-late"><i class="fa-solid fa-clock"></i></div>
+                    <div><h4>TODAY'S LATE</h4><p class="txt-late" id="summaryLate"><span class="skeleton-stat"></span></p></div>
                 </div>
             </div>
 
@@ -1251,6 +1544,7 @@
                     <div class="search-container">
                         <i data-lucide="search" class="search-icon"></i>
                         <input type="text" id="searchInput" placeholder="Search student name...">
+                        <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Clear"><i class="fa-solid fa-times"></i></button>
                     </div>
 
                     <div class="month-controls">
@@ -1261,13 +1555,14 @@
                             2026</span>
                         <button onclick="changeMonth(1)" class="month-nav-btn"><i
                                 class="fa-solid fa-chevron-right"></i></button>
+                        <button class="month-today-btn" onclick="jumpToCurrentMonth()" title="Jump to current month"><i class="fa-solid fa-calendar-day"></i> Today</button>
                     </div>
 
                     <div class="legend-controls">
-                        <span><span style="color:#16a34a">P</span> = Present</span>
-                        <span><span style="color:#dc2626">A</span> = Absent</span>
-                        <span><span style="color:#ca8a04">L</span> = Late</span>
-                        <span><span style="color:#7e22ce">E</span> = Excused</span>
+                        <span class="legend-pill legend-pill-p">P = Present</span>
+                        <span class="legend-pill legend-pill-a">A = Absent</span>
+                        <span class="legend-pill legend-pill-l">L = Late</span>
+                        <span class="legend-pill legend-pill-e">E = Excused</span>
                     </div>
                 </div>
 
@@ -1445,11 +1740,19 @@
 
             cell.innerText = mark;
             cell.className = `editable-cell ${markClass}`;
+            // UI #1: keep the letter wrapped in a .mark-letter span so the
+            // pill badge styling continues to apply.
+            cell.innerHTML = `<span class="mark-letter">${mark}</span>`;
 
 
             cell.classList.remove('live-update-flash');
             void cell.offsetWidth; // trigger reflow
             cell.classList.add('live-update-flash');
+            // UI #12: also trigger our pill-pulse animation for immediate
+            // tactile feedback when the teacher clicks a cell.
+            cell.classList.remove('flash');
+            void cell.offsetWidth;
+            cell.classList.add('flash');
 
 
             recalculateSummaryUI();
@@ -1738,6 +2041,54 @@
             loadSpreadsheetAttendance();
         }
 
+        /**
+         * Snap the month/year back to the current month and reload the
+         * spreadsheet. Used by the "Today" quick-jump button next to the
+         * month arrows. UI-only — no data is modified.
+         */
+        function jumpToCurrentMonth() {
+            const now = new Date();
+            if (selectedMonth === now.getMonth() && selectedYear === now.getFullYear()) {
+                // Already on the current month — just scroll to today column
+                const todayCol = document.querySelector('.editable-cell.today-col');
+                if (todayCol) {
+                    todayCol.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    todayCol.focus();
+                }
+                return;
+            }
+            selectedMonth = now.getMonth();
+            selectedYear = now.getFullYear();
+            loadSpreadsheetAttendance();
+        }
+
+        /**
+         * Clear the search input and the visibility of the X button.
+         * The actual filtering logic lives in the searchInput handler —
+         * this just resets the value and re-triggers the input event so
+         * existing handlers re-run with an empty string.
+         */
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            const btn = document.getElementById('searchClear');
+            if (!input) return;
+            input.value = '';
+            if (btn) btn.classList.remove('visible');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.focus();
+        }
+
+        /**
+         * Show or hide the search clear (X) button based on the input
+         * value. Called from the searchInput handler below.
+         */
+        function syncSearchClear() {
+            const input = document.getElementById('searchInput');
+            const btn = document.getElementById('searchClear');
+            if (!input || !btn) return;
+            btn.classList.toggle('visible', input.value.length > 0);
+        }
+
         async function loadSectionDetails() {
             const userId = localStorage.getItem('user_id');
             const { data: secData, error } = await supabaseClient
@@ -1774,9 +2125,15 @@
 
             const daysHeaderRow = document.getElementById('daysHeaderRow');
             daysHeaderRow.innerHTML = '';
+            // UI #2: highlight today's column header when the displayed
+            // month/year matches the current month/year.
+            const now = new Date();
+            const isCurrentMonth = (selectedMonth === now.getMonth() && selectedYear === now.getFullYear());
+            const todayDay = now.getDate();
             for (let i = 1; i <= daysInMonth; i++) {
                 const th = document.createElement('th');
                 th.textContent = i;
+                if (isCurrentMonth && i === todayDay) th.className = 'today-col-header';
                 daysHeaderRow.appendChild(th);
             }
 
@@ -1818,12 +2175,43 @@
                 tbody.appendChild(genderHeader);
                 females.forEach(stud => { tbody.appendChild(createStudentRow(stud, rowCount++, allAttendance, daysInMonth)); });
             }
+
+            // UI #7: empty state if there are no students at all.
+            if (males.length === 0 && females.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${daysInMonth + 2}" style="padding:0;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+                        <div class="empty-state-title">No students enrolled</div>
+                        <div class="empty-state-msg">Add students in this section to start taking attendance.</div>
+                    </div>
+                </td></tr>`;
+                return;
+            }
+
+            // UI #2: smooth scroll to today's column on initial load.
+            // Skipped if user is viewing a different month — they expect to
+            // see the start of that month, not be teleported to today.
+            if (isCurrentMonth) {
+                requestAnimationFrame(() => {
+                    const todayCol = document.querySelector('.editable-cell.today-col');
+                    if (todayCol) todayCol.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                });
+            }
         }
 
         function createStudentRow(student, index, allAttendance, daysInMonth) {
             const tr = document.createElement('tr');
             tr.className = 'student-data-row';
             let html = `<td class="sticky-col-1">${index}</td><td class="sticky-col-2 search-target name-clickable" title="Click to view attendance history">${student.full_name}</td>`;
+
+            // Today highlighting: only when the displayed month/year matches
+            // the current month/year and this day equals today's day.
+            const todayObj = new Date();
+            const isCurrentMonth = (selectedMonth === todayObj.getMonth() && selectedYear === todayObj.getFullYear());
+            const todayDay = todayObj.getDate();
+
+            // Per-row mini stats: P, A, L, E counts for this row.
+            let rowP = 0, rowA = 0, rowL = 0, rowE = 0;
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayStr = day.toString().padStart(2, '0');
@@ -1834,18 +2222,31 @@
 
                 let mark = '-'; let markClass = 'mark-none';
                 if (record) {
-                    if (record.status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
-                    else if (record.status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
-                    else if (record.status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
-                    else if (record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
+                    if (record.status === 'Present') { mark = 'P'; markClass = 'mark-p'; rowP++; }
+                    else if (record.status === 'Absent') { mark = 'A'; markClass = 'mark-a'; rowA++; }
+                    else if (record.status === 'Late') { mark = 'L'; markClass = 'mark-l'; rowL++; }
+                    else if (record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; rowE++; }
                 }
 
-                html += `<td class="editable-cell ${markClass}" tabindex="0" 
-                        data-student-id="${student.id_no || ''}" 
-                        data-student-name="${student.full_name}" 
-                        data-date="${targetDate}" 
-                        title="Click to cycle or Type P, A, L, E">${mark}</td>`;
+                // Mark today's column with .today-col so the CSS can tint it.
+                const todayCls = (isCurrentMonth && day === todayDay) ? ' today-col' : '';
+
+                html += `<td class="editable-cell ${markClass}${todayCls}" tabindex="0"
+                        data-student-id="${student.id_no || ''}"
+                        data-student-name="${student.full_name}"
+                        data-date="${targetDate}"
+                        title="Click to cycle or Type P, A, L, E"><span class="mark-letter">${mark}</span></td>`;
             }
+            // Append a per-row stats cell at the very end. The CSS makes it
+            // appear inside the same .student-data-row, so it rounds with it.
+            html += `<td class="row-stats-cell" style="position:sticky;right:0;background:var(--card-bg);z-index:2;">
+                <div class="row-stats">
+                    <span class="row-stat-pill row-stat-p" title="Present">P ${rowP}</span>
+                    <span class="row-stat-pill row-stat-a" title="Absent">A ${rowA}</span>
+                    <span class="row-stat-pill row-stat-l" title="Late">L ${rowL}</span>
+                    <span class="row-stat-pill row-stat-e" title="Excused">E ${rowE}</span>
+                </div>
+            </td>`;
             tr.innerHTML = html;
             return tr;
         }
@@ -1874,6 +2275,8 @@
         }
 
         document.getElementById('searchInput').addEventListener('input', function (e) {
+            // UI #6: show/hide the clear (X) button based on value.
+            syncSearchClear();
             const term = e.target.value.toLowerCase();
             document.querySelectorAll('.student-data-row').forEach(row => {
                 const nameCell = row.querySelector('.search-target');
