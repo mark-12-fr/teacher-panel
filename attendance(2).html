@@ -868,18 +868,18 @@
             }
 
             .dashboard-wrapper {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: 20px;
                 padding: 20px;
             }
 
             .dash-wrap {
-                text-align: left;
+                text-align: center;
                 margin-bottom: 5px;
             }
 
             .dash-wrap:last-child {
-                text-align: left;
+                text-align: center;
             }
 
             .inf-summary {
@@ -889,7 +889,7 @@
 
         @media (max-width: 768px) {
             .dashboard-wrapper {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 padding: 15px;
             }
 
@@ -1515,16 +1515,16 @@
                     <h4 id="dashSemester">Loading...</h4>
                 </div>
                 <div class="dash-wrap">
+                    <h3>QUARTER</h3>
+                    <h4 class="badge" id="dashQuarter">Q1</h4>
+                </div>
+                <div class="dash-wrap">
                     <h3>SUBJECT</h3>
                     <h4 id="dashSubject">Loading...</h4>
                 </div>
                 <div class="dash-wrap">
                     <h3>TOTAL STUDENTS</h3>
                     <h4 id="dashTotalStudents">0</h4>
-                </div>
-                <div class="dash-wrap">
-                    <h3>QUARTER</h3>
-                    <h4 class="badge" id="dashQuarter">Q1</h4>
                 </div>
                 <div class="dash-wrap">
                     <h3>SECTION</h3>
