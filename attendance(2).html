@@ -596,17 +596,39 @@
         }
 
         .gender-row td {
-            background-color: var(--hover-bg);
-            font-weight: 700;
-            font-size: 0.8rem;
+            font-weight: 800;
+            font-size: 0.82rem;
             color: var(--text-dark);
             text-align: left;
-            padding-left: 20px;
+            padding: 10px 12px 10px 20px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border-color) !important;
         }
 
-        .gender-row .sticky-col-1,
-        .gender-row .sticky-col-2 {
-            background-color: var(--hover-bg);
+        /* MALE = soft blue gradient (matches the same color in
+           class-record(2).html and section(2).html so all three
+           pages look consistent). */
+        .gender-row.category-male td,
+        .gender-row.category-male .sticky-col-1,
+        .gender-row.category-male .sticky-col-2 {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.06)) !important;
+        }
+        /* FEMALE = soft pink gradient */
+        .gender-row.category-female td,
+        .gender-row.category-female .sticky-col-1,
+        .gender-row.category-female .sticky-col-2 {
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.06)) !important;
+        }
+        [data-theme="dark"] .gender-row.category-male td,
+        [data-theme="dark"] .gender-row.category-male .sticky-col-1,
+        [data-theme="dark"] .gender-row.category-male .sticky-col-2 {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.08)) !important;
+        }
+        [data-theme="dark"] .gender-row.category-female td,
+        [data-theme="dark"] .gender-row.category-female .sticky-col-1,
+        [data-theme="dark"] .gender-row.category-female .sticky-col-2 {
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.22), rgba(236, 72, 153, 0.08)) !important;
         }
 
         .mark-p {
@@ -2158,15 +2180,25 @@
             let rowCount = 1;
 
             if (males.length > 0) {
-                const genderHeader = document.createElement('tr'); genderHeader.className = 'gender-row';
-                genderHeader.innerHTML = `<td class="sticky-col-1"></td><td class="sticky-col-2">MALE</td><td colspan="${daysInMonth}"></td>`;
+                const genderHeader = document.createElement('tr');
+                genderHeader.className = 'gender-row category-row category-male';
+                genderHeader.innerHTML = `<td class="sticky-col-1"></td>
+                    <td class="sticky-col-2">
+                        <i class="fa-solid fa-mars" style="margin-right: 6px; color: #2563eb;"></i>MALE
+                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${males.length})</span>
+                    </td><td colspan="${daysInMonth}"></td>`;
                 tbody.appendChild(genderHeader);
                 males.forEach(stud => { tbody.appendChild(createStudentRow(stud, rowCount++, allAttendance, daysInMonth)); });
             }
 
             if (females.length > 0) {
-                const genderHeader = document.createElement('tr'); genderHeader.className = 'gender-row';
-                genderHeader.innerHTML = `<td class="sticky-col-1"></td><td class="sticky-col-2">FEMALE</td><td colspan="${daysInMonth}"></td>`;
+                const genderHeader = document.createElement('tr');
+                genderHeader.className = 'gender-row category-row category-female';
+                genderHeader.innerHTML = `<td class="sticky-col-1"></td>
+                    <td class="sticky-col-2">
+                        <i class="fa-solid fa-venus" style="margin-right: 6px; color: #db2777;"></i>FEMALE
+                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${females.length})</span>
+                    </td><td colspan="${daysInMonth}"></td>`;
                 tbody.appendChild(genderHeader);
                 females.forEach(stud => { tbody.appendChild(createStudentRow(stud, rowCount++, allAttendance, daysInMonth)); });
             }
