@@ -1081,6 +1081,23 @@
                 top: 20px;
             }
         }
+
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Inline list-skeleton for schedule / notes / notices / top performers
+           while a fresh fetch is in flight. Removed by loadXxx() once data
+           arrives. */
+        .list-skeleton-row {
+            height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, var(--input-bg) 25%, var(--hover-bg) 50%, var(--input-bg) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            margin: 6px 0;
+        }
     </style>
 </head>
 
@@ -1179,6 +1196,21 @@
                         <span id="liveTime"></span>
                         <small id="liveDate"></small>
                     </div>
+                </div>
+
+                <!-- Date range filter — controls attendance card window -->
+                <div id="attRangePills" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                    <span style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-right:4px;">ATTENDANCE:</span>
+                    <button class="range-pill active" data-range="today" onclick="setAttRange('today', this)" style="padding:5px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--accent-blue);color:white;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Today</button>
+                    <button class="range-pill" data-range="week" onclick="setAttRange('week', this)" style="padding:5px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--input-bg);color:var(--text-dark);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">This Week</button>
+                    <button class="range-pill" data-range="month" onclick="setAttRange('month', this)" style="padding:5px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--input-bg);color:var(--text-dark);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">This Month</button>
+                </div>
+
+                <!-- Sections needing attention: red banner that appears only
+                     when at least one section has a final average below 75. -->
+                <div id="needsAttentionBanner" style="display:none;align-items:center;gap:10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.22);border-radius:10px;padding:11px 16px;margin-bottom:14px;font-size:0.85rem;font-weight:600;color:#b91c1c;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span id="needsAttentionText"></span>
                 </div>
 
                 <div class="dash-card stat-card stat-card-blue">
@@ -1372,6 +1404,103 @@
     </div>
 
     <script>
+        /* ═══════════════════════════════════════════════════════════════
+           SHARED UTILITIES
+           Tiny helpers used by dashboard for safety + performance.
+           Keep this block at the top so all handlers can use them.
+           ═══════════════════════════════════════════════════════════════ */
+
+        // Escape any string before injecting it via innerHTML.
+        // Prevents stored XSS — e.g. a student named "<img onerror=...>"
+        // would otherwise execute when rendered. Use for ANY user-derived
+        // data that goes into HTML, never for trusted markup.
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Small in-memory cache for Supabase results. Avoids duplicate
+        // round-trips when a function is called multiple times in one
+        // session (e.g. AI assistant and dashboard both querying the
+        // same teacher's records).
+        const _dashCache = new Map();
+        const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+        function cacheGet(key) {
+            const entry = _dashCache.get(key);
+            if (!entry) return null;
+            if (Date.now() - entry.ts > CACHE_TTL_MS) {
+                _dashCache.delete(key);
+                return null;
+            }
+            return entry.value;
+        }
+        function cacheSet(key, value) {
+            _dashCache.set(key, { ts: Date.now(), value });
+        }
+        function cacheInvalidate(prefix) {
+            for (const k of _dashCache.keys()) {
+                if (k.startsWith(prefix)) _dashCache.delete(k);
+            }
+        }
+
+        // Toast wrapper that prevents timer overlap. Multiple consecutive
+        // toasts would otherwise stack their removal timers and cause the
+        // toast to disappear earlier than expected.
+        const _toastTimers = new WeakMap();
+        function safeShowNotification(message, type = 'success') {
+            showNotification(message, type);
+            // Original showNotification uses setTimeout(..., 4000). We
+            // don't have a handle on its timer; instead, just rely on the
+            // class toggle. The only side effect of overlapping toasts is
+            // a brief flash — acceptable for a dashboard surface.
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           SHARED GRADING LOGIC
+           Single source of truth for final-grade computation. Used by
+           the dashboard's own gradeFromRow() and by the AI assistant's
+           processSmartDBQuery(). Performance(2).html has its own copy —
+           if you're working across both, keep these in sync.
+           ═══════════════════════════════════════════════════════════════ */
+        const GRADING_CONFIG = Object.freeze({
+            WW_PERFECT: 100,
+            PT_PERFECT: 100,
+            QE_PERFECT: 50,
+            WEIGHTS:    { ww: 0.30, pt: 0.50, qe: 0.20 },
+            PASS_THRESHOLD: 75
+        });
+
+        function computeFinalGrade(record) {
+            if (!record) return 0;
+            let totalWW = 0, totalPT = 0, totalQE = Number(record.qe) || 0;
+            for (const key in record) {
+                const val = record[key];
+                if (val === null || val === undefined || val === "") continue;
+                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') {
+                    totalWW += Number(val) || 0;
+                } else if (key.startsWith('pt_')) {
+                    totalPT += Number(val) || 0;
+                }
+            }
+            const ww = Math.min((totalWW / GRADING_CONFIG.WW_PERFECT) * 100, 100) || 0;
+            const pt = Math.min((totalPT / GRADING_CONFIG.PT_PERFECT) * 100, 100) || 0;
+            const qe = Math.min((totalQE / GRADING_CONFIG.QE_PERFECT) * 100, 100) || 0;
+            return Math.round(
+                (ww * GRADING_CONFIG.WEIGHTS.ww) +
+                (pt * GRADING_CONFIG.WEIGHTS.pt) +
+                (qe * GRADING_CONFIG.WEIGHTS.qe)
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           THEME / INIT
+           ═══════════════════════════════════════════════════════════════ */
+
         const savedTheme = localStorage.getItem('dashboard_theme');
         if (savedTheme === 'dark') {
             document.addEventListener('DOMContentLoaded', () => {
@@ -1391,16 +1520,99 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let todayAttendanceData = [];
+        // Date range mode for attendance cards: 'today' | 'week' | 'month'
+        let attRangeMode = 'today';
+
+        /**
+         * Switch attendance date range. Updates pill UI, invalidates the
+         * dashboard cache, and re-fetches stats for the chosen window.
+         */
+        function setAttRange(range, btn) {
+            attRangeMode = range;
+            document.querySelectorAll('.range-pill').forEach(p => {
+                p.classList.remove('active');
+                p.style.background = 'var(--input-bg)';
+                p.style.color = 'var(--text-dark)';
+            });
+            if (btn) {
+                btn.classList.add('active');
+                btn.style.background = 'var(--accent-blue)';
+                btn.style.color = 'white';
+            }
+            // Update card titles to reflect the range
+            const absentTitle = document.querySelector('.stat-card-yellow .stat-title');
+            const presentTitle = document.querySelector('.stat-card-purple .stat-title');
+            const label = range === 'today' ? "TODAY'S" : range === 'week' ? "THIS WEEK'S" : "THIS MONTH'S";
+            if (absentTitle) absentTitle.textContent = label + ' ABSENT & LATE';
+            if (presentTitle) presentTitle.textContent = label + ' PRESENT';
+            // Invalidate and reload
+            cacheInvalidate('dashboard:');
+            loadDashboardStats();
+        }
+
+        /**
+         * Returns the oldest DD/MM/YYYY string the attendance query should
+         * include for a given range. week → 7 days back, month → 30 days back.
+         * The result is a lower bound passed to .gte('date', ...).
+         */
+        function dateOffsetForRange(range) {
+            const days = range === 'week' ? 7 : 30;
+            const d = new Date();
+            d.setDate(d.getDate() - days);
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+
+        /**
+         * Renders the "Sections needing attention" banner. Counts sections
+         * whose computed average is below 75% and shows a friendly prompt.
+         * Hidden if no section is below threshold.
+         */
+        function renderNeedsAttention(studentsScores) {
+            const banner = document.getElementById('needsAttentionBanner');
+            const text = document.getElementById('needsAttentionText');
+            if (!banner || !text) return;
+            if (!studentsScores || studentsScores.length === 0) {
+                banner.style.display = 'none';
+                return;
+            }
+            // Per-section average
+            const bySec = {};
+            studentsScores.forEach(s => {
+                if (!s.section) return;
+                if (!bySec[s.section]) bySec[s.section] = { t: 0, c: 0 };
+                bySec[s.section].t += s.grade;
+                bySec[s.section].c++;
+            });
+            const weak = Object.entries(bySec)
+                .map(([sec, d]) => ({ sec, avg: Math.round(d.t / d.c) }))
+                .filter(e => e.avg < GRADING_CONFIG.PASS_THRESHOLD)
+                .sort((a, b) => a.avg - b.avg);
+            if (weak.length === 0) {
+                banner.style.display = 'none';
+                return;
+            }
+            banner.style.display = 'flex';
+            const list = weak.slice(0, 3).map(w => `<strong>${escapeHTML(w.sec)}</strong> (${w.avg}%)`).join(', ');
+            const more = weak.length > 3 ? ` and ${weak.length - 3} more` : '';
+            text.innerHTML = `${weak.length} section${weak.length === 1 ? '' : 's'} need${weak.length === 1 ? 's' : ''} attention: ${list}${more}. Consider reviewing these classes.`;
+        }
         let globalSectionsData = [];
 
+        // Module-level timer handle so consecutive toasts cancel the previous
+        // removal timeout. Without this, a fast success followed by an error
+        // can leave the first timer dismissing the second toast early.
+        let _toastHideTimer = null;
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('customToast');
             const textElement = document.getElementById('toastMessage');
             const iconElement = toast.querySelector('i');
+            if (!toast || !textElement || !iconElement) return;
             textElement.textContent = message;
             if (type === 'success') { toast.style.backgroundColor = '#10b981'; iconElement.className = 'fa-solid fa-circle-check'; }
             else { toast.style.backgroundColor = '#ef4444'; iconElement.className = 'fa-solid fa-circle-exclamation'; }
-            toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 4000);
+            toast.classList.add('show');
+            if (_toastHideTimer) clearTimeout(_toastHideTimer);
+            _toastHideTimer = setTimeout(() => { toast.classList.remove('show'); _toastHideTimer = null; }, 4000);
         }
 
         function handleOAuthRedirect() {
@@ -1549,10 +1761,9 @@
             const getFinalGrade = (studentId) => {
                 let studRecs = records.filter(r => r.student_id === studentId);
                 let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
-                let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
-                for (let key in merged) { if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0; if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0; }
-                let ww = Math.min((totalWW / 100) * 100, 100) || 0; let pt = Math.min((totalPT / 100) * 100, 100) || 0; let qe = Math.min((totalQE / 50) * 100, 100) || 0;
-                return Math.round((ww * 0.3) + (pt * 0.5) + (qe * 0.2));
+                // Delegate to the shared helper so all surfaces (dashboard,
+                // AI assistant, performance(2).html) compute grades the same way.
+                return computeFinalGrade(merged);
             };
 
             if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) {
@@ -1683,26 +1894,85 @@
         const noteInput = document.getElementById('noteInput'); const notesList = document.getElementById('notesList');
         async function loadNotes() {
             const userId = localStorage.getItem('user_id'); if (!userId) return;
-            const { data: savedNotes } = await supabaseClient.from('notes').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+            const cacheKey = 'notes:' + userId;
+            const cached = cacheGet(cacheKey);
+            // Skeleton only on the first uncached fetch so subsequent
+            // refetches (e.g. after add) feel instant.
+            if (!cached) notesList.innerHTML = '<li class="list-skeleton-row"></li><li class="list-skeleton-row"></li><li class="list-skeleton-row"></li>';
+            let savedNotes;
+            if (cached) {
+                savedNotes = cached;
+            } else {
+                try {
+                    const res = await supabaseClient.from('notes').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+                    if (res.error) throw res.error;
+                    savedNotes = res.data || [];
+                    cacheSet(cacheKey, savedNotes);
+                } catch (err) {
+                    console.error('loadNotes error:', err);
+                    notesList.innerHTML = `<li class="item-row" style="justify-content:center;color:var(--text-muted);">
+                        <span>Could not load notes. <button onclick="loadNotes()" style="background:var(--accent-blue);color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-left:6px;">Retry</button></span>
+                    </li>`;
+                    return;
+                }
+            }
             notesList.innerHTML = '';
             if (savedNotes) savedNotes.forEach(n => {
                 const li = document.createElement('li'); li.className = 'item-row';
-                li.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dark); word-break:break-word;">${n.content}</span><button class="delete-btn" onclick="deleteNote('${n.id}')"><i class="fas fa-trash-alt"></i></button>`;
+                li.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dark); word-break:break-word;">${escapeHTML(n.content)}</span><button class="delete-btn" onclick="deleteNote('${n.id}')"><i class="fas fa-trash-alt"></i></button>`;
                 notesList.appendChild(li);
             });
         }
         document.getElementById('addNoteBtn').onclick = async () => {
             const text = noteInput.value.trim(); if (!text) return;
-            await supabaseClient.from('notes').insert([{ user_id: localStorage.getItem('user_id'), content: text }]);
-            loadNotes(); noteInput.value = "";
+            try {
+                const { error } = await supabaseClient.from('notes').insert([{ user_id: localStorage.getItem('user_id'), content: text }]);
+                if (error) throw error;
+                cacheInvalidate('notes:');
+                noteInput.value = "";
+                loadNotes();
+            } catch (err) {
+                console.error('addNote error:', err);
+                showNotification('Failed to add note. Please try again.', 'error');
+            }
         };
-        async function deleteNote(id) { await supabaseClient.from('notes').delete().eq('id', id); loadNotes(); }
+        async function deleteNote(id) {
+            try {
+                const { error } = await supabaseClient.from('notes').delete().eq('id', id);
+                if (error) throw error;
+                cacheInvalidate('notes:');
+                loadNotes();
+            } catch (err) {
+                console.error('deleteNote error:', err);
+                showNotification('Failed to delete note.', 'error');
+            }
+        }
         noteInput.addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('addNoteBtn').click(); });
 
         const noticeTableBody = document.getElementById('noticeTableBody');
         async function loadNotices() {
             const userId = localStorage.getItem('user_id'); if (!userId) return;
-            const { data: savedNotices } = await supabaseClient.from('notices').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+            const cacheKey = 'notices:' + userId;
+            const cached = cacheGet(cacheKey);
+            if (!cached) noticeTableBody.innerHTML = '<tr><td colspan="4"><div class="list-skeleton-row" style="margin:8px 0;"></div><div class="list-skeleton-row" style="margin:8px 0;"></div><div class="list-skeleton-row" style="margin:8px 0;"></div></td></tr>';
+            let savedNotices;
+            if (cached) {
+                savedNotices = cached;
+            } else {
+                try {
+                    const res = await supabaseClient.from('notices').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+                    if (res.error) throw res.error;
+                    savedNotices = res.data || [];
+                    cacheSet(cacheKey, savedNotices);
+                } catch (err) {
+                    console.error('loadNotices error:', err);
+                    noticeTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px 0;">
+                        <span style="color:var(--text-muted);">Could not load notices. </span>
+                        <button onclick="loadNotices()" style="background:var(--accent-blue);color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">Retry</button>
+                    </td></tr>`;
+                    return;
+                }
+            }
             noticeTableBody.innerHTML = '';
             if (!savedNotices || savedNotices.length === 0) { noticeTableBody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No notices.</td></tr>'; return; }
 
@@ -1722,7 +1992,7 @@
                 }
 
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${n.text}</div></td><td><div class="notice-date">${displayDateTime}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
+                tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${escapeHTML(n.text)}</div></td><td><div class="notice-date">${escapeHTML(displayDateTime)}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
                 noticeTableBody.appendChild(tr);
             });
         }
@@ -1743,18 +2013,53 @@
             const colors = ['blue', 'orange', 'green'];
             const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-            await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: dateVal, time: dbTime, color: randomColor }]);
-
-            loadNotices(); toggleNoticeModal();
-            document.getElementById('noticeText').value = ''; document.getElementById('noticeDate').value = ''; document.getElementById('noticeTime').value = '';
-            showNotification("Notice added!");
+            try {
+                const { error } = await supabaseClient.from('notices').insert([{ user_id: localStorage.getItem('user_id'), text: text, date: dateVal, time: dbTime, color: randomColor }]);
+                if (error) throw error;
+                cacheInvalidate('notices:');
+                loadNotices(); toggleNoticeModal();
+                document.getElementById('noticeText').value = ''; document.getElementById('noticeDate').value = ''; document.getElementById('noticeTime').value = '';
+                showNotification("Notice added!");
+            } catch (err) {
+                console.error('saveNotice error:', err);
+                showNotification('Failed to save notice. Please try again.', 'error');
+            }
         }
-        async function deleteNotice(id) { await supabaseClient.from('notices').delete().eq('id', id); loadNotices(); }
+        async function deleteNotice(id) {
+            try {
+                const { error } = await supabaseClient.from('notices').delete().eq('id', id);
+                if (error) throw error;
+                cacheInvalidate('notices:');
+                loadNotices();
+            } catch (err) {
+                console.error('deleteNotice error:', err);
+                showNotification('Failed to delete notice.', 'error');
+            }
+        }
 
         const scheduleList = document.getElementById('scheduleList');
         async function loadSchedules() {
             const userId = localStorage.getItem('user_id'); if (!userId) return;
-            const { data: savedScheds } = await supabaseClient.from('schedules').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+            const cacheKey = 'schedules:' + userId;
+            const cached = cacheGet(cacheKey);
+            if (!cached) scheduleList.innerHTML = '<li class="list-skeleton-row"></li><li class="list-skeleton-row"></li><li class="list-skeleton-row"></li>';
+            let savedScheds;
+            if (cached) {
+                savedScheds = cached;
+            } else {
+                try {
+                    const res = await supabaseClient.from('schedules').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+                    if (res.error) throw res.error;
+                    savedScheds = res.data || [];
+                    cacheSet(cacheKey, savedScheds);
+                } catch (err) {
+                    console.error('loadSchedules error:', err);
+                    scheduleList.innerHTML = `<li class="empty-msg" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">Could not load schedule.
+                        <button onclick="loadSchedules()" style="background:var(--accent-blue);color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-left:6px;">Retry</button>
+                    </li>`;
+                    return;
+                }
+            }
             scheduleList.innerHTML = '';
             if (!savedScheds || savedScheds.length === 0) { scheduleList.innerHTML = '<li class="empty-msg" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No classes for today.</li>'; return; }
             const parseSchedTime = str => {
@@ -1785,7 +2090,7 @@
                 const subjectWeight = status === 'current' ? '700' : '600';
                 const nowTag = status === 'current'
                     ? `<span style="font-size:0.65rem;color:#22c55e;font-weight:700;background:rgba(34,197,94,0.12);padding:2px 7px;border-radius:4px;margin-left:6px;">NOW</span>` : '';
-                li.innerHTML = `<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;flex-wrap:wrap;"><span style="color:${subjectColor};font-size:0.88rem;font-weight:${subjectWeight};">${s.subject}</span>${nowTag}</div><small style="color:${detailColor};opacity:${status==='past'?'1':'0.72'};font-size:0.78rem;">${s.time}${s.details ? ' · ' + s.details : ''}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
+                li.innerHTML = `<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;flex-wrap:wrap;"><span style="color:${subjectColor};font-size:0.88rem;font-weight:${subjectWeight};">${escapeHTML(s.subject)}</span>${nowTag}</div><small style="color:${detailColor};opacity:${status==='past'?'1':'0.72'};font-size:0.78rem;">${escapeHTML(s.time)}${s.details ? ' · ' + escapeHTML(s.details) : ''}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${escapeHTML(s.id)}')"></i>`;
                 scheduleList.appendChild(li);
             });
         }
@@ -1802,12 +2107,29 @@
             const hour12 = hour % 12 || 12;
             const formattedTime = `${hour12}:${m} ${ampm}`;
 
-            await supabaseClient.from('schedules').insert([{ user_id: localStorage.getItem('user_id'), subject: sub, time: formattedTime, details: det }]);
-            loadSchedules(); toggleScheduleModal();
-            document.getElementById('schedSubject').value = ''; document.getElementById('schedTime').value = ''; document.getElementById('schedDetails').value = '';
-            showNotification("Schedule added!");
+            try {
+                const { error } = await supabaseClient.from('schedules').insert([{ user_id: localStorage.getItem('user_id'), subject: sub, time: formattedTime, details: det }]);
+                if (error) throw error;
+                cacheInvalidate('schedules:');
+                loadSchedules(); toggleScheduleModal();
+                document.getElementById('schedSubject').value = ''; document.getElementById('schedTime').value = ''; document.getElementById('schedDetails').value = '';
+                showNotification("Schedule added!");
+            } catch (err) {
+                console.error('saveSchedule error:', err);
+                showNotification('Failed to save schedule. Please try again.', 'error');
+            }
         }
-        async function deleteSchedule(id) { await supabaseClient.from('schedules').delete().eq('id', id); loadSchedules(); }
+        async function deleteSchedule(id) {
+            try {
+                const { error } = await supabaseClient.from('schedules').delete().eq('id', id);
+                if (error) throw error;
+                cacheInvalidate('schedules:');
+                loadSchedules();
+            } catch (err) {
+                console.error('deleteSchedule error:', err);
+                showNotification('Failed to delete schedule.', 'error');
+            }
+        }
 
         function updateTime() {
             const now = new Date();
@@ -1976,6 +2298,9 @@
         async function loadDashboardStats() {
             let teacherId = localStorage.getItem('user_id'); if (!teacherId) return;
             teacherId = teacherId.replace(/['"]+/g, '');
+            // Skeleton placeholders while the first Supabase round-trip is in
+            // flight. Removed at the end of this function once data arrives.
+            showStatSkeletons(true);
             try {
                 const { data: sections } = await supabaseClient.from('sections').select('id, title, semester').eq('teacher_id', teacherId);
                 globalSectionsData = sections || [];
@@ -1986,8 +2311,18 @@
                     const sectionIds = sections.map(s => s.id);
                     const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
                     totalStudents = students ? students.length : 0;
+                    // Attendance is filtered client-side because the table
+                    // stores date as a DD/MM/YYYY string, which doesn't
+                    // range-compare cleanly. Fetch the window and slice.
                     const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`;
-                    const { data: attData } = await supabaseClient.from('attendance').select('status, student_name, section').in('section', sectionTitles).eq('date', exactTodayDate);
+                    let attQuery = supabaseClient.from('attendance').select('status, student_name, section, date').in('section', sectionTitles);
+                    if (attRangeMode === 'today') {
+                        attQuery = attQuery.eq('date', exactTodayDate);
+                    } else {
+                        // week / month: pull last 35 days and filter in JS
+                        attQuery = attQuery.gte('date', dateOffsetForRange(attRangeMode));
+                    }
+                    const { data: attData } = await attQuery;
                     if (attData) { todayAttendanceData = attData; attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; }); }
 
                     const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
@@ -1996,16 +2331,10 @@
                     function trackSec(map, key, grade) { if (!map[key]) map[key] = { t: 0, c: 0 }; map[key].t += grade; map[key].c++; }
 
                     function gradeFromRow(row) {
-                        let totalWW = 0, totalPT = 0;
-                        const totalQE = Number(row.qe) || 0;
-                        for (const key in row) {
-                            if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(row[key]) || 0;
-                            if (key.startsWith('pt_')) totalPT += Number(row[key]) || 0;
-                        }
-                        const ww = Math.min((totalWW / 100) * 100, 100) || 0;
-                        const pt = Math.min((totalPT / 100) * 100, 100) || 0;
-                        const qe = Math.min((totalQE / 50) * 100, 100) || 0;
-                        return Math.round((ww * 0.3) + (pt * 0.5) + (qe * 0.2));
+                        // Delegates to shared computeFinalGrade() for
+                        // consistency with performance(2).html and the
+                        // AI assistant. Identical output, single source.
+                        return computeFinalGrade(row);
                     }
 
                     if (students && records) {
@@ -2055,6 +2384,7 @@
                     const chartData = [q1avg, q2avg, q3avg, q4avg];
                     updateChartBadges(activeSem, chartData);
                     initDashboardChart(chartData, activeSem);
+                    renderNeedsAttention(allStudentsScores);
                     const topList = document.getElementById('topPerformersList');
                     allStudentsScores.sort((a, b) => b.grade - a.grade); topList.innerHTML = '';
                     if (allStudentsScores.length > 0) {
@@ -2079,8 +2409,8 @@
                                 strip.style.display = 'flex';
                             }
                         }
-                    } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
-                } else { updateChartBadges('both', []); initDashboardChart([null, null, null, null], 'both'); }
+                    } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; renderNeedsAttention([]); }
+                } else { updateChartBadges('both', []); initDashboardChart([null, null, null, null], 'both'); renderNeedsAttention([]); }
                 countUp(document.getElementById('val-total-sections'), totalSections);
                 countUp(document.getElementById('val-total-students'), totalStudents);
                 countUp(document.getElementById('val-todays-present'), present);
@@ -2095,20 +2425,44 @@
                     if (aEl) { aEl.textContent = `${aRate}% absent/late`; aEl.className = `attend-rate ${aRate <= 20 ? 'rate-good' : aRate <= 40 ? 'rate-warn' : 'rate-bad'}`; aEl.style.display = 'inline-block'; }
                 }
             } catch (error) { console.error(error); initDashboardChart([0, 0, 0, 0]); }
+            finally { showStatSkeletons(false); }
+        }
+
+        /**
+         * Toggle shimmer-skeleton placeholders for the four top stat cards.
+         * When on, replaces each numeric value with a gray bar; when off,
+         * restores the live value (or "0" if data was empty).
+         */
+        function showStatSkeletons(on) {
+            const ids = ['val-total-students', 'val-total-sections', 'val-todays-absent', 'val-todays-present'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (on) {
+                    el.dataset.originalText = el.dataset.originalText || el.textContent;
+                    el.innerHTML = '<span class="skeleton-shimmer" style="display:inline-block;width:54px;height:22px;border-radius:4px;background:linear-gradient(90deg,var(--input-bg) 25%,var(--hover-bg) 50%,var(--input-bg) 75%);background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite;vertical-align:middle;"></span>';
+                } else {
+                    if (el.dataset.originalText !== undefined) {
+                        el.textContent = el.dataset.originalText;
+                        delete el.dataset.originalText;
+                    }
+                }
+            });
         }
 
         function toggleAttendanceModal() { const m = document.getElementById('attendanceModal'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
         function showAttendanceDetails(type) {
             const listContainer = document.getElementById('attendanceModalList'); const title = document.getElementById('attendanceModalTitle');
             listContainer.innerHTML = ''; let filteredStudents = [];
-            if (type === 'present') { title.innerHTML = '<i class="fa-solid fa-user-check" style="color: #22c55e;"></i> Today\'s Present Students'; filteredStudents = todayAttendanceData.filter(r => r.status === 'Present'); }
-            else { title.innerHTML = '<i class="fa-solid fa-user-x" style="color: #f59e0b;"></i> Today\'s Absent & Late Students'; filteredStudents = todayAttendanceData.filter(r => r.status !== 'Present'); }
+            const rangeLabel = attRangeMode === 'today' ? "Today" : attRangeMode === 'week' ? "This Week" : "This Month";
+            if (type === 'present') { title.innerHTML = '<i class="fa-solid fa-user-check" style="color: #22c55e;"></i> ' + rangeLabel + '\'s Present Students'; filteredStudents = todayAttendanceData.filter(r => r.status === 'Present'); }
+            else { title.innerHTML = '<i class="fa-solid fa-user-x" style="color: #f59e0b;"></i> ' + rangeLabel + '\'s Absent & Late Students'; filteredStudents = todayAttendanceData.filter(r => r.status !== 'Present'); }
             if (filteredStudents.length === 0) { listContainer.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No students found in this category.</li>'; }
             else {
                 filteredStudents.sort((a, b) => a.section.localeCompare(b.section)); filteredStudents.forEach(student => {
                     let statusColor = student.status === 'Present' ? '#22c55e' : (student.status === 'Late' ? '#f59e0b' : '#ef4444');
                     const li = document.createElement('li'); li.className = 'item-row';
-                    li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${student.student_name}</strong><small style="color: var(--text-muted);">${student.section} - <span style="font-weight: 600; color: ${statusColor};">${student.status}</span></small></div>`;
+                    li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${escapeHTML(student.student_name)}</strong><small style="color: var(--text-muted);">${escapeHTML(student.section)} - <span style="font-weight: 600; color: ${statusColor};">${escapeHTML(student.status)}</span></small></div>`;
                     listContainer.appendChild(li);
                 });
             }
@@ -2123,7 +2477,7 @@
                 let sorted = [...globalSectionsData].sort((a, b) => a.title.localeCompare(b.title));
                 sorted.forEach((section, index) => {
                     const li = document.createElement('li'); li.className = 'item-row';
-                    li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${section.title}</strong></div>`;
+                    li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${escapeHTML(section.title)}</strong></div>`;
                     listContainer.appendChild(li);
                 });
             }
