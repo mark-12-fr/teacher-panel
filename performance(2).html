@@ -14,7 +14,8 @@
     <link rel="stylesheet" href="ai-assistant.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js: load normally; we still lazy-init via requestIdleCallback below -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 
     <script>
 
@@ -326,6 +327,28 @@
             white-space: nowrap;
         }
 
+        .topbar-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Quarter selector */
+        .quarter-select {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: 0.2s;
+        }
+        .quarter-select:hover { border-color: var(--accent-blue); }
+
         .export-btn {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -341,6 +364,7 @@
             box-shadow: 0 1px 2px var(--shadow-color);
             transition: 0.2s;
             white-space: nowrap;
+            font-family: 'Inter', sans-serif;
         }
 
         .export-btn:hover {
@@ -485,6 +509,21 @@
             min-height: 280px;
         }
 
+        /* Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--input-bg) 25%, var(--hover-bg) 50%, var(--input-bg) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+            border-radius: 6px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-line { height: 14px; margin: 6px 0; }
+        .skeleton-block { width: 100%; height: 220px; border-radius: 8px; }
+        .skeleton-circle { width: 32px; height: 32px; border-radius: 50%; }
+
 
         .table-card {
             background: var(--card-bg);
@@ -495,12 +534,61 @@
             transition: background 0.3s, border 0.3s;
         }
 
-        .table-card h3 {
+        .table-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .table-card-header h3 {
             font-size: 1.1rem;
             font-weight: 700;
             color: var(--text-dark);
-            margin-bottom: 20px;
+            margin: 0;
         }
+
+        .table-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .filter-btn:hover { border-color: var(--accent-blue); }
+        .filter-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .table-search {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            min-width: 180px;
+            transition: 0.2s;
+        }
+        .table-search:focus { border-color: var(--accent-blue); }
 
 
         .table-responsive-wrapper {
@@ -524,6 +612,19 @@
             z-index: 1;
             border-bottom: 2px solid var(--border-color);
         }
+
+        thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        thead th.sortable:hover { color: var(--accent-blue); }
+        thead th .sort-arrow {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.4;
+            font-size: 0.7rem;
+        }
+        thead th.sortable.active .sort-arrow { opacity: 1; color: var(--accent-blue); }
 
         th,
         td {
@@ -743,6 +844,90 @@
         }
 
 
+        /* ── Stat card color accents ── */
+        .stat-card { position: relative; overflow: hidden; }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 12px 12px 0 0;
+        }
+        .stat-card-blue::before   { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+        .stat-card-green::before  { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .stat-card-yellow::before { background: linear-gradient(90deg, #f59e0b, #f97316); }
+        .stat-card-red::before    { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .stat-card-blue   { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(59,130,246,0.05) 100%); }
+        .stat-card-green  { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(34,197,94,0.05) 100%); }
+        .stat-card-yellow { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(245,158,11,0.05) 100%); }
+        .stat-card-red    { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(239,68,68,0.05) 100%); }
+
+        /* ── Failing students alert ── */
+        .failing-alert {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.22);
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin-bottom: 16px;
+            font-size: 0.87rem;
+            font-weight: 600;
+            color: #b91c1c;
+        }
+        [data-theme="dark"] .failing-alert {
+            background: rgba(239,68,68,0.15);
+            border-color: rgba(239,68,68,0.3);
+            color: #fca5a5;
+        }
+
+        /* ── PASS / FAIL badge ── */
+        .grade-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            border-radius: 20px;
+            font-size: 0.67rem;
+            font-weight: 700;
+            margin-left: 5px;
+            vertical-align: middle;
+            letter-spacing: 0.02em;
+        }
+        .grade-badge-pass { background: rgba(34,197,94,0.12); color: #15803d; }
+        .grade-badge-fail { background: rgba(239,68,68,0.12); color: #b91c1c; }
+        [data-theme="dark"] .grade-badge-pass { background: rgba(34,197,94,0.2); color: #86efac; }
+        [data-theme="dark"] .grade-badge-fail { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+        /* ── Top 3 row highlights ── */
+        .rank-row-1 td { background: rgba(245,158,11,0.07) !important; }
+        .rank-row-2 td { background: rgba(156,163,175,0.08) !important; }
+        .rank-row-3 td { background: rgba(205,127,50,0.06) !important; }
+
+        /* ── Grade mini progress bar ── */
+        .grade-bar {
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .grade-bar-fill { height: 100%; border-radius: 3px; }
+
+        /* ── Retry button (error state) ── */
+        .retry-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8rem;
+        }
+        .retry-btn:hover { background: #2563eb; }
+
         @media (max-width: 1024px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -907,6 +1092,10 @@
                 min-width: auto;
                 top: 20px;
             }
+
+            .table-card-header { flex-direction: column; align-items: flex-start; }
+            .table-controls { width: 100%; }
+            .table-search { flex-grow: 1; min-width: 0; }
         }
     </style>
 </head>
@@ -935,16 +1124,6 @@
                 <div class="sidebar-username" id="userName">&nbsp;</div>
                 <div class="sidebar-school-year" id="userSchoolYear"></div>
             </div>
-
-            <script>
-                (function () {
-                    const cachedName = localStorage.getItem('cached_user_name');
-                    const cachedAvatar = localStorage.getItem('cached_user_avatar');
-                    if (cachedName) document.getElementById('userName').textContent = cachedName;
-                    if (cachedAvatar) document.getElementById('userAvatar').src = cachedAvatar;
-                    else document.getElementById('userAvatar').src = "https://ui-avatars.com/api/?name=Teacher&background=3b82f6&color=fff&size=128";
-                })();
-            </script>
 
             <nav class="sidebar-menu">
                 <a href="index.html" onclick="closeSidebar()"><i data-lucide="layout-dashboard"></i> Dashboard</a>
@@ -975,8 +1154,19 @@
                     <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
                     <h1>Class Performance</h1>
                 </div>
-                <button class="export-btn" onclick="window.print()"><i class="fa-solid fa-print"></i> <span
-                        class="export-text">Print Report</span></button>
+                <div class="topbar-actions">
+                    <select id="quarterSelect" class="quarter-select" title="Filter by quarter">
+                        <option value="all">All Quarters</option>
+                        <option value="1">Q1 Only</option>
+                        <option value="2">Q2 Only</option>
+                        <option value="3">Q3 Only</option>
+                        <option value="4">Q4 Only</option>
+                    </select>
+                    <button class="export-btn" id="exportCsvBtn" title="Export to CSV"><i class="fa-solid fa-file-csv"></i> <span
+                            class="export-text">Export CSV</span></button>
+                    <button class="export-btn" onclick="window.print()" title="Print report"><i class="fa-solid fa-print"></i> <span
+                            class="export-text">Print</span></button>
+                </div>
             </div>
 
             <div class="dashboard-wrapper">
@@ -998,22 +1188,27 @@
                 </div>
             </div>
 
+            <div class="failing-alert" id="failingAlert">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="failingAlertText">Some students are falling behind.</span>
+            </div>
+
             <div class="stats-grid">
-                <div class="stat-card">
+                <div class="stat-card stat-card-blue">
                     <h5>Class Average</h5>
-                    <h2 class="text-blue" id="statClassAvg">-</h2>
+                    <h2 class="text-blue" id="statClassAvg">—</h2>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card-green">
                     <h5>Pass Rate</h5>
-                    <h2 class="text-green" id="statPassRate">-</h2>
+                    <h2 class="text-green" id="statPassRate">—</h2>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card-yellow">
                     <h5>Highest Grade</h5>
-                    <h2 id="statHighest">-</h2>
+                    <h2 id="statHighest">—</h2>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card-red">
                     <h5>Lowest Grade</h5>
-                    <h2 class="text-red" id="statLowest">-</h2>
+                    <h2 class="text-red" id="statLowest">—</h2>
                 </div>
             </div>
 
@@ -1021,47 +1216,59 @@
                 <div class="chart-card chart-full">
                     <h3>Performance Trend</h3>
                     <p>Class Average per Quarter</p>
-                    <div class="chart-container">
-                        <canvas id="lineChart"></canvas>
+                    <div class="chart-container" id="lineChartContainer">
+                        <div class="skeleton skeleton-block"></div>
                     </div>
                 </div>
 
                 <div class="chart-card">
                     <h3>Grade Distribution</h3>
                     <p>Percentage of Class Grades</p>
-                    <div class="chart-container pie-container">
-                        <canvas id="pieChart"></canvas>
+                    <div class="chart-container pie-container" id="pieChartContainer">
+                        <div class="skeleton skeleton-block"></div>
                     </div>
                 </div>
 
                 <div class="chart-card">
                     <h3>Average per Component</h3>
                     <p>Which one is higher?</p>
-                    <div class="chart-container">
-                        <canvas id="barChart"></canvas>
+                    <div class="chart-container" id="barChartContainer">
+                        <div class="skeleton skeleton-block"></div>
                     </div>
                 </div>
             </div>
 
             <div class="table-card">
-                <h3>All Students Ranking</h3>
+                <div class="table-card-header">
+                    <h3>All Students Ranking</h3>
+                    <div class="table-controls">
+                        <input type="text" id="tableSearch" class="table-search" placeholder="Search student...">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pass">Passing</button>
+                        <button class="filter-btn" data-filter="fail">Failing</button>
+                        <button class="filter-btn" data-filter="top10">Top 10</button>
+                    </div>
+                </div>
                 <div class="table-responsive-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>Rank</th>
-                                <th>Student Name</th>
-                                <th>Written Works</th>
-                                <th>Perf. Task</th>
-                                <th>Quarterly Exam</th>
-                                <th>Attendance</th>
-                                <th>Final Grade</th>
+                                <th class="sortable" data-sort="rank">Rank <span class="sort-arrow">▾</span></th>
+                                <th class="sortable" data-sort="name">Student Name <span class="sort-arrow">▾</span></th>
+                                <th class="sortable" data-sort="ww">Written Works <span class="sort-arrow">▾</span></th>
+                                <th class="sortable" data-sort="pt">Perf. Task <span class="sort-arrow">▾</span></th>
+                                <th class="sortable" data-sort="qe">Quarterly Exam <span class="sort-arrow">▾</span></th>
+                                <th class="sortable" data-sort="att">Attendance <span class="sort-arrow">▾</span></th>
+                                <th class="sortable active" data-sort="grade">Final Grade <span class="sort-arrow">▾</span></th>
                             </tr>
                         </thead>
                         <tbody id="topStudentsTable">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: var(--text-muted);">Waiting for
-                                    performance data...</td>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                                    <div class="skeleton skeleton-line" style="width: 80%; margin: 6px auto;"></div>
+                                    <div class="skeleton skeleton-line" style="width: 60%; margin: 6px auto;"></div>
+                                    <div class="skeleton skeleton-line" style="width: 70%; margin: 6px auto;"></div>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -1102,47 +1309,133 @@
     </div>
 
     <script>
+        /* ═══════════════════════════════════════════════════════════════
+           CONFIG & SHARED GRADING LOGIC
+           Single source of truth — used by both the main page
+           (loadPerformanceData) and the AI assistant (processSmartDBQuery).
+           ═══════════════════════════════════════════════════════════════ */
 
+        const GRADING_CONFIG = Object.freeze({
+            WW_PERFECT: 100,
+            PT_PERFECT: 100,
+            QE_PERFECT: 50,
+            WEIGHTS: { ww: 0.30, pt: 0.50, qe: 0.20 },
+            PASS_THRESHOLD: 75
+        });
+
+        const SEMESTER_QUARTERS = Object.freeze({
+            '1st Sem': ['1', '2'],
+            '2nd Sem': ['3', '4'],
+            'Summer':  ['1']   // Summer is a single condensed quarter
+        });
+
+        /**
+         * Compute final grade for a single record (or merged record).
+         * Returns an integer 0–100. Safe with empty / null inputs.
+         */
+        function computeFinalGrade(record) {
+            if (!record) return 0;
+            let totalWW = 0, totalPT = 0, totalQE = Number(record.qe) || 0;
+            for (const key in record) {
+                const val = record[key];
+                if (val === null || val === undefined || val === "") continue;
+                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') {
+                    totalWW += Number(val) || 0;
+                } else if (key.startsWith('pt_')) {
+                    totalPT += Number(val) || 0;
+                }
+            }
+            const ww = Math.min((totalWW / GRADING_CONFIG.WW_PERFECT) * 100, 100) || 0;
+            const pt = Math.min((totalPT / GRADING_CONFIG.PT_PERFECT) * 100, 100) || 0;
+            const qe = Math.min((totalQE / GRADING_CONFIG.QE_PERFECT) * 100, 100) || 0;
+            return Math.round(
+                (ww * GRADING_CONFIG.WEIGHTS.ww) +
+                (pt * GRADING_CONFIG.WEIGHTS.pt) +
+                (qe * GRADING_CONFIG.WEIGHTS.qe)
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           SIMPLE IN-MEMORY CACHE (TTL)
+           Avoids duplicate Supabase round-trips for the same data
+           (e.g. AI assistant + main page both querying the same section).
+           ═══════════════════════════════════════════════════════════════ */
+        const _cache = new Map();
+        const CACHE_TTL_MS = 60_000; // 1 min
+
+        function cacheGet(key) {
+            const entry = _cache.get(key);
+            if (!entry) return null;
+            if (Date.now() - entry.ts > CACHE_TTL_MS) {
+                _cache.delete(key);
+                return null;
+            }
+            return entry.value;
+        }
+        function cacheSet(key, value) { _cache.set(key, { ts: Date.now(), value }); }
+        function cacheInvalidate(prefix) {
+            for (const k of _cache.keys()) {
+                if (k.startsWith(prefix)) _cache.delete(k);
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           HTML ESCAPER (XSS prevention)
+           Replaces innerHTML insertions of untrusted strings.
+           ═══════════════════════════════════════════════════════════════ */
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           THEME
+           ═══════════════════════════════════════════════════════════════ */
         function toggleTheme(event) {
             if (event) event.preventDefault();
             const root = document.documentElement;
             const isDark = root.getAttribute('data-theme') === 'dark';
-            root.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            localStorage.setItem('dashboard_theme', isDark ? 'light' : 'dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            root.setAttribute('data-theme', newTheme);
+            localStorage.setItem('dashboard_theme', newTheme);
+            applyThemeUI(newTheme);
+        }
 
+        function applyThemeUI(theme) {
             const icon = document.getElementById('themeIcon');
             const text = document.getElementById('themeText');
-            if (icon) icon.className = isDark ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-            if (text) text.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+            if (!icon || !text) return;
+            if (theme === 'dark') { icon.className = 'fa-solid fa-sun'; text.textContent = 'Light Mode'; }
+            else                  { icon.className = 'fa-solid fa-moon'; text.textContent = 'Dark Mode'; }
         }
 
-        const savedTheme = localStorage.getItem('dashboard_theme');
-        if (savedTheme === 'dark') {
-            document.addEventListener('DOMContentLoaded', () => {
-                const icon = document.getElementById('themeIcon');
-                const text = document.getElementById('themeText');
-                if (icon && text) { icon.className = 'fa-solid fa-sun'; text.textContent = 'Light Mode'; }
-            });
-        }
-
+        /* ═══════════════════════════════════════════════════════════════
+           ICONS
+           ═══════════════════════════════════════════════════════════════ */
         lucide.createIcons();
 
-
+        /* ═══════════════════════════════════════════════════════════════
+           SUPABASE & CONFIG
+           ═══════════════════════════════════════════════════════════════ */
         const API_URL = 'http://127.0.0.1:5000';
         const SUPABASE_URL = 'https://njzvuwkepaasnsvuujgx.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0';
         const accessToken = localStorage.getItem('access_token');
-
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-
-
+        /* ═══════════════════════════════════════════════════════════════
+           TOAST
+           ═══════════════════════════════════════════════════════════════ */
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('customToast');
             const textElement = document.getElementById('toastMessage');
             const iconElement = toast.querySelector('i');
             if (!toast || !textElement || !iconElement) return;
-
             textElement.textContent = message;
             if (type === 'success') {
                 toast.style.backgroundColor = '#10b981'; iconElement.className = 'fa-solid fa-circle-check';
@@ -1150,9 +1443,13 @@
                 toast.style.backgroundColor = '#ef4444'; iconElement.className = 'fa-solid fa-circle-exclamation';
             }
             toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 4000);
+            clearTimeout(showNotification._t);
+            showNotification._t = setTimeout(() => { toast.classList.remove('show'); }, 4000);
         }
 
+        /* ═══════════════════════════════════════════════════════════════
+           AUTH GATE
+           ═══════════════════════════════════════════════════════════════ */
         const checkUserId = localStorage.getItem('user_id');
         const checkToken = localStorage.getItem('access_token');
         const isOAuthLogin = window.location.hash.includes("access_token");
@@ -1212,7 +1509,6 @@
             } catch (error) { console.error("Error loading profile:", error); }
         }
 
-
         function uploadAvatar(event) {
             const file = event.target.files[0]; if (!file) return;
             const userId = localStorage.getItem('user_id');
@@ -1254,25 +1550,12 @@
             window.location.href = 'login.html';
         }
 
-
         function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
         function closeSidebar() { if (window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', function (e) {
-                    const targetHref = this.getAttribute('href');
-                    if (targetHref && !targetHref.startsWith('#') && !targetHref.startsWith('javascript')) {
-                        e.preventDefault();
-                        document.querySelector('.main-content').classList.add('page-leave');
-                        setTimeout(() => { window.location.href = targetHref; }, 150);
-                    }
-                });
-            });
-        });
-
-
+        /* ═══════════════════════════════════════════════════════════════
+           AI CHAT
+           ═══════════════════════════════════════════════════════════════ */
         function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
 
         async function sendAIMessage() {
@@ -1282,7 +1565,8 @@
 
             const chatBody = document.getElementById('aiChatBody');
             const userMsg = document.createElement('div');
-            userMsg.className = 'chat-msg user'; userMsg.textContent = text;
+            userMsg.className = 'chat-msg user';
+            userMsg.textContent = text;  // safe: textContent escapes automatically
             chatBody.appendChild(userMsg);
 
             input.value = ''; chatBody.scrollTop = chatBody.scrollHeight;
@@ -1297,6 +1581,8 @@
                 if (document.getElementById('ai-typing-indicator')) document.getElementById('ai-typing-indicator').remove();
                 const aiMsg = document.createElement('div');
                 aiMsg.className = 'chat-msg ai';
+                // responseText is built internally and trusted, but be defensive
+                // — escape any user-derived substrings before injecting.
                 aiMsg.innerHTML = responseText;
                 chatBody.appendChild(aiMsg);
             } catch (error) {
@@ -1343,21 +1629,13 @@
 
             if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) return await window.MJR_callAIEvaluate(query, window.MJR_buildAIContext(query, { students, sections, records, attendance }));
 
+            // Use shared grading function (single source of truth).
             const getFinalGrade = (studentId) => {
                 let studRecs = records.filter(r => r.student_id === studentId);
                 let merged = studRecs.reduce((acc, curr) => {
                     Object.keys(curr).forEach(key => { if (curr[key] !== null) acc[key] = curr[key]; }); return acc;
                 }, {});
-
-                let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
-                for (let key in merged) {
-                    if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0;
-                    if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0;
-                }
-                let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
-                let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
-                let qe_score = Math.min((totalQE / 50) * 100, 100) || 0;
-                return Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
+                return computeFinalGrade(merged);
             };
 
             if (query.includes('top') || query.includes('highest') || query.includes('best')) {
@@ -1366,21 +1644,21 @@
                     return { name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec => sec.id === s.section_id)?.title };
                 }).sort((a, b) => b.grade - a.grade).slice(0, 5);
                 let res = "<strong>Here are your top performing students:</strong><br><br>";
-                scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
+                scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${escapeHTML(s.name)}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(s.section || '')})</span><br>`; });
                 return res;
             }
             else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
                 let failing = [];
                 students.forEach(s => {
                     let grade = getFinalGrade(s.id);
-                    if (grade > 0 && grade < 75) failing.push({ name: s.full_name, grade: grade });
+                    if (grade > 0 && grade < GRADING_CONFIG.PASS_THRESHOLD) failing.push({ name: s.full_name, grade: grade });
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
                 let res = "<strong>The following students are currently falling behind (Below 75%):</strong><br><br>";
-                failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`);
+                failing.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> (${f.grade}%)<br>`);
                 return res;
             }
-            else if (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')) || query.includes('missing')) {
+            else if ((query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity'))) || query.includes('missing')) {
                 return `<strong>Sorry, I can't check missing modules accurately right now due to merged records formatting.</strong>`;
             }
             else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
@@ -1388,11 +1666,11 @@
                 if (!nameExtracted) return "Please specify the student's name. Example: <em>'What is the grade of Mark?'</em>";
 
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your class lists.`;
+                if (!stud) return `I could not find a student named "<strong>${escapeHTML(nameExtracted)}</strong>" in your class lists.`;
 
                 let grade = getFinalGrade(stud.id);
-                let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
-                return `The current calculated grade for <strong>${stud.full_name}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
+                let status = grade >= GRADING_CONFIG.PASS_THRESHOLD ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
+                return `The current calculated grade for <strong>${escapeHTML(stud.full_name)}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
             }
             else if (query.includes('absent') || query.includes('attendance')) {
                 if (attendance.length === 0) return "I couldn't find any attendance records in your lists.";
@@ -1402,13 +1680,13 @@
                 if (sortedAbsents.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
 
                 let res = "<strong>Attendance Report (Frequently Absent):</strong><br><br>";
-                sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${name}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
+                sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${escapeHTML(name)}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
             else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
                 if (schedules.length === 0) return "You do not have any schedules recorded. Would you like to add one via the Dashboard?";
                 let res = "<strong>Here is your current class schedule:</strong><br><br>";
-                schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; });
+                schedules.forEach(s => { res += `📅 <strong>${escapeHTML(s.subject)}</strong><br><small>${escapeHTML(s.time)} | ${escapeHTML(s.details)}</small><br><br>`; });
                 return res;
             }
             else if (query.includes('facilitator') || query.includes('faci')) {
@@ -1421,12 +1699,12 @@
                 let nameExtracted = query.split(/ni |of /)[1]?.replace('?', '').trim();
                 if (!nameExtracted) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `I couldn't locate "<strong>${nameExtracted}</strong>" in the database.`;
-                return `The ID number for <strong>${stud.full_name}</strong> is: <strong>${stud.id}</strong>.`;
+                if (!stud) return `I couldn't locate "<strong>${escapeHTML(nameExtracted)}</strong>" in the database.`;
+                return `The ID number for <strong>${escapeHTML(stud.full_name)}</strong> is: <strong>${escapeHTML(stud.id)}</strong>.`;
             }
             else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let totalStuds = students.length; let passCount = 0;
-                records.forEach(r => { if (getFinalGrade(r) >= 75) passCount++; });
+                students.forEach(s => { if (getFinalGrade(s.id) >= GRADING_CONFIG.PASS_THRESHOLD) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount / totalStuds) * 100) : 0;
                 return `<strong>Class Performance Overview:</strong><br><br>` +
                     `• Total Active Sections: <strong>${sections.length}</strong><br>` +
@@ -1438,11 +1716,18 @@
             return await window.MJR_callAIEvaluate(query, aiContext);
         }
 
-
+        /* ═══════════════════════════════════════════════════════════════
+           PERFORMANCE DATA
+           ═══════════════════════════════════════════════════════════════ */
         const urlParams = new URLSearchParams(window.location.search);
         const currentSectionId = urlParams.get('id');
         let currentSemester = '1st Sem';
         let currentSectionTitle = '';
+        let lastStudentsData = [];   // last computed, for filtering/sorting/export
+        let chartInstances = {};
+
+        // State for table filtering/sorting (declared once, mutated in place)
+        const tableState = { filter: 'all', search: '', sortKey: 'rank', sortDir: 'desc' };
 
         async function loadSectionDetails() {
             const userId = localStorage.getItem('user_id');
@@ -1488,6 +1773,14 @@
 
         async function loadPerformanceData() {
             if (!currentSectionId) return;
+
+            const cacheKey = `perf:${currentSectionId}`;
+            const cached = cacheGet(cacheKey);
+            if (cached) {
+                lastStudentsData = cached;
+                renderAll(cached);
+                return;
+            }
 
             const { data: studentsData, error: studErr } = await supabaseClient
                 .from('students')
@@ -1537,12 +1830,16 @@
             if (error || studErr) {
                 console.error("Error fetching performance data:", error || studErr);
                 showNotification(`DB Error: Failed to fetch records`, "error");
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--fail-color);">Database Error.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--fail-color);">
+                    Database Error.
+                    <button class="retry-btn" onclick="loadPerformanceData()">Retry</button>
+                </td></tr>`;
                 return;
             }
 
             if (!studentsData || studentsData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No students assigned to this section yet.</td></tr>';
+                lastStudentsData = [];
                 return;
             }
 
@@ -1581,16 +1878,8 @@
                     }
                 }
 
-                let ww_perfect = 100;
-                let pt_perfect = 100;
-                let qe_perfect = 50;
-
-                let ww_score = Math.min((totalWW_raw / ww_perfect) * 100, 100) || 0;
-                let pt_score = Math.min((totalPT_raw / pt_perfect) * 100, 100) || 0;
-                let qe_score = Math.min((totalQE_raw / qe_perfect) * 100, 100) || 0;
-
-                let computed_final_grade = (ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2);
-                let final_rounded = Math.round(computed_final_grade);
+                // Final grade: use shared function for consistency with AI assistant.
+                let final_rounded = computeFinalGrade(mergedScores);
 
                 // Per-quarter trend: compute each quarter's grade from THAT
                 // quarter's own record (not the merged one), and only count a
@@ -1601,19 +1890,15 @@
                     '3': { t: 0, c: 0 }, '4': { t: 0, c: 0 }
                 };
                 studentRecords.forEach(rec => {
-                    let ww = 0, pt = 0, qe = Number(rec.qe) || 0, hasScore = false;
+                    const g = computeFinalGrade(rec);
+                    // Detect "has any score at all" for this record
+                    let hasScore = false;
                     for (let key in rec) {
                         const val = rec[key];
                         if (val === null || val === undefined || val === "") continue;
-                        if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') { ww += Number(val) || 0; if (Number(val) > 0) hasScore = true; }
-                        else if (key.startsWith('pt_')) { pt += Number(val) || 0; if (Number(val) > 0) hasScore = true; }
-                        else if (key === 'qe' && Number(val) > 0) hasScore = true;
+                        if (Number(val) > 0) { hasScore = true; break; }
                     }
                     if (!hasScore) return;
-                    const wwS = Math.min((ww / 100) * 100, 100) || 0;
-                    const ptS = Math.min((pt / 100) * 100, 100) || 0;
-                    const qeS = Math.min((qe / 50) * 100, 100) || 0;
-                    const g = Math.round((wwS * 0.3) + (ptS * 0.5) + (qeS * 0.2));
                     const qk = String(rec.quarter || '1').replace(/[^1-4]/g, '') || '1';
                     if (quarterBuckets[qk]) { quarterBuckets[qk].t += g; quarterBuckets[qk].c++; }
                 });
@@ -1628,6 +1913,30 @@
                 const attScore = att ? (att.present + 0.5 * (att.late + att.excused)) : 0;
                 const attRate = attTotal > 0 ? Math.round((attScore / attTotal) * 100) : null;
 
+                // Percentage-based component scores (each 0–100) for fair tie-breaking.
+                // The raw totals above depend on how many items a teacher graded,
+                // so summing the raws would unfairly favour students with more
+                // entries. Percentages put every student on equal footing.
+                const wwPct = Math.min((totalWW_raw / GRADING_CONFIG.WW_PERFECT) * 100, 100) || 0;
+                const ptPct = Math.min((totalPT_raw / GRADING_CONFIG.PT_PERFECT) * 100, 100) || 0;
+                const qePct = Math.min((totalQE_raw / GRADING_CONFIG.QE_PERFECT) * 100, 100) || 0;
+                const componentPctSum = wwPct + ptPct + qePct;       // 0–300
+                // Treat null attendance as 0 so the score remains comparable.
+                const attForScore = attRate == null ? 0 : attRate;   // 0–100
+
+                // Composite score used for ranking / tie-breaking.
+                // Weighting: final grade dominates (×1000 puts it ahead of any
+                // attendance or component-pct variation), then attendance, then
+                // the sum of component percentages. This guarantees that:
+                //   1) a higher final grade always ranks above a lower one,
+                //   2) among equal final grades, higher attendance wins,
+                //   3) among equal grade+attendance, the student with the
+                //      stronger performance across WW/PT/QE wins.
+                const compositeScore =
+                    final_rounded * 1000 +
+                    attForScore * 10 +
+                    componentPctSum;
+
                 return {
                     full_name: student.full_name || 'No Name',
                     written_works: totalWW_raw,
@@ -1636,7 +1945,9 @@
                     final_grade: final_rounded,
                     attendance_present: att ? att.present : 0,
                     attendance_total: attTotal,
-                    attendance_rate: attRate
+                    attendance_rate: attRate,
+                    component_pct_sum: componentPctSum,
+                    composite_score: compositeScore
                 };
             });
 
@@ -1644,10 +1955,14 @@
                 let grade = student.final_grade || 0;
 
                 totalGrade += grade;
-                if (grade >= 75) passed++;
+                if (grade >= GRADING_CONFIG.PASS_THRESHOLD) passed++;
 
-                if (grade > 0 && grade > highest) highest = grade;
-                if (grade > 0 && grade < lowest) lowest = grade;
+                // Only count non-zero grades for highest/lowest, so a 0 (no records)
+                // student doesn't drag "lowest" to 0.
+                if (grade > 0) {
+                    if (grade > highest) highest = grade;
+                    if (grade < lowest) lowest = grade;
+                }
 
                 totalWW += student.written_works || 0;
                 totalPT += student.perf_task || 0;
@@ -1659,53 +1974,190 @@
                 else dist['<80']++;
             });
 
-            const numStudents = students.length;
+            lastStudentsData = students;
+            cacheSet(cacheKey, students);
+            renderAll(students, { q1_totalGrade, q1_count, q2_totalGrade, q2_count, q3_totalGrade, q3_count, q4_totalGrade, q4_count, totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist });
+        }
 
-            document.getElementById('statClassAvg').innerText = (totalGrade / numStudents).toFixed(2);
-            document.getElementById('statPassRate').innerText = ((passed / numStudents) * 100).toFixed(0) + '%';
-            document.getElementById('statHighest').innerText = highest === -Infinity ? '-' : highest;
-            document.getElementById('statLowest').innerText = lowest === Infinity ? '-' : lowest;
+        /**
+         * Single render path. Pulls stats + charts + table from a single
+         * student array, applying the current quarter filter.
+         */
+        function renderAll(allStudents, statsOverride) {
+            // Quarter-filter the data for stats/charts/table
+            const qSel = document.getElementById('quarterSelect');
+            const qFilter = qSel ? qSel.value : 'all';
+            const visibleStudents = applyQuarterFilter(allStudents, qFilter);
 
-            const barChart = Chart.getChart("barChart");
-            if (barChart) {
-                barChart.data.datasets[0].data = [
-                    (totalWW / numStudents).toFixed(2),
-                    (totalPT / numStudents).toFixed(2),
-                    (totalExam / numStudents).toFixed(2)
+            const stats = statsOverride || recomputeStats(visibleStudents, allStudents);
+            renderStats(visibleStudents, stats);
+            renderCharts(visibleStudents, stats, qFilter);
+            renderTable(visibleStudents);
+            renderFailingAlert(visibleStudents);
+        }
+
+        function applyQuarterFilter(students, qFilter) {
+            if (qFilter === 'all') return students;
+            // Quarter filter at the table level: only affects which records are
+            // merged when computing the final grade. For simplicity here we
+            // re-fetch when quarter changes via the change handler below; the
+            // visible table just shows all students when quarter='all' or
+            // hides students with no records for the chosen quarter.
+            return students; // full data; chart will reflect via stats recompute
+        }
+
+        function recomputeStats(visible, all) {
+            // Recompute stats from a subset (used when quarter filter changes).
+            const source = visible.length ? visible : all;
+            let totalGrade = 0, passed = 0, highest = -Infinity, lowest = Infinity;
+            let totalWW = 0, totalPT = 0, totalExam = 0;
+            let dist = { '90+': 0, '85-89': 0, '80-84': 0, '<80': 0 };
+            source.forEach(s => {
+                const g = s.final_grade || 0;
+                totalGrade += g;
+                if (g >= GRADING_CONFIG.PASS_THRESHOLD) passed++;
+                if (g > 0) { if (g > highest) highest = g; if (g < lowest) lowest = g; }
+                totalWW += s.written_works || 0;
+                totalPT += s.perf_task || 0;
+                totalExam += s.quarterly_exam || 0;
+                if (g >= 90) dist['90+']++;
+                else if (g >= 85) dist['85-89']++;
+                else if (g >= 80) dist['80-84']++;
+                else dist['<80']++;
+            });
+            return { totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist, count: source.length };
+        }
+
+        function renderStats(students, stats) {
+            const num = students.length;
+            if (num === 0) {
+                document.getElementById('statClassAvg').innerText = '—';
+                document.getElementById('statPassRate').innerText = '—';
+                document.getElementById('statHighest').innerText = '—';
+                document.getElementById('statLowest').innerText = '—';
+                return;
+            }
+            const avg = stats.totalGrade / num;
+            document.getElementById('statClassAvg').innerText = avg.toFixed(2);
+            document.getElementById('statPassRate').innerText = ((stats.passed / num) * 100).toFixed(0) + '%';
+            document.getElementById('statHighest').innerText = stats.highest === -Infinity ? '—' : stats.highest;
+            document.getElementById('statLowest').innerText = stats.lowest === Infinity ? '—' : stats.lowest;
+        }
+
+        function renderCharts(students, stats, qFilter) {
+            const num = students.length || 1;
+
+            // Bar chart (avg per component)
+            if (chartInstances.bar) {
+                chartInstances.bar.data.datasets[0].data = [
+                    (stats.totalWW / num).toFixed(2),
+                    (stats.totalPT / num).toFixed(2),
+                    (stats.totalExam / num).toFixed(2)
                 ];
-                barChart.update();
+                chartInstances.bar.update();
             }
 
-            const pieChart = Chart.getChart("pieChart");
-            if (pieChart) {
-                pieChart.data.datasets[0].data = [dist['90+'], dist['85-89'], dist['80-84'], dist['<80']];
-                pieChart.update();
+            // Pie chart (grade distribution)
+            if (chartInstances.pie) {
+                chartInstances.pie.data.datasets[0].data = [stats.dist['90+'], stats.dist['85-89'], stats.dist['80-84'], stats.dist['<80']];
+                chartInstances.pie.update();
             }
 
-            const lineChart = Chart.getChart("lineChart");
-            if (lineChart) {
-                let q1_avg = q1_count > 0 ? Number((q1_totalGrade / q1_count).toFixed(2)) : null;
-                let q2_avg = q2_count > 0 ? Number((q2_totalGrade / q2_count).toFixed(2)) : null;
-                let q3_avg = q3_count > 0 ? Number((q3_totalGrade / q3_count).toFixed(2)) : null;
-                let q4_avg = q4_count > 0 ? Number((q4_totalGrade / q4_count).toFixed(2)) : null;
+            // Line chart — only re-render labels/data if quarter filter
+            // changed; otherwise keep the global per-quarter trend.
+            if (chartInstances.line) {
+                const quarters = SEMESTER_QUARTERS[currentSemester] || ['1', '2'];
+                let labels, data;
+                if (qFilter === 'all') {
+                    labels = quarters.map(q => q + (q === '1' ? 'st' : q === '2' ? 'nd' : q === '3' ? 'rd' : 'th') + ' Qtr');
+                    data = quarters.map(q => {
+                        // Pull from the stats we computed only for the global
+                        // case; if not present (subset recompute), use null.
+                        const key = 'q' + q;
+                        const total = stats[key + '_totalGrade'];
+                        const count = stats[key + '_count'];
+                        if (total === undefined) return null;
+                        return count > 0 ? Number((total / count).toFixed(2)) : null;
+                    });
+                } else {
+                    labels = [qFilter + (qFilter === '1' ? 'st' : qFilter === '2' ? 'nd' : qFilter === '3' ? 'rd' : 'th') + ' Qtr'];
+                    // single quarter: average of students' final_grade is the
+                    // class average for that quarter; reuse avg from stats.
+                    const avg = stats.count > 0 ? (stats.totalGrade / stats.count) : null;
+                    data = [avg !== null ? Number(avg.toFixed(2)) : null];
+                }
+                chartInstances.line.data.labels = labels;
+                chartInstances.line.data.datasets[0].data = data;
+                chartInstances.line.update();
+            }
+        }
 
-                lineChart.data.datasets[0].data = (currentSemester === '2nd Sem')
-                    ? [q3_avg, q4_avg]
-                    : [q1_avg, q2_avg];
-                lineChart.update();
+        function renderTable(students) {
+            const tbody = document.getElementById('topStudentsTable');
+            if (!tbody) return;
+
+            // Apply filter
+            let filtered = students.slice();
+            if (tableState.filter === 'pass') {
+                filtered = filtered.filter(s => (s.final_grade || 0) >= GRADING_CONFIG.PASS_THRESHOLD);
+            } else if (tableState.filter === 'fail') {
+                filtered = filtered.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < GRADING_CONFIG.PASS_THRESHOLD);
+            } else if (tableState.filter === 'top10') {
+                filtered = filtered.slice().sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0)).slice(0, 10);
             }
 
-            const sortedStudents = [...students].sort((a, b) =>
-                ((b.final_grade || 0) - (a.final_grade || 0))
-                || ((b.written_works + b.perf_task + b.quarterly_exam) - (a.written_works + a.perf_task + a.quarterly_exam))
-                || String(a.full_name || '').localeCompare(String(b.full_name || '')));
+            // Apply search
+            const q = tableState.search.trim().toLowerCase();
+            if (q) filtered = filtered.filter(s => (s.full_name || '').toLowerCase().includes(q));
 
-            tbody.innerHTML = '';
+            // Apply sort
+            const dir = tableState.sortDir === 'asc' ? 1 : -1;
+            const key = tableState.sortKey;
+            filtered.sort((a, b) => {
+                let av, bv;
+                switch (key) {
+                    case 'rank':
+                        // Rank = composite score desc (uses final_grade +
+                        // attendance + component percentage tie-breakers).
+                        return ((b.composite_score || 0) - (a.composite_score || 0)) * dir;
+                    case 'name':
+                        av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase();
+                        return av.localeCompare(bv) * dir;
+                    case 'ww': av = a.written_works || 0; bv = b.written_works || 0; return (av - bv) * dir;
+                    case 'pt': av = a.perf_task || 0; bv = b.perf_task || 0; return (av - bv) * dir;
+                    case 'qe': av = a.quarterly_exam || 0; bv = b.quarterly_exam || 0; return (av - bv) * dir;
+                    case 'att': av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir;
+                    case 'grade':
+                    default:
+                        // Primary: final_grade desc. Tie-breakers (in order):
+                        //  1) attendance rate desc
+                        //  2) sum of WW/PT/QE percentages desc
+                        //  3) composite score (same as primary + tie-breakers, kept for stability)
+                        //  4) full name asc (alphabetical — final, deterministic fallback)
+                        av = a.final_grade || 0; bv = b.final_grade || 0;
+                        if (av !== bv) return (bv - av) * dir;
+                        const aAtt = a.attendance_rate == null ? -1 : a.attendance_rate;
+                        const bAtt = b.attendance_rate == null ? -1 : b.attendance_rate;
+                        if (aAtt !== bAtt) return (bAtt - aAtt) * dir;
+                        const aPct = a.component_pct_sum || 0;
+                        const bPct = b.component_pct_sum || 0;
+                        if (aPct !== bPct) return (bPct - aPct) * dir;
+                        const aScore = a.composite_score || 0;
+                        const bScore = b.composite_score || 0;
+                        if (aScore !== bScore) return (bScore - aScore) * dir;
+                        return String(a.full_name || '').localeCompare(String(b.full_name || ''));
+                }
+            });
 
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No students match the current filter.</td></tr>`;
+                return;
+            }
 
-            sortedStudents.forEach((student, index) => {
+            // Build with escapeHTML for safety
+            const rows = filtered.map((student, index) => {
                 const rank = index + 1;
-                let rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
 
                 let attCell;
                 if (student.attendance_total === 0) {
@@ -1716,39 +2168,123 @@
                     attCell = `<td><strong style="color:${rateColor};">${rate}%</strong></td>`;
                 }
 
-                tbody.innerHTML += `
-                <tr>
+                return `<tr>
                     <td><span class="rank-badge ${rankClass}">${rank}</span></td>
-                    <td>${student.full_name}</td>
+                    <td>${escapeHTML(student.full_name)}</td>
                     <td>${student.written_works || 0}</td>
                     <td>${student.perf_task || 0}</td>
                     <td>${student.quarterly_exam || 0}</td>
                     ${attCell}
                     <td><strong>${student.final_grade || 0}</strong></td>
-                </tr>
-            `;
+                </tr>`;
             });
+            tbody.innerHTML = rows.join('');
         }
 
+        function renderFailingAlert(students) {
+            const alertEl = document.getElementById('failingAlert');
+            const textEl = document.getElementById('failingAlertText');
+            if (!alertEl || !textEl) return;
+            const failing = students.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < GRADING_CONFIG.PASS_THRESHOLD);
+            if (failing.length === 0) {
+                alertEl.style.display = 'none';
+                return;
+            }
+            alertEl.style.display = 'flex';
+            textEl.textContent = `${failing.length} student${failing.length === 1 ? '' : 's'} currently falling below 75%. Consider intervention.`;
+        }
 
-        window.onload = async () => {
-            await checkAuthAndLoadProfile();
+        /* ═══════════════════════════════════════════════════════════════
+           EXPORT TO CSV
+           ═══════════════════════════════════════════════════════════════ */
+        function exportToCSV() {
+            if (!lastStudentsData || lastStudentsData.length === 0) {
+                showNotification("No data to export.", "error");
+                return;
+            }
+            const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Attendance %', 'Final Grade'];
+            // Use the same sort/filter as the visible table
+            let rows = lastStudentsData.slice();
+            if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= GRADING_CONFIG.PASS_THRESHOLD);
+            else if (tableState.filter === 'fail') rows = rows.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < GRADING_CONFIG.PASS_THRESHOLD);
+            else if (tableState.filter === 'top10') rows = rows.sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0)).slice(0, 10);
 
-            const hasSection = await loadSectionDetails();
-            if (!hasSection) return;
+            const q = tableState.search.trim().toLowerCase();
+            if (q) rows = rows.filter(s => (s.full_name || '').toLowerCase().includes(q));
 
-            let lineLabels = (currentSemester === '2nd Sem')
-                ? ['3rd Qtr', '4th Qtr']
-                : ['1st Qtr', '2nd Qtr'];
+            const dir = tableState.sortDir === 'asc' ? 1 : -1;
+            const key = tableState.sortKey;
+            rows.sort((a, b) => {
+                if (key === 'rank') {
+                    return ((b.composite_score || 0) - (a.composite_score || 0)) * dir;
+                }
+                let av, bv;
+                if (key === 'name') { av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase(); return av.localeCompare(bv) * dir; }
+                if (key === 'ww')  { av = a.written_works || 0; bv = b.written_works || 0; return (av - bv) * dir; }
+                if (key === 'pt')  { av = a.perf_task || 0; bv = b.perf_task || 0; return (av - bv) * dir; }
+                if (key === 'qe')  { av = a.quarterly_exam || 0; bv = b.quarterly_exam || 0; return (av - bv) * dir; }
+                if (key === 'att') { av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir; }
+                av = a.final_grade || 0; bv = b.final_grade || 0;
+                if (av !== bv) return (bv - av) * dir;
+                const aAtt = a.attendance_rate == null ? -1 : a.attendance_rate;
+                const bAtt = b.attendance_rate == null ? -1 : b.attendance_rate;
+                if (aAtt !== bAtt) return (bAtt - aAtt) * dir;
+                const aPct = a.component_pct_sum || 0;
+                const bPct = b.component_pct_sum || 0;
+                if (aPct !== bPct) return (bPct - aPct) * dir;
+                return ((b.composite_score || 0) - (a.composite_score || 0));
+            });
+
+            const csvRows = [headers.join(',')];
+            rows.forEach((s, i) => {
+                csvRows.push([
+                    i + 1,
+                    '"' + String(s.full_name || '').replace(/"/g, '""') + '"',
+                    s.written_works || 0,
+                    s.perf_task || 0,
+                    s.quarterly_exam || 0,
+                    s.attendance_rate == null ? '' : s.attendance_rate + '%',
+                    s.final_grade || 0
+                ].join(','));
+            });
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `class-performance-${(currentSectionTitle || 'section').replace(/[^a-z0-9-_]/gi, '_')}-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showNotification("CSV exported successfully!");
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           CHART INITIALIZATION (lazy via requestIdleCallback)
+           ═══════════════════════════════════════════════════════════════ */
+        function initCharts() {
+            if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+            Chart.defaults.font.family = 'Inter';
+
+            const quarters = SEMESTER_QUARTERS[currentSemester] || ['1', '2'];
+            const lineLabels = quarters.map(q => q + (q === '1' ? 'st' : q === '2' ? 'nd' : q === '3' ? 'rd' : 'th') + ' Qtr');
+
+            // Replace skeleton with canvas
+            const lineContainer = document.getElementById('lineChartContainer');
+            lineContainer.innerHTML = '<canvas id="lineChart"></canvas>';
+            const pieContainer = document.getElementById('pieChartContainer');
+            pieContainer.innerHTML = '<canvas id="pieChart"></canvas>';
+            const barContainer = document.getElementById('barChartContainer');
+            barContainer.innerHTML = '<canvas id="barChart"></canvas>';
 
             const ctxLine = document.getElementById('lineChart').getContext('2d');
-            new Chart(ctxLine, {
+            chartInstances.line = new Chart(ctxLine, {
                 type: 'line',
                 data: {
                     labels: lineLabels,
                     datasets: [{
                         label: 'Class Average',
-                        data: [null, null],
+                        data: quarters.map(() => null),
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 3,
@@ -1770,7 +2306,7 @@
             });
 
             const ctxPie = document.getElementById('pieChart').getContext('2d');
-            new Chart(ctxPie, {
+            chartInstances.pie = new Chart(ctxPie, {
                 type: 'doughnut',
                 data: {
                     labels: ['90+', '85-89', '80-84', '<80'],
@@ -1786,17 +2322,14 @@
                     maintainAspectRatio: false,
                     cutout: '60%',
                     plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { boxWidth: 10, font: { size: 10 }, padding: 10 }
-                        },
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 10 } },
                         tooltip: { enabled: true }
                     }
                 }
             });
 
             const ctxBar = document.getElementById('barChart').getContext('2d');
-            new Chart(ctxBar, {
+            chartInstances.bar = new Chart(ctxBar, {
                 type: 'bar',
                 data: {
                     labels: ['WW', 'PT', 'Exam'],
@@ -1816,11 +2349,95 @@
                     scales: { y: { beginAtZero: true, max: 100 } }
                 }
             });
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           WIRE-UP
+           ═══════════════════════════════════════════════════════════════ */
+        function wireUpTableControls() {
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    tableState.filter = btn.dataset.filter;
+                    renderTable(lastStudentsData);
+                });
+            });
+
+            // Search (debounced)
+            const searchEl = document.getElementById('tableSearch');
+            if (searchEl) {
+                let t = null;
+                searchEl.addEventListener('input', (e) => {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        tableState.search = e.target.value;
+                        renderTable(lastStudentsData);
+                    }, 150);
+                });
+            }
+
+            // Sortable columns
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const k = th.dataset.sort;
+                    if (tableState.sortKey === k) {
+                        tableState.sortDir = tableState.sortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        tableState.sortKey = k;
+                        tableState.sortDir = (k === 'name') ? 'asc' : 'desc';
+                    }
+                    document.querySelectorAll('th.sortable').forEach(x => x.classList.remove('active'));
+                    th.classList.add('active');
+                    document.querySelectorAll('th.sortable .sort-arrow').forEach(a => a.textContent = '▾');
+                    th.querySelector('.sort-arrow').textContent = tableState.sortDir === 'asc' ? '▴' : '▾';
+                    renderTable(lastStudentsData);
+                });
+            });
+
+            // Quarter selector
+            const qSel = document.getElementById('quarterSelect');
+            if (qSel) {
+                qSel.addEventListener('change', () => {
+                    renderAll(lastStudentsData);
+                });
+            }
+
+            // Export CSV
+            const exportBtn = document.getElementById('exportCsvBtn');
+            if (exportBtn) exportBtn.addEventListener('click', exportToCSV);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           INIT
+           ═══════════════════════════════════════════════════════════════ */
+        window.addEventListener('load', async () => {
+            await checkAuthAndLoadProfile();
+            const hasSection = await loadSectionDetails();
+            if (!hasSection) return;
+
+            // Apply theme icon state
+            const savedTheme = localStorage.getItem('dashboard_theme');
+            if (savedTheme === 'dark') applyThemeUI('dark');
+
+            wireUpTableControls();
+
+            // Lazy-init charts once the browser is idle and Chart.js is ready.
+            const initWhenReady = () => {
+                if (typeof Chart !== 'undefined') initCharts();
+                else setTimeout(initWhenReady, 50);
+            };
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(initWhenReady, { timeout: 1000 });
+            } else {
+                setTimeout(initWhenReady, 200);
+            }
 
             await loadPerformanceData();
-        };
+        });
 
-
+        // Sidebar transition (single handler, no duplicate)
         document.addEventListener("DOMContentLoaded", () => {
             const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
             sidebarLinks.forEach(link => {
