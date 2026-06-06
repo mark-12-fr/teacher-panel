@@ -478,3 +478,424 @@ button#openModal,
 .ai-export-pdf  { background: rgba(239, 68, 68, 0.75) !important; }
 .ai-export-excel { background: rgba(34, 197, 94, 0.75) !important; }
 .ai-export-docs  { background: rgba(255, 255, 255, 0.25) !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   AI Assistant — UI/UX polish (UI #1–20)
+   Same JS logic, just visual + interaction improvements.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── UI #1 — Markdown rendering inside .chat-msg.ai ── */
+.chat-msg.ai strong { font-weight: 700; color: var(--text-dark); }
+.chat-msg.ai em { font-style: italic; }
+.chat-msg.ai code {
+    font-family: 'Fira Code', Menlo, monospace;
+    background: var(--input-bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: #be185d;
+}
+[data-theme="dark"] .chat-msg.ai code { color: #f9a8d4; }
+.chat-msg.ai pre {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    font-family: 'Fira Code', Menlo, monospace;
+    font-size: 0.82rem;
+    margin: 6px 0;
+}
+.chat-msg.ai pre code { background: transparent; padding: 0; color: inherit; }
+.chat-msg.ai ul, .chat-msg.ai ol { padding-left: 18px; margin: 4px 0; }
+.chat-msg.ai li { margin: 2px 0; }
+.chat-msg.ai a { color: var(--accent-blue); text-decoration: underline; }
+.chat-msg.ai h1, .chat-msg.ai h2, .chat-msg.ai h3 { margin: 6px 0 4px; font-weight: 700; }
+.chat-msg.ai h1 { font-size: 1.05rem; }
+.chat-msg.ai h2 { font-size: 0.95rem; }
+.chat-msg.ai h3 { font-size: 0.88rem; }
+.chat-msg.ai blockquote {
+    border-left: 3px solid var(--accent-blue);
+    padding: 4px 10px;
+    margin: 6px 0;
+    color: var(--text-muted);
+    background: var(--input-bg);
+    border-radius: 0 4px 4px 0;
+}
+
+/* ── UI #2 + UI #3 — Per-message action buttons (copy + regenerate) ── */
+.chat-msg-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.chat-msg:hover .chat-msg-actions,
+.chat-msg:focus-within .chat-msg-actions { opacity: 1; }
+.chat-msg-action-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    width: 26px;
+    height: 22px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.chat-msg-action-btn:hover {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+.chat-msg-action-btn.copied { background: #16a34a; color: white; border-color: #16a34a; }
+
+/* ── UI #4 — Keyboard shortcut hint ── */
+.ai-shortcut-hint {
+    display: inline-block;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    margin-top: 4px;
+}
+.ai-shortcut-hint kbd {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: inherit;
+    font-size: 0.62rem;
+}
+
+/* ── UI #5 — Better typing indicator (animated dots + stages) ── */
+.ai-typing-stages {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.ai-typing-dots {
+    display: inline-flex;
+    gap: 3px;
+}
+.ai-typing-dots span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: aiDotBounce 1.2s infinite ease-in-out;
+}
+.ai-typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.ai-typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes aiDotBounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ── UI #6 — Follow-up suggestion chips after AI responses ── */
+.ai-followup-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    padding-left: 0;
+}
+.ai-followup-chip {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-dark);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.ai-followup-chip:hover {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+    transform: translateY(-1px);
+}
+
+/* ── UI #7 — Quick-reply buttons (always visible above input) ── */
+.ai-quickreplies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 6px 0 4px;
+    border-top: 1px solid var(--border-color);
+}
+.ai-quickreply-btn {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-dark);
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+    font-family: 'Inter', sans-serif;
+}
+.ai-quickreply-btn:hover {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+
+/* ── UI #8 — Status icons (sent / delivered) ── */
+.chat-msg-status {
+    display: inline-block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-left: 4px;
+    opacity: 0.7;
+}
+.chat-msg.user .chat-msg-status { color: rgba(255, 255, 255, 0.8); }
+
+/* ── UI #9 — Avatar / icon in chat bubbles ── */
+.chat-msg-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.chat-msg-avatar.user {
+    background: var(--input-bg);
+    color: var(--text-dark);
+    border: 1px solid var(--border-color);
+}
+.chat-msg-avatar.thinking {
+    background: var(--text-muted);
+    animation: aiAvatarPulse 1.4s infinite ease-in-out;
+}
+@keyframes aiAvatarPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    50%      { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+}
+
+/* ── UI #10 — Empty state illustration ── */
+.ai-empty-state {
+    text-align: center;
+    padding: 30px 16px 20px;
+    color: var(--text-muted);
+}
+.ai-empty-state-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.12));
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    margin: 0 auto 12px;
+    animation: aiEmptyPulse 2.4s ease-in-out infinite;
+}
+@keyframes aiEmptyPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
+}
+.ai-empty-state-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+.ai-empty-state-msg {
+    font-size: 0.78rem;
+    margin-bottom: 14px;
+}
+.ai-empty-state-samples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+}
+
+/* ── UI #11 — Send button states ── */
+.ai-chat-input-area button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.ai-chat-input-area button.sending {
+    pointer-events: none;
+}
+.ai-chat-input-area button.sending i {
+    animation: aiSpin 0.8s linear infinite;
+}
+@keyframes aiSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ── UI #12 — Timestamps ── */
+.chat-msg-time {
+    display: block;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    margin-top: 2px;
+    font-weight: 500;
+}
+.chat-msg.user .chat-msg-time { color: rgba(255, 255, 255, 0.75); }
+
+/* ── UI #13 — Floating button improvements ── */
+.ai-floating-btn.has-unread::after {
+    content: '';
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 2px solid var(--card-bg);
+    animation: aiUnreadPulse 1.6s ease-in-out infinite;
+}
+@keyframes aiUnreadPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    50%      { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+/* ── UI #14 — Chat header status indicator ── */
+.ai-chat-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    margin-left: 4px;
+}
+.ai-chat-status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    animation: aiStatusPulse 2s ease-in-out infinite;
+}
+.ai-chat-status-dot.thinking { background: #f59e0b; }
+.ai-chat-status-dot.offline { background: #94a3b8; animation: none; }
+@keyframes aiStatusPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+    50%      { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+}
+
+/* ── UI #15 — Input field auto-resize ── */
+#aiChatInput {
+    resize: none;
+    overflow-y: auto;
+    min-height: 36px;
+    max-height: 120px;
+    line-height: 1.4;
+    transition: height 0.1s;
+}
+.ai-char-counter {
+    position: absolute;
+    right: 60px;
+    bottom: 6px;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+.ai-char-counter.visible { opacity: 0.7; }
+.ai-chat-input-area { position: relative; }
+
+/* ── UI #16 — Mobile responsiveness ── */
+@media (max-width: 640px) {
+    .ai-chat-widget {
+        width: calc(100vw - 24px) !important;
+        right: 12px !important;
+        left: 12px !important;
+        bottom: 90px !important;
+        height: calc(100vh - 140px) !important;
+        max-height: none !important;
+    }
+    .ai-floating-btn {
+        width: 52px !important;
+        height: 52px !important;
+    }
+    .ai-quickreply-btn, .ai-followup-chip { min-height: 36px; }
+}
+
+/* ── UI #17 — Dark mode polish ── */
+[data-theme="dark"] .chat-msg.ai code { background: rgba(255, 255, 255, 0.06); color: #f9a8d4; }
+[data-theme="dark"] .chat-msg.ai pre { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .chat-msg.ai blockquote { background: rgba(255, 255, 255, 0.04); }
+[data-theme="dark"] .ai-empty-state-icon { background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2)); }
+[data-theme="dark"] .ai-followup-chip { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.08); color: var(--text-dark); }
+[data-theme="dark"] .ai-quickreply-btn { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.08); color: var(--text-dark); }
+
+/* ── UI #18 — Loading skeleton (multi-line shimmer) ── */
+.ai-skeleton {
+    background: linear-gradient(90deg, var(--input-bg) 25%, var(--hover-bg) 50%, var(--input-bg) 75%);
+    background-size: 200% 100%;
+    animation: aiShimmer 1.4s ease-in-out infinite;
+    border-radius: 4px;
+    height: 12px;
+    margin: 4px 0;
+}
+.ai-skeleton.short { width: 60%; }
+.ai-skeleton.medium { width: 80%; }
+.ai-skeleton.long { width: 95%; }
+@keyframes aiShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── UI #19 — Error state ── */
+.ai-error-msg {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    color: #b91c1c;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+[data-theme="dark"] .ai-error-msg {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.ai-error-msg button {
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+/* ── UI #20 — Accessibility (focus visible) ── */
+.ai-floating-btn:focus-visible,
+.ai-chat-input-area button:focus-visible,
+.ai-quickreply-btn:focus-visible,
+.ai-followup-chip:focus-visible,
+.chat-msg-action-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+/* aria-live region for new messages (declared in HTML) */
+#aiChatBody[aria-live="polite"] { /* presentational */ }

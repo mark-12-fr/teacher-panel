@@ -273,23 +273,55 @@
 
 
     function formatAIText(text) {
-        let html = escapeHtml(text)
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>');
+        // Markdown renderer (enhanced). Handles:
+        //   **bold**, *italic*, `inline code`, ```code blocks```
+        //   ## / ### headings, - bullet lists, > blockquotes
+        //   bare URLs become clickable links (target=_blank).
+        // All output is built on escaped text so this remains safe
+        // even when the AI returns user-derived strings.
+        let html = escapeHtml(text);
+        // Code blocks ```lang\n...\n``` first (so we don't re-process
+        // their contents as inline code or bold).
+        html = html.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + code + '</code></pre>');
+        // Inline code `...`
+        html = html.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+        // Bold then italic
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                   .replace(/(^|[^*])\*(?!\s)([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+        // Blockquote
+        html = html.replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+        // Bare URLs -> anchors
+        html = html.replace(/(https?:\/\/[^\s<"]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+
         html = applyStatusBadges(html);
+
         const lines = html.split('\n');
-        let out = '', inList = false;
+        let out = '', inList = false, inBq = false;
         lines.forEach(line => {
             const t = line.trim();
+
+            // Code block pass-through: don't restructure, just emit.
+            if (/^<pre>/.test(t) || t === '</pre>') { out += t; return; }
+
             if (/^###\s+/.test(t)) {
                 if (inList) { out += '</ul>'; inList = false; }
-                out += '<div class="ai-subheader">' + t.replace(/^###\s+/, '') + '</div>';
+                out += '<h3>' + t.replace(/^###\s+/, '') + '</h3>';
             } else if (/^##\s+/.test(t)) {
                 if (inList) { out += '</ul>'; inList = false; }
-                out += '<div class="ai-section-header">' + t.replace(/^##\s+/, '') + '</div>';
+                out += '<h2>' + t.replace(/^##\s+/, '') + '</h2>';
+            } else if (/^#\s+/.test(t)) {
+                if (inList) { out += '</ul>'; inList = false; }
+                out += '<h1>' + t.replace(/^#\s+/, '') + '</h1>';
             } else if (/^[-*•]\s+/.test(t)) {
-                if (!inList) { out += "<ul class='ai-list'>"; inList = true; }
+                if (!inList) { out += "<ul>"; inList = true; }
                 out += '<li>' + t.replace(/^[-*•]\s+/, '') + '</li>';
+            } else if (/^<blockquote>/.test(t)) {
+                if (inList) { out += '</ul>'; inList = false; }
+                out += t;
+                inBq = true;
+            } else if (t === '</blockquote>') {
+                out += t;
+                inBq = false;
             } else {
                 if (inList) { out += '</ul>'; inList = false; }
                 if (t) out += '<p>' + t + '</p>';
@@ -780,6 +812,405 @@
 
 
     // ══════════════════════════════════════════════════════════════════════════
+    // UI #1–20 — UI/UX polish (visual only, no logic changes)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Augment an AI or user message element with the new UI bits:
+     * avatar, timestamp, action buttons (copy + regenerate), and for AI
+     * responses also follow-up suggestion chips. Safe to call on the
+     * same element twice (idempotent — uses a data flag).
+     */
+    function enhanceMessage(msgEl, role, queryText) {
+        if (!msgEl || msgEl.dataset.mjrEnhanced === 'true') return;
+        msgEl.dataset.mjrEnhanced = 'true';
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const isAI = role === 'ai';
+
+        // UI #9 — avatar to the left of the bubble
+        const avatar = document.createElement('span');
+        avatar.className = 'chat-msg-avatar' + (isAI ? '' : ' user');
+        avatar.textContent = isAI ? 'AI' : 'U';
+        msgEl.insertBefore(avatar, msgEl.firstChild);
+
+        // UI #12 — timestamp at the bottom of the message
+        const ts = document.createElement('span');
+        ts.className = 'chat-msg-time';
+        ts.textContent = timeStr;
+        ts.setAttribute('aria-label', 'Sent at ' + timeStr);
+        msgEl.appendChild(ts);
+
+        if (isAI) {
+            // UI #2 + UI #3 — copy + regenerate action buttons
+            const actions = document.createElement('div');
+            actions.className = 'chat-msg-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'chat-msg-action-btn';
+            copyBtn.title = 'Copy response';
+            copyBtn.setAttribute('aria-label', 'Copy response');
+            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+            copyBtn.onclick = () => {
+                const text = msgEl.innerText.replace(timeStr, '').trim();
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.classList.add('copied');
+                        copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                        setTimeout(() => {
+                            copyBtn.classList.remove('copied');
+                            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                        }, 2000);
+                    });
+                }
+            };
+            actions.appendChild(copyBtn);
+
+            // Regenerate: re-runs the user query that produced this
+            // message. We can't know it from the message alone, so we
+            // stash the query in a data attribute on the previous
+            // .chat-msg.user sibling when both are first created.
+            if (queryText) {
+                const regenBtn = document.createElement('button');
+                regenBtn.className = 'chat-msg-action-btn';
+                regenBtn.title = 'Regenerate response';
+                regenBtn.setAttribute('aria-label', 'Regenerate response');
+                regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
+                regenBtn.onclick = () => {
+                    if (typeof window.sendAIMessage === 'function') {
+                        const input = document.getElementById('aiChatInput');
+                        if (input) {
+                            input.value = queryText;
+                            window.sendAIMessage();
+                        }
+                    }
+                };
+                actions.appendChild(regenBtn);
+            }
+            msgEl.appendChild(actions);
+
+            // UI #6 — follow-up suggestion chips based on common patterns
+            addFollowUpChips(msgEl);
+        }
+    }
+
+    /**
+     * Insert 2-3 follow-up question chips below an AI message based
+     * on simple keyword matching. Cheap heuristic; better than nothing
+     * and trivial to swap for a server-driven list later.
+     */
+    function addFollowUpChips(aiMsg) {
+        const txt = (aiMsg.innerText || '').toLowerCase();
+        let suggestions = [];
+        if (/top|highest|best/.test(txt)) suggestions = ['Show failing students', 'Show attendance', "What's the class average?"];
+        else if (/fail|below|bagsak/.test(txt)) suggestions = ['Show top students', 'Attendance this week', 'Class average'];
+        else if (/absent|attendance/.test(txt)) suggestions = ['Top students', "Today's schedule", 'Failing list'];
+        else if (/schedule|class|klase/.test(txt)) suggestions = ['Failing list', 'Top students', "Today's attendance"];
+        else suggestions = ['Top students', 'Failing list', "Today's schedule"];
+        if (!suggestions.length) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'ai-followup-container';
+        suggestions.slice(0, 3).forEach(q => {
+            const chip = document.createElement('button');
+            chip.className = 'ai-followup-chip';
+            chip.textContent = q;
+            chip.setAttribute('aria-label', 'Ask ' + q);
+            chip.onclick = () => {
+                const input = document.getElementById('aiChatInput');
+                if (input) {
+                    input.value = q;
+                    input.focus();
+                    if (typeof window.sendAIMessage === 'function') window.sendAIMessage();
+                }
+            };
+            wrap.appendChild(chip);
+        });
+        aiMsg.appendChild(wrap);
+    }
+
+    /**
+     * Improve the typing indicator: animated bouncing dots + a
+     * rotating stage label (Thinking / Reading database / etc.)
+     */
+    function upgradeTypingIndicator() {
+        const t = document.getElementById('ai-typing-indicator');
+        if (!t || t.dataset.mjrUpgraded === 'true') return;
+        t.dataset.mjrUpgraded = 'true';
+        t.innerHTML = `
+            <div class="ai-typing-stages">
+                <span class="ai-typing-dots"><span></span><span></span><span></span></span>
+                <span class="ai-typing-stage-text">Thinking...</span>
+            </div>`;
+        // Rotate the stage label every 1.6s to feel more alive.
+        const stages = ['Thinking...', 'Reading database...', 'Looking up records...', 'Generating answer...'];
+        const stageEl = t.querySelector('.ai-typing-stage-text');
+        let i = 0;
+        if (window._mjrTypingTimer) clearInterval(window._mjrTypingTimer);
+        window._mjrTypingTimer = setInterval(() => {
+            if (!document.body.contains(t)) {
+                clearInterval(window._mjrTypingTimer);
+                window._mjrTypingTimer = null;
+                return;
+            }
+            i = (i + 1) % stages.length;
+            if (stageEl) stageEl.textContent = stages[i];
+        }, 1600);
+    }
+
+    /**
+     * Show the empty state block inside the chat body. Hides itself
+     * as soon as a real message is appended.
+     */
+    function ensureEmptyState() {
+        const chatBody = document.getElementById('aiChatBody');
+        if (!chatBody) return;
+        if (chatBody.querySelector('.ai-empty-state')) return;
+        const samples = ['Top students', 'Failing list', "Today's schedule", 'How is my class doing?'];
+        const div = document.createElement('div');
+        div.className = 'ai-empty-state';
+        div.innerHTML = `
+            <div class="ai-empty-state-icon"><i class="fa-solid fa-comments"></i></div>
+            <div class="ai-empty-state-title">Ask me anything!</div>
+            <div class="ai-empty-state-msg">I can help with grades, attendance, schedules, and more.</div>
+            <div class="ai-empty-state-samples">
+                ${samples.map(s => `<button class="ai-quickreply-btn" data-sample="${s.replace(/"/g, '&quot;')}">${s}</button>`).join('')}
+            </div>`;
+        chatBody.appendChild(div);
+        // Wire sample chips to fill the input and send.
+        div.querySelectorAll('.ai-quickreply-btn').forEach(btn => {
+            btn.onclick = () => {
+                const input = document.getElementById('aiChatInput');
+                if (input) {
+                    input.value = btn.dataset.sample;
+                    if (typeof window.sendAIMessage === 'function') window.sendAIMessage();
+                }
+            };
+        });
+    }
+
+    function hideEmptyState() {
+        const chatBody = document.getElementById('aiChatBody');
+        if (!chatBody) return;
+        const es = chatBody.querySelector('.ai-empty-state');
+        if (es) es.remove();
+    }
+
+    /**
+     * Insert the always-visible quick-reply row above the input.
+     * Same as the empty-state samples but persistent.
+     */
+    function ensureQuickReplies() {
+        const inputArea = document.querySelector('.ai-chat-input-area');
+        if (!inputArea || inputArea.dataset.mjrQuick === 'true') return;
+        inputArea.dataset.mjrQuick = 'true';
+        const wrap = document.createElement('div');
+        wrap.className = 'ai-quickreplies';
+        const presets = [
+            { label: 'Top students',  q: 'Who are my top students?' },
+            { label: 'Failing list',  q: 'Who is failing?' },
+            { label: 'Today absent',  q: 'Who is absent today?' },
+            { label: 'My schedule',   q: 'Show my class schedule' }
+        ];
+        presets.forEach(p => {
+            const b = document.createElement('button');
+            b.className = 'ai-quickreply-btn';
+            b.textContent = p.label;
+            b.setAttribute('aria-label', 'Ask ' + p.q);
+            b.onclick = () => {
+                const input = document.getElementById('aiChatInput');
+                if (input) {
+                    input.value = p.q;
+                    if (typeof window.sendAIMessage === 'function') window.sendAIMessage();
+                }
+            };
+            wrap.appendChild(b);
+        });
+        // Insert before the existing input row (which is the first child).
+        inputArea.insertBefore(wrap, inputArea.firstChild);
+    }
+
+    /**
+     * UI #4 — wire keyboard shortcuts on the chat input.
+     * Enter sends, Shift+Enter inserts a newline, Esc closes the
+     * widget, "/" focuses the input when no field is active.
+     */
+    function wireKeyboardShortcuts() {
+        const widget = document.getElementById('aiChatWidget');
+        const input = document.getElementById('aiChatInput');
+        if (!widget || !input || input.dataset.mjrKeys === 'true') return;
+        input.dataset.mjrKeys = 'true';
+
+        // Enter / Shift+Enter inside the input
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (typeof window.sendAIMessage === 'function') window.sendAIMessage();
+            }
+            // Shift+Enter falls through to insert a newline naturally
+        });
+        // Esc closes the widget (only when widget is open)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && widget.classList.contains('active')) {
+                if (typeof window.toggleAIChat === 'function') window.toggleAIChat();
+            }
+            // "/" focuses input when not in another text field
+            if (e.key === '/' && widget.classList.contains('active')) {
+                const t = e.target;
+                const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+                if (!inField) {
+                    e.preventDefault();
+                    input.focus();
+                }
+            }
+        });
+    }
+
+    /**
+     * UI #11 + UI #15 — input UX: disable send button when empty,
+     * add a tiny character counter that appears past 100 chars.
+     */
+    function wireInputUX() {
+        const input = document.getElementById('aiChatInput');
+        if (!input || input.dataset.mjrIux === 'true') return;
+        input.dataset.mjrIux = 'true';
+        const area = input.closest('.ai-chat-input-area');
+        if (!area) return;
+        // Disable the existing send button (next sibling) when empty.
+        const sendBtn = area.querySelector('button');
+        const counter = document.createElement('span');
+        counter.className = 'ai-char-counter';
+        area.appendChild(counter);
+        const update = () => {
+            if (sendBtn) sendBtn.disabled = !input.value.trim();
+            counter.textContent = input.value.length + '/500';
+            counter.classList.toggle('visible', input.value.length > 100);
+        };
+        input.addEventListener('input', update);
+        update();
+    }
+
+    /**
+     * UI #14 — show an online dot in the chat header. Toggles to
+     * "thinking" (amber) while a request is in flight, and back to
+     * "online" (green) when done.
+     */
+    function setChatStatus(state) {
+        const header = document.querySelector('.ai-chat-header');
+        if (!header) return;
+        let dot = header.querySelector('.ai-chat-status-dot');
+        if (!dot) {
+            const wrap = document.createElement('span');
+            wrap.className = 'ai-chat-status';
+            wrap.innerHTML = '<span class="ai-chat-status-dot"></span> AI';
+            const closeBtn = header.querySelector('button');
+            if (closeBtn) header.insertBefore(wrap, closeBtn);
+            else header.appendChild(wrap);
+            dot = wrap.querySelector('.ai-chat-status-dot');
+        }
+        dot.classList.remove('thinking', 'offline');
+        if (state === 'thinking') dot.classList.add('thinking');
+        else if (state === 'offline') dot.classList.add('offline');
+    }
+
+    /**
+     * Augment user messages with a small sent-checkmark (UI #8).
+     * Kept lightweight — no actual delivery tracking, just visual.
+     */
+    function stampUserMessage(msgEl) {
+        if (!msgEl || msgEl.dataset.mjrSent === 'true') return;
+        msgEl.dataset.mjrSent = 'true';
+        const status = document.createElement('span');
+        status.className = 'chat-msg-status';
+        status.innerHTML = '<i class="fa-solid fa-check-double"></i>';
+        msgEl.appendChild(status);
+    }
+
+    /**
+     * Sets up a MutationObserver on the chat body that runs all the
+     * enhancement hooks above. Wrapped in a single bootstrap call so
+     * the host page only has to call setupAIEnhancements() once.
+     */
+    function setupAIEnhancements() {
+        const chatBody = document.getElementById('aiChatBody');
+        if (!chatBody || chatBody.dataset.mjrEnhancer === 'true') return;
+        chatBody.dataset.mjrEnhancer = 'true';
+
+        // UI #10 — empty state if there are no messages yet
+        if (!chatBody.querySelector('.chat-msg')) ensureEmptyState();
+
+        // Find the last user message before an AI message; this is
+        // how we know what query to re-run for the regenerate button.
+        const rememberUserQuery = (node) => {
+            if (node.classList && node.classList.contains('chat-msg') && node.classList.contains('user')) {
+                // Tag the sibling AI message (added right after) with
+                // the user query text, so enhanceMessage can find it.
+                const origAppend = chatBody.appendChild.bind(chatBody);
+                chatBody.appendChild = function (newNode) {
+                    const result = origAppend(newNode);
+                    try {
+                        if (newNode.classList && newNode.classList.contains('chat-msg') && newNode.classList.contains('ai')) {
+                            const prev = newNode.previousElementSibling;
+                            if (prev && prev.classList.contains('user')) {
+                                newNode.dataset.mjrPrevQuery = prev.innerText.trim();
+                            }
+                        }
+                    } catch (e) {}
+                    return result;
+                };
+                // Stop watching for user messages after the first one
+                chatBody.dataset.mjrEnhancerTagged = 'true';
+            }
+        };
+        const observer = new MutationObserver(muts => {
+            muts.forEach(m => {
+                m.addedNodes.forEach(n => {
+                    if (!n || n.nodeType !== 1) return;
+                    // Enhance the chat body once: empty state → real messages
+                    hideEmptyState();
+                    if (n.classList && n.classList.contains('chat-msg')) {
+                        if (n.classList.contains('ai')) {
+                            const prevQ = n.dataset.mjrPrevQuery;
+                            enhanceMessage(n, 'ai', prevQ);
+                        } else if (n.classList.contains('user')) {
+                            enhanceMessage(n, 'user');
+                            stampUserMessage(n);
+                        }
+                    }
+                    // Typing indicator upgrade
+                    if (n.id === 'ai-typing-indicator') upgradeTypingIndicator();
+                });
+            });
+        });
+        observer.observe(chatBody, { childList: true, subtree: true });
+        rememberUserQuery(chatBody);
+    }
+
+    /**
+     * Patch window.sendAIMessage to also call setChatStatus('thinking')
+     * before the request and setChatStatus('online') when it returns.
+     * Wraps the original without modifying it.
+     */
+    function patchSendAIMessageStatus() {
+        if (typeof window.sendAIMessage !== 'function' || window.sendAIMessage._mjrPatched) return;
+        const original = window.sendAIMessage;
+        const wrapped = function () {
+            setChatStatus('thinking');
+            const ret = original.apply(this, arguments);
+            if (ret && typeof ret.then === 'function') {
+                ret.then(() => setChatStatus('online'),
+                         () => setChatStatus('online'));
+            } else {
+                setTimeout(() => setChatStatus('online'), 100);
+            }
+            return ret;
+        };
+        wrapped._mjrPatched = true;
+        window.sendAIMessage = wrapped;
+    }
+
+
+    // ══════════════════════════════════════════════════════════════════════════
     // INITIALIZATION
     // ══════════════════════════════════════════════════════════════════════════
 
@@ -798,6 +1229,17 @@
         watchChatPersistence();         // Start auto-saving future messages
         wireInputUx();                  // Enable/disable send button based on input content
         wireToggleAutoFocus();          // Focus input when the chat widget is opened
+        // UI/UX polish (UI #1–20) — all visual, no logic change.
+        setupAIEnhancements();          // MutationObserver that enhances new messages
+        ensureQuickReplies();           // Always-visible quick-reply chips above the input
+        wireKeyboardShortcuts();        // Enter/Shift+Enter/Esc, "/" focus
+        patchSendAIMessageStatus();     // Show "thinking" / "online" status dot
+        setChatStatus('online');        // Initialize header status
+        // UI #20 — aria-live so screen readers announce new messages
+        const chatBody = document.getElementById('aiChatBody');
+        if (chatBody && !chatBody.hasAttribute('aria-live')) {
+            chatBody.setAttribute('aria-live', 'polite');
+        }
     }
 
     // Run setup after the DOM is ready
