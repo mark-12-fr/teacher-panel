@@ -312,7 +312,10 @@
 
         .dashboard-wrapper {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            /* 5 cards now (Semester, Quarter, Subject, Total, Section).
+               Auto-fit shrinks the columns on narrow screens instead of
+               overflowing. */
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             background: var(--card-bg);
             padding: 25px 30px;
             border-radius: 12px;
@@ -771,18 +774,18 @@
             }
 
             .dashboard-wrapper {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: 20px;
                 padding: 20px;
             }
 
             .dash-wrap {
-                text-align: left;
+                text-align: center;
                 margin-bottom: 5px;
             }
 
             .dash-wrap:last-child {
-                text-align: left;
+                text-align: center;
             }
 
             .topbar-header {
@@ -816,7 +819,7 @@
 
         @media (max-width: 768px) {
             .dashboard-wrapper {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 padding: 15px;
             }
 
@@ -828,6 +831,15 @@
             .dash-wrap:last-child {
                 text-align: center;
                 margin-bottom: 0;
+            }
+        }
+
+        /* On the smallest screens, stack all 5 cards into a single column
+           so labels and values never wrap awkwardly. */
+        @media (max-width: 480px) {
+            .dashboard-wrapper {
+                grid-template-columns: 1fr;
+                padding: 12px;
             }
         }
 
@@ -1081,6 +1093,10 @@
                 <div class="dash-wrap">
                     <h3>SEMESTER</h3>
                     <h4 id="dashSemester">Loading...</h4>
+                </div>
+                <div class="dash-wrap">
+                    <h3>QUARTER</h3>
+                    <h4 class="badge" id="dashQuarter">Loading...</h4>
                 </div>
                 <div class="dash-wrap">
                     <h3>SUBJECT</h3>
@@ -1589,6 +1605,22 @@
             document.getElementById('dashSubject').innerText = secData.subject || '--';
             document.getElementById('dashSection').innerText = secData.title || '--';
             document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
+            // Quarter may be stored as a number (1–4) or string ("Q1", "Q1 - First Quarter").
+            // Normalize to a short "Q1" style label so the card stays compact.
+            let qVal = secData.quarter;
+            let qLabel = '--';
+            if (qVal !== null && qVal !== undefined && qVal !== '') {
+                const qStr = String(qVal).trim();
+                // If it's already 'Q1'..'Q4', keep as-is; otherwise extract digits.
+                if (/^Q\s*\d/i.test(qStr)) {
+                    qLabel = qStr.replace(/\s.*$/, '').toUpperCase();
+                } else {
+                    const m = qStr.match(/[1-4]/);
+                    qLabel = m ? ('Q' + m[0]) : qStr;
+                }
+            }
+            const qEl = document.getElementById('dashQuarter');
+            if (qEl) qEl.innerText = qLabel;
 
             if (secData.school_year && typeof window.MJR_setSchoolYear === 'function') {
                 window.MJR_setSchoolYear(secData.school_year);
