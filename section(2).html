@@ -476,12 +476,44 @@
             border-bottom-right-radius: 10px;
             border-right: 1px solid var(--border-color);
         }
-        /* Alternating row tint for easier scanning (very subtle) */
-        tbody tr:nth-child(even) td {
+        /* Alternating row tint for easier scanning (very subtle).
+           Skips the .category-row so the gender banner keeps its
+           gradient and isn't overridden by the even-row tint. */
+        tbody tr:nth-child(even):not(.category-row) td {
             background-color: rgba(0, 0, 0, 0.015);
         }
-        [data-theme="dark"] tbody tr:nth-child(even) td {
+        [data-theme="dark"] tbody tr:nth-child(even):not(.category-row) td {
             background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* MALE / FEMALE category header rows: gradient bands so the
+           two groups read as visually distinct sections, matching
+           the same pattern used in class-record(2).html. */
+        .category-row td {
+            background: var(--input-bg) !important;
+            font-weight: 800 !important;
+            color: var(--text-dark) !important;
+            text-align: left !important;
+            padding: 12px 16px !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            border-top: none !important;
+            border-bottom: 2px solid var(--border-color) !important;
+            font-size: 0.92rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .category-row.category-male td {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.06)) !important;
+        }
+        .category-row.category-female td {
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.06)) !important;
+        }
+        [data-theme="dark"] .category-row.category-male td {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.08)) !important;
+        }
+        [data-theme="dark"] .category-row.category-female td {
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.22), rgba(236, 72, 153, 0.08)) !important;
         }
 
         .action-btns {
@@ -1135,8 +1167,8 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="studentTableBody">
-                        </tbody>
+                        <tbody id="maleBody"></tbody>
+                        <tbody id="femaleBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -1648,11 +1680,13 @@
 
             document.getElementById('dashTotalStudents').innerText = students.length;
 
-            const tbody = document.getElementById('studentTableBody');
-            tbody.innerHTML = '';
+            const maleBody = document.getElementById('maleBody');
+            const femaleBody = document.getElementById('femaleBody');
+            maleBody.innerHTML = '';
+            femaleBody.innerHTML = '';
 
             if (students.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="padding:0;">
+                maleBody.innerHTML = `<tr><td colspan="4" style="padding:0;">
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
                         <div class="empty-state-title">No students yet</div>
@@ -1662,16 +1696,23 @@
                 return;
             }
 
-            students.forEach(stud => {
+            const males = students.filter(s => (s.gender || '').toString().trim().toLowerCase().startsWith('m'));
+            const females = students.filter(s => (s.gender || '').toString().trim().toLowerCase().startsWith('f'));
+
+            /**
+             * Build a single student row. Extracted so the MALE and
+             * FEMALE loops can share the same template. The encoded
+             * data attribute is used by openEditModal() so the edit
+             * modal gets the full student object without a second
+             * network round-trip.
+             */
+            function buildRow(stud) {
                 const tr = document.createElement('tr');
                 const encodedData = encodeURIComponent(JSON.stringify(stud));
-                // Gender badge class varies by value; fall back to plain
-                // text if a third value ever appears.
                 const gLower = (stud.gender || '').toString().trim().toLowerCase();
                 const genderBadge = gLower === 'male' || gLower === 'female'
                     ? `<span class="gender-badge gender-badge-${gLower}">${gLower === 'male' ? 'Male' : 'Female'}</span>`
                     : (stud.gender || '');
-                // UI #4: icon-only action buttons with hover tooltips.
                 tr.innerHTML = `
                 <td>${stud.id_no}</td>
                 <td>${stud.full_name}</td>
@@ -1683,8 +1724,42 @@
                     </div>
                 </td>
             `;
-                tbody.appendChild(tr);
-            });
+                return tr;
+            }
+
+            // MALE block: gradient category row with count, then the rows.
+            if (males.length > 0) {
+                maleBody.innerHTML = `<tr class="category-row category-male">
+                    <td colspan="4">
+                        <i class="fa-solid fa-mars" style="margin-right: 6px; color: #2563eb;"></i>MALE
+                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${males.length})</span>
+                    </td>
+                </tr>`;
+                males.forEach(s => maleBody.appendChild(buildRow(s)));
+            }
+            // FEMALE block: same pattern with the pink icon.
+            if (females.length > 0) {
+                femaleBody.innerHTML = `<tr class="category-row category-female">
+                    <td colspan="4">
+                        <i class="fa-solid fa-venus" style="margin-right: 6px; color: #db2777;"></i>FEMALE
+                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${females.length})</span>
+                    </td>
+                </tr>`;
+                females.forEach(s => femaleBody.appendChild(buildRow(s)));
+            }
+            // If a section has no students of one gender, the other
+            // gender's header still shows. If both are empty (e.g.
+            // the data only has unknown gender values), fall back to
+            // a single shared empty state.
+            if (males.length === 0 && females.length === 0) {
+                maleBody.innerHTML = `<tr><td colspan="4" style="padding:0;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
+                        <div class="empty-state-title">No students yet</div>
+                        <div class="empty-state-msg">Click the + button to add your first student.</div>
+                    </div>
+                </td></tr>`;
+            }
         }
 
 
@@ -1811,9 +1886,12 @@
 
         document.getElementById('searchInput').addEventListener('input', function (e) {
             const term = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#studentTableBody tr');
-
+            // Search both male and female bodies. Skip the gender header
+            // rows so the MALE / FEMALE banners stay visible regardless
+            // of the search term.
+            const rows = document.querySelectorAll('#maleBody tr, #femaleBody tr');
             rows.forEach(row => {
+                if (row.classList.contains('category-row')) return;
                 const text = row.innerText.toLowerCase();
                 if (text.includes(term)) row.style.display = '';
                 else row.style.display = 'none';
