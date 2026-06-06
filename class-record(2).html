@@ -371,6 +371,10 @@
             color: var(--text-dark);
         }
 
+        .dash-wrap {
+            text-align: center;
+        }
+
         .dash-wrap:last-child {
             text-align: center;
         }
@@ -727,12 +731,12 @@
             }
 
             .dash-wrap {
-                text-align: left;
+                text-align: center;
                 margin-bottom: 5px;
             }
 
             .dash-wrap:last-child {
-                text-align: left;
+                text-align: center;
             }
 
             .class-record-container {
@@ -852,26 +856,8 @@
             }
         }
 
-        /* ── Color-coded grade cells (UI #1) ──
-           Cells get .score-good (≥75) or .score-bad (<75) on save.
-           Empty cells stay neutral; the dashed "-" placeholder is shown
-           via :empty::before. */
-        .editable-score.score-good {
-            color: #15803d;
-            background: rgba(22, 163, 74, 0.10);
-        }
-        .editable-score.score-bad {
-            color: #b91c1c;
-            background: rgba(220, 38, 38, 0.10);
-        }
-        [data-theme="dark"] .editable-score.score-good {
-            color: #86efac;
-            background: rgba(22, 163, 74, 0.18);
-        }
-        [data-theme="dark"] .editable-score.score-bad {
-            color: #fca5a5;
-            background: rgba(220, 38, 38, 0.18);
-        }
+        /* Grade cells: keep the original plain blue color (var(--accent-blue))
+           inherited from .editable-score. No per-cell green/red tinting. */
         /* Subtle pulse on focus to confirm which cell is being edited */
         @keyframes cellFocusPulse {
             0%   { box-shadow: inset 0 0 0 2px var(--accent-blue), 0 0 0 0 rgba(59,130,246,0.25); }
@@ -1436,14 +1422,6 @@
             html += `<td class="final-grade-cell final-grade-none" data-field="_final" data-studentid="${student.id}">--</td>`;
 
             tr.innerHTML = html;
-            // UI #1: also color the initial cell values (good/bad) based on
-            // whatever scores were already loaded from Supabase.
-            tr.querySelectorAll('.editable-score').forEach(c => {
-                const v = parseFloat(c.innerText.trim());
-                if (!isNaN(v) && v > 0) {
-                    c.classList.add(v >= 75 ? 'score-good' : 'score-bad');
-                }
-            });
             return tr;
         }
 
@@ -1480,9 +1458,9 @@
                 cell.textContent = '--';
             } else {
                 cell.textContent = final + '%';
-                if (final >= 75)      cell.classList.add('final-grade-good');
-                else if (final >= 60) cell.classList.add('final-grade-warn');
-                else                  cell.classList.add('final-grade-bad');
+                // Binary pass/fail: >=75 = green, <75 = red. No warn state.
+                if (final >= 75) cell.classList.add('final-grade-good');
+                else              cell.classList.add('final-grade-bad');
             }
         }
 
@@ -1545,14 +1523,7 @@
                 cell.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
                 setTimeout(() => cell.style.backgroundColor = 'transparent', 1000);
 
-                // UI #1: refresh the cell's color class based on the new
-                // value. > 0 and >= 75 -> green, < 75 -> red, empty -> clear.
-                cell.classList.remove('score-good', 'score-bad');
-                const numericVal = parseFloat(newValue);
-                if (!isNaN(numericVal) && numericVal > 0) {
-                    cell.classList.add(numericVal >= 75 ? 'score-good' : 'score-bad');
-                }
-                // UI #5: refresh the final-grade cell in the same row.
+                // Refresh the final-grade cell in the same row.
                 refreshFinalGradeForRow(cell.parentElement);
 
             } catch (error) {
