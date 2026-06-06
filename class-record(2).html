@@ -936,26 +936,42 @@
             border-bottom-right-radius: 10px;
             border-right: 1px solid var(--border-color);
         }
-        #recordTable tbody tr:nth-child(even) td {
+        #recordTable tbody tr:nth-child(even):not(.category-row) td {
             background-color: rgba(0,0,0,0.015);
         }
-        [data-theme="dark"] #recordTable tbody tr:nth-child(even) td {
+        [data-theme="dark"] #recordTable tbody tr:nth-child(even):not(.category-row) td {
             background-color: rgba(255,255,255,0.02);
         }
-        /* MALE / FEMALE divider rows stay flat but get a stronger label */
+        /* MALE / FEMALE divider rows: each gender gets its own colored
+           band so the two groups read as visually distinct sections
+           even though they share a single table. */
         .category-row td {
             background: var(--input-bg) !important;
             font-weight: 800 !important;
             color: var(--text-dark) !important;
             text-align: left !important;
-            padding-left: 16px !important;
+            padding: 12px 16px !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             border-top: none !important;
-            border-bottom: 1px solid var(--border-color) !important;
+            border-bottom: 2px solid var(--border-color) !important;
+            font-size: 0.92rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
-        [data-theme="dark"] .category-row td {
-            background: var(--hover-bg) !important;
+        /* MALE = soft blue tint */
+        .category-row.category-male td {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.06)) !important;
+        }
+        /* FEMALE = soft pink tint */
+        .category-row.category-female td {
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.06)) !important;
+        }
+        [data-theme="dark"] .category-row.category-male td {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.08)) !important;
+        }
+        [data-theme="dark"] .category-row.category-female td {
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.22), rgba(236, 72, 153, 0.08)) !important;
         }
 
         /* Final grade column removed per user request. */
@@ -1036,16 +1052,16 @@
                     <h4 id="dashSemester">Loading...</h4>
                 </div>
                 <div class="dash-wrap">
+                    <h3>QUARTER</h3>
+                    <h4 class="badge" id="dashQuarter">Q1</h4>
+                </div>
+                <div class="dash-wrap">
                     <h3>SUBJECT</h3>
                     <h4 id="dashSubject">--</h4>
                 </div>
                 <div class="dash-wrap">
                     <h3>TOTAL STUDENTS</h3>
                     <h4 id="dashTotalStudents">0</h4>
-                </div>
-                <div class="dash-wrap">
-                    <h3>QUARTER</h3>
-                    <h4 class="badge" id="dashQuarter">Q1</h4>
                 </div>
                 <div class="dash-wrap">
                     <h3>SECTION</h3>
@@ -1114,12 +1130,8 @@
                                 <th>50</th>
                             </tr>
                         </thead>
-                        <tbody id="recordTableBody">
-                            <tr>
-                                <td colspan="41" style="text-align: center; padding: 40px;">Loading student records...
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="maleBody"></tbody>
+                        <tbody id="femaleBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -1283,7 +1295,8 @@
         }
 
         async function loadClassRecordData() {
-            const tbody = document.getElementById('recordTableBody');
+            const maleBody = document.getElementById('maleBody');
+            const femaleBody = document.getElementById('femaleBody');
             const quarter = getCurrentQuarter();
             try {
                 const { data: students, error: studErr } = await supabaseClient
@@ -1303,30 +1316,56 @@
                 if (recErr) throw recErr;
 
                 document.getElementById('dashTotalStudents').innerText = students ? students.length : 0;
-                tbody.innerHTML = '';
+                // Reset both bodies before populating so re-renders are clean.
+                maleBody.innerHTML = '';
+                femaleBody.innerHTML = '';
 
                 if (!students || students.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="41" style="text-align: center; padding: 30px;">No students assigned yet.</td></tr>';
+                    // No students: show the message in the male body so the
+                    // table doesn't appear empty without explanation.
+                    maleBody.innerHTML = '<tr><td colspan="41" style="text-align: center; padding: 30px;">No students assigned yet.</td></tr>';
                     return;
                 }
 
                 const males = students.filter(s => s.gender?.startsWith('M') || s.gender?.startsWith('m'));
                 const females = students.filter(s => s.gender?.startsWith('F') || s.gender?.startsWith('f'));
 
-                let count = 1;
+                // Render MALE block. The category-row spans all data
+                // columns (25 modules + 10 activities + 4 = 39) and shows
+                // the gender label with a count.
                 if (males.length > 0) {
-                    // colspan = 25 (modules) + 10 (activities) + 4 (AT/PT1/PT2/QE) = 39
-                    tbody.innerHTML += `<tr class="category-row"><td class="sticky-col"></td><td class="sticky-col text-left group-divider">MALE</td><td colspan="39"></td></tr>`;
-                    males.forEach(s => tbody.appendChild(createRow(s, count++, records)));
+                    maleBody.innerHTML = `<tr class="category-row category-male">
+                        <td class="sticky-col"></td>
+                        <td class="sticky-col text-left group-divider">
+                            <i class="fa-solid fa-mars" style="margin-right: 6px; color: #2563eb;"></i>MALE
+                            <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${males.length})</span>
+                        </td>
+                        <td colspan="39"></td>
+                    </tr>`;
+                    let mCount = 1;
+                    males.forEach(s => maleBody.appendChild(createRow(s, mCount++, records)));
                 }
+                // Render FEMALE block the same way, with its own icon + count.
                 if (females.length > 0) {
-                    tbody.innerHTML += `<tr class="category-row"><td class="sticky-col"></td><td class="sticky-col text-left group-divider" style="color: var(--text-dark);">FEMALE</td><td colspan="39"></td></tr>`;
-                    females.forEach(s => tbody.appendChild(createRow(s, count++, records)));
+                    femaleBody.innerHTML = `<tr class="category-row category-female">
+                        <td class="sticky-col"></td>
+                        <td class="sticky-col text-left group-divider">
+                            <i class="fa-solid fa-venus" style="margin-right: 6px; color: #db2777;"></i>FEMALE
+                            <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${females.length})</span>
+                        </td>
+                        <td colspan="39"></td>
+                    </tr>`;
+                    let fCount = males.length + 1;
+                    females.forEach(s => femaleBody.appendChild(createRow(s, fCount++, records)));
+                }
+                // Friendly notice if there are no females at all (and no males either already handled above).
+                if (females.length === 0 && males.length === 0) {
+                    maleBody.innerHTML = '<tr><td colspan="41" style="text-align: center; padding: 30px;">No students assigned yet.</td></tr>';
                 }
 
             } catch (e) {
                 console.error("Error loading records:", e);
-                tbody.innerHTML = '<tr><td colspan="41" style="text-align: center; color: red;">Error loading data.</td></tr>';
+                maleBody.innerHTML = '<tr><td colspan="41" style="text-align: center; color: red;">Error loading data.</td></tr>';
             }
         }
 
