@@ -329,6 +329,9 @@
 
         .dash-wrap {
             margin-bottom: 0;
+            /* Center both the label and the value inside every card so
+               subject names and totals read at a glance. */
+            text-align: center;
         }
 
         .dash-wrap h3 {
@@ -346,8 +349,12 @@
             margin: 0;
             color: var(--text-dark);
             word-wrap: break-word;
+            word-break: break-word;
         }
 
+        /* Kept for backwards compat — :last-child was the only centered
+           card before. Now all .dash-wrap are centered, so this rule
+           is a no-op but doesn't hurt. */
         .dash-wrap:last-child {
             text-align: center;
         }
