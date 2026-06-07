@@ -608,42 +608,25 @@
             border-bottom: 2px solid var(--border-color) !important;
         }
 
-        /* MALE = soft blue gradient that flows continuously across the
-           whole row (sticky cols + scrollable colspan). The trick that
-           keeps the gradient seamless on horizontal scroll is
-           `background-attachment: fixed` + a wide gradient (e.g. 1600px)
-           — the gradient is anchored to the scroll container's
-           coordinate space, not the cell, so the visible portion of
-           the gradient shifts naturally as the user scrolls without
-           showing a "jump" at the sticky-col-2 boundary. */
+        /* MALE = soft blue SOLID color across the whole row (sticky cols
+           + scrollable colspan). The previous gradient design had a
+           visible fade on the right side as the user scrolled — the
+           gradient itself ended at a lower alpha, so the right edge
+           of the colspan cell always looked lighter than the sticky
+           col-2 cell. A solid color stays consistent at every scroll
+           position. */
         .gender-row.category-male td {
-            background:
-                linear-gradient(90deg, rgba(59, 130, 246, 0.32) 0%, rgba(59, 130, 246, 0.10) 70%, rgba(59, 130, 246, 0.04) 100%) !important;
-            background-attachment: fixed !important;
-            background-size: 1600px 100% !important;
-            background-repeat: no-repeat !important;
+            background: rgba(59, 130, 246, 0.32) !important;
         }
-        /* FEMALE = soft pink, same trick as MALE */
+        /* FEMALE = soft pink, same solid-color treatment */
         .gender-row.category-female td {
-            background:
-                linear-gradient(90deg, rgba(236, 72, 153, 0.32) 0%, rgba(236, 72, 153, 0.10) 70%, rgba(236, 72, 153, 0.04) 100%) !important;
-            background-attachment: fixed !important;
-            background-size: 1600px 100% !important;
-            background-repeat: no-repeat !important;
+            background: rgba(236, 72, 153, 0.32) !important;
         }
         [data-theme="dark"] .gender-row.category-male td {
-            background:
-                linear-gradient(90deg, rgba(59, 130, 246, 0.38) 0%, rgba(59, 130, 246, 0.14) 70%, rgba(59, 130, 246, 0.06) 100%) !important;
-            background-attachment: fixed !important;
-            background-size: 1600px 100% !important;
-            background-repeat: no-repeat !important;
+            background: rgba(59, 130, 246, 0.38) !important;
         }
         [data-theme="dark"] .gender-row.category-female td {
-            background:
-                linear-gradient(90deg, rgba(236, 72, 153, 0.38) 0%, rgba(236, 72, 153, 0.14) 70%, rgba(236, 72, 153, 0.06) 100%) !important;
-            background-attachment: fixed !important;
-            background-size: 1600px 100% !important;
-            background-repeat: no-repeat !important;
+            background: rgba(236, 72, 153, 0.38) !important;
         }
 
         .mark-p {
