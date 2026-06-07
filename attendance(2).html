@@ -607,29 +607,40 @@
             border-bottom: 2px solid var(--border-color) !important;
         }
 
-        /* MALE = soft blue gradient (matches the same color in
-           class-record(2).html and section(2).html so all three
-           pages look consistent). */
+        /* MALE = soft blue gradient. Sticky cols use a solid color
+           matching the gradient's left stop so the color stays
+           seamless when scrolling horizontally (otherwise the
+           gradient on the sticky col ends at 0.06 alpha while the
+           scrollable colspan cell starts at 0.18, creating a
+           visible "jump" at the boundary). */
         .gender-row.category-male td,
-        .gender-row.category-male .sticky-col-1,
-        .gender-row.category-male .sticky-col-2 {
+        .gender-row.category-male .sticky-col-1 {
             background: linear-gradient(90deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.06)) !important;
         }
-        /* FEMALE = soft pink gradient */
+        .gender-row.category-male .sticky-col-2 {
+            background: rgba(59, 130, 246, 0.18) !important;
+        }
+        /* FEMALE = soft pink gradient (same sticky-col treatment) */
         .gender-row.category-female td,
-        .gender-row.category-female .sticky-col-1,
-        .gender-row.category-female .sticky-col-2 {
+        .gender-row.category-female .sticky-col-1 {
             background: linear-gradient(90deg, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.06)) !important;
         }
+        .gender-row.category-female .sticky-col-2 {
+            background: rgba(236, 72, 153, 0.18) !important;
+        }
         [data-theme="dark"] .gender-row.category-male td,
-        [data-theme="dark"] .gender-row.category-male .sticky-col-1,
-        [data-theme="dark"] .gender-row.category-male .sticky-col-2 {
+        [data-theme="dark"] .gender-row.category-male .sticky-col-1 {
             background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.08)) !important;
         }
+        [data-theme="dark"] .gender-row.category-male .sticky-col-2 {
+            background: rgba(59, 130, 246, 0.22) !important;
+        }
         [data-theme="dark"] .gender-row.category-female td,
-        [data-theme="dark"] .gender-row.category-female .sticky-col-1,
-        [data-theme="dark"] .gender-row.category-female .sticky-col-2 {
+        [data-theme="dark"] .gender-row.category-female .sticky-col-1 {
             background: linear-gradient(90deg, rgba(236, 72, 153, 0.22), rgba(236, 72, 153, 0.08)) !important;
+        }
+        [data-theme="dark"] .gender-row.category-female .sticky-col-2 {
+            background: rgba(236, 72, 153, 0.22) !important;
         }
 
         .mark-p {
