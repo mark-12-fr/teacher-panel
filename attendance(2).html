@@ -604,38 +604,46 @@
             padding: 10px 12px 10px 20px;
             letter-spacing: 0.5px;
             text-transform: uppercase;
+            border-top: 2px solid var(--border-color) !important;
             border-bottom: 2px solid var(--border-color) !important;
         }
 
-        /* MALE = soft blue. Solid color (no gradient) so the row stays
-           seamless when scrolling horizontally. A gradient on the
-           scrollable colspan cell shifts its position relative to the
-           sticky col-2 as the user scrolls, causing the color at the
-           boundary to fade — a solid color stays consistent. */
+        /* MALE = soft blue gradient that flows continuously across the
+           whole row (sticky cols + scrollable colspan). The trick that
+           keeps the gradient seamless on horizontal scroll is
+           `background-attachment: fixed` + a wide gradient (e.g. 1600px)
+           — the gradient is anchored to the scroll container's
+           coordinate space, not the cell, so the visible portion of
+           the gradient shifts naturally as the user scrolls without
+           showing a "jump" at the sticky-col-2 boundary. */
         .gender-row.category-male td {
-            background: rgba(59, 130, 246, 0.18) !important;
+            background:
+                linear-gradient(90deg, rgba(59, 130, 246, 0.32) 0%, rgba(59, 130, 246, 0.10) 70%, rgba(59, 130, 246, 0.04) 100%) !important;
+            background-attachment: fixed !important;
+            background-size: 1600px 100% !important;
+            background-repeat: no-repeat !important;
         }
-        .gender-row.category-male .sticky-col-1,
-        .gender-row.category-male .sticky-col-2 {
-            background: rgba(59, 130, 246, 0.18) !important;
-        }
-        /* FEMALE = soft pink (same solid-color treatment) */
+        /* FEMALE = soft pink, same trick as MALE */
         .gender-row.category-female td {
-            background: rgba(236, 72, 153, 0.18) !important;
+            background:
+                linear-gradient(90deg, rgba(236, 72, 153, 0.32) 0%, rgba(236, 72, 153, 0.10) 70%, rgba(236, 72, 153, 0.04) 100%) !important;
+            background-attachment: fixed !important;
+            background-size: 1600px 100% !important;
+            background-repeat: no-repeat !important;
         }
-        .gender-row.category-female .sticky-col-1,
-        .gender-row.category-female .sticky-col-2 {
-            background: rgba(236, 72, 153, 0.18) !important;
+        [data-theme="dark"] .gender-row.category-male td {
+            background:
+                linear-gradient(90deg, rgba(59, 130, 246, 0.38) 0%, rgba(59, 130, 246, 0.14) 70%, rgba(59, 130, 246, 0.06) 100%) !important;
+            background-attachment: fixed !important;
+            background-size: 1600px 100% !important;
+            background-repeat: no-repeat !important;
         }
-        [data-theme="dark"] .gender-row.category-male td,
-        [data-theme="dark"] .gender-row.category-male .sticky-col-1,
-        [data-theme="dark"] .gender-row.category-male .sticky-col-2 {
-            background: rgba(59, 130, 246, 0.22) !important;
-        }
-        [data-theme="dark"] .gender-row.category-female td,
-        [data-theme="dark"] .gender-row.category-female .sticky-col-1,
-        [data-theme="dark"] .gender-row.category-female .sticky-col-2 {
-            background: rgba(236, 72, 153, 0.22) !important;
+        [data-theme="dark"] .gender-row.category-female td {
+            background:
+                linear-gradient(90deg, rgba(236, 72, 153, 0.38) 0%, rgba(236, 72, 153, 0.14) 70%, rgba(236, 72, 153, 0.06) 100%) !important;
+            background-attachment: fixed !important;
+            background-size: 1600px 100% !important;
+            background-repeat: no-repeat !important;
         }
 
         .mark-p {
