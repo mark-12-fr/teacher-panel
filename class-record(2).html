@@ -955,9 +955,18 @@
             box-shadow: none !important;
             border-top: none !important;
             border-bottom: 2px solid var(--border-color) !important;
+            border-right: none !important;
             font-size: 0.92rem;
             letter-spacing: 0.5px;
             text-transform: uppercase;
+        }
+        /* The sticky label cell also carries .group-divider and matches
+           .sticky-col:nth-child(2) (a 2px right border) which is more specific
+           than .category-row td — override it here with higher specificity so
+           the gender band has no internal vertical "cut". */
+        .category-row .sticky-col,
+        .category-row .sticky-col:nth-child(2) {
+            border-right: none !important;
         }
         /* MALE / FEMALE label rows — opaque --card-bg base + flat tint overlay.
            Keeps the color connected across horizontal scroll: the frozen sticky
