@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="ai-assistant.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="grading.js"></script>
     <!-- Chart.js: load normally; we still lazy-init via requestIdleCallback below -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 
@@ -1327,6 +1328,12 @@
             PASS_THRESHOLD: 75
         });
 
+        // This page is a single section -> single subject. Its weights and
+        // passing grade come from the teacher's Grading System config (loaded
+        // in loadSectionDetails); they default to 30/50/20/0/75 when unset.
+        window.PAGE_SUBJECT = '';
+        let PAGE_PASSING = 75;
+
         const SEMESTER_QUARTERS = Object.freeze({
             '1st Sem': ['1', '2'],
             '2nd Sem': ['3', '4'],
@@ -1337,26 +1344,12 @@
          * Compute final grade for a single record (or merged record).
          * Returns an integer 0–100. Safe with empty / null inputs.
          */
-        function computeFinalGrade(record) {
+        function computeFinalGrade(record, attScore) {
             if (!record) return 0;
-            let totalWW = 0, totalPT = 0, totalQE = Number(record.qe) || 0;
-            for (const key in record) {
-                const val = record[key];
-                if (val === null || val === undefined || val === "") continue;
-                if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') {
-                    totalWW += Number(val) || 0;
-                } else if (key.startsWith('pt_')) {
-                    totalPT += Number(val) || 0;
-                }
-            }
-            const ww = Math.min((totalWW / GRADING_CONFIG.WW_PERFECT) * 100, 100) || 0;
-            const pt = Math.min((totalPT / GRADING_CONFIG.PT_PERFECT) * 100, 100) || 0;
-            const qe = Math.min((totalQE / GRADING_CONFIG.QE_PERFECT) * 100, 100) || 0;
-            return Math.round(
-                (ww * GRADING_CONFIG.WEIGHTS.ww) +
-                (pt * GRADING_CONFIG.WEIGHTS.pt) +
-                (qe * GRADING_CONFIG.WEIGHTS.qe)
-            );
+            // Dynamic: weights come from THIS subject's Grading System config.
+            // attScore (0-100) is the attendance score; defaults to 100 (no
+            // penalty / not loaded). When the Attendance weight is 0 it is moot.
+            return window.MJR_finalGrade(record, window.PAGE_SUBJECT, (attScore === undefined ? 100 : attScore));
         }
 
         /* ═══════════════════════════════════════════════════════════════
@@ -1655,7 +1648,7 @@
                 let failing = [];
                 students.forEach(s => {
                     let grade = getFinalGrade(s.id);
-                    if (grade > 0 && grade < GRADING_CONFIG.PASS_THRESHOLD) failing.push({ name: s.full_name, grade: grade });
+                    if (grade > 0 && grade < PAGE_PASSING) failing.push({ name: s.full_name, grade: grade });
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
                 let res = "<strong>The following students are currently falling behind (Below 75%):</strong><br><br>";
@@ -1673,7 +1666,7 @@
                 if (!stud) return `I could not find a student named "<strong>${escapeHTML(nameExtracted)}</strong>" in your class lists.`;
 
                 let grade = getFinalGrade(stud.id);
-                let status = grade >= GRADING_CONFIG.PASS_THRESHOLD ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
+                let status = grade >= PAGE_PASSING ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
                 return `The current calculated grade for <strong>${escapeHTML(stud.full_name)}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
             }
             else if (query.includes('absent') || query.includes('attendance')) {
@@ -1708,7 +1701,7 @@
             }
             else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let totalStuds = students.length; let passCount = 0;
-                students.forEach(s => { if (getFinalGrade(s.id) >= GRADING_CONFIG.PASS_THRESHOLD) passCount++; });
+                students.forEach(s => { if (getFinalGrade(s.id) >= PAGE_PASSING) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount / totalStuds) * 100) : 0;
                 return `<strong>Class Performance Overview:</strong><br><br>` +
                     `• Total Active Sections: <strong>${sections.length}</strong><br>` +
@@ -1761,6 +1754,12 @@
                 currentSectionTitle = secData.title || '';
                 currentSemester = secData.semester || '1st Sem';
                 document.getElementById('dashSemester').innerText = currentSemester;
+
+                // Load this subject's grading weights (set by the teacher in the
+                // Grading System). Falls back to 30/50/20/0, passing 75, when unset.
+                window.PAGE_SUBJECT = secData.subject || '';
+                await window.MJR_loadSubjectConfigs(supabaseClient, userId);
+                PAGE_PASSING = window.MJR_passingFor(window.PAGE_SUBJECT);
             }
 
             const { data: studentsData, error: studError } = await supabaseClient
@@ -1882,8 +1881,15 @@
                     }
                 }
 
-                // Final grade: use shared function for consistency with AI assistant.
-                let final_rounded = computeFinalGrade(mergedScores);
+                // Attendance score (0-100) for this student; only affects the grade
+                // when this subject's Attendance weight is > 0 (set in Grading System).
+                const _attG = attendanceFor(student);
+                const _attGTotal = _attG ? _attG.total : 0;
+                const _attG100 = _attGTotal > 0
+                    ? Math.round(((_attG.present + 0.5 * (_attG.late + (_attG.excused || 0))) / _attGTotal) * 100)
+                    : 100;
+                // Final grade: dynamic per-subject weights (shared with AI + faci).
+                let final_rounded = computeFinalGrade(mergedScores, _attG100);
 
                 // Per-quarter trend: compute each quarter's grade from THAT
                 // quarter's own record (not the merged one), and only count a
@@ -1933,7 +1939,7 @@
                 let grade = student.final_grade || 0;
 
                 totalGrade += grade;
-                if (grade >= GRADING_CONFIG.PASS_THRESHOLD) passed++;
+                if (grade >= PAGE_PASSING) passed++;
 
                 // Only count non-zero grades for highest/lowest, so a 0 (no records)
                 // student doesn't drag "lowest" to 0.
@@ -1993,7 +1999,7 @@
             source.forEach(s => {
                 const g = s.final_grade || 0;
                 totalGrade += g;
-                if (g >= GRADING_CONFIG.PASS_THRESHOLD) passed++;
+                if (g >= PAGE_PASSING) passed++;
                 if (g > 0) { if (g > highest) highest = g; if (g < lowest) lowest = g; }
                 totalWW += s.written_works || 0;
                 totalPT += s.perf_task || 0;
@@ -2077,9 +2083,9 @@
             // Apply filter
             let filtered = students.slice();
             if (tableState.filter === 'pass') {
-                filtered = filtered.filter(s => (s.final_grade || 0) >= GRADING_CONFIG.PASS_THRESHOLD);
+                filtered = filtered.filter(s => (s.final_grade || 0) >= PAGE_PASSING);
             } else if (tableState.filter === 'fail') {
-                filtered = filtered.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < GRADING_CONFIG.PASS_THRESHOLD);
+                filtered = filtered.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < PAGE_PASSING);
             } else if (tableState.filter === 'top10') {
                 filtered = filtered.slice().sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0)).slice(0, 10);
             }
@@ -2149,13 +2155,13 @@
             const alertEl = document.getElementById('failingAlert');
             const textEl = document.getElementById('failingAlertText');
             if (!alertEl || !textEl) return;
-            const failing = students.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < GRADING_CONFIG.PASS_THRESHOLD);
+            const failing = students.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < PAGE_PASSING);
             if (failing.length === 0) {
                 alertEl.style.display = 'none';
                 return;
             }
             alertEl.style.display = 'flex';
-            textEl.textContent = `${failing.length} student${failing.length === 1 ? '' : 's'} currently falling below 75%. Consider intervention.`;
+            textEl.textContent = `${failing.length} student${failing.length === 1 ? '' : 's'} currently falling below ${PAGE_PASSING}%. Consider intervention.`;
         }
 
         /* ═══════════════════════════════════════════════════════════════
@@ -2169,8 +2175,8 @@
             const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Attendance %', 'Final Grade'];
             // Use the same sort/filter as the visible table
             let rows = lastStudentsData.slice();
-            if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= GRADING_CONFIG.PASS_THRESHOLD);
-            else if (tableState.filter === 'fail') rows = rows.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < GRADING_CONFIG.PASS_THRESHOLD);
+            if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= PAGE_PASSING);
+            else if (tableState.filter === 'fail') rows = rows.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < PAGE_PASSING);
             else if (tableState.filter === 'top10') rows = rows.sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0)).slice(0, 10);
 
             const q = tableState.search.trim().toLowerCase();

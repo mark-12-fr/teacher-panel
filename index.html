@@ -16,6 +16,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="grading.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
@@ -1540,7 +1541,7 @@
                 let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
                 for (let key in merged) { if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0; if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0; }
                 let ww = Math.min((totalWW / 100) * 100, 100) || 0; let pt = Math.min((totalPT / 100) * 100, 100) || 0; let qe = Math.min((totalQE / 50) * 100, 100) || 0;
-                return Math.round((ww * 0.3) + (pt * 0.5) + (qe * 0.2));
+                return window.MJR_finalGrade ? window.MJR_finalGrade(merged, (sections.find(function (x) { return x.id === merged.section_id; }) || {}).subject, 100) : Math.round((ww * 0.3) + (pt * 0.5) + (qe * 0.2));
             };
 
             if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) {
@@ -1965,12 +1966,15 @@
             let teacherId = localStorage.getItem('user_id'); if (!teacherId) return;
             teacherId = teacherId.replace(/['"]+/g, '');
             try {
-                const { data: sections } = await supabaseClient.from('sections').select('id, title, semester').eq('teacher_id', teacherId);
+                const { data: sections } = await supabaseClient.from('sections').select('id, title, semester, subject').eq('teacher_id', teacherId);
                 globalSectionsData = sections || [];
+                // Load each subject's grading weights so the dashboard reflects
+                // the teacher's Grading System config (default 30/50/20/0/75).
+                await window.MJR_loadSubjectConfigs(supabaseClient, teacherId);
                 let totalSections = sections ? sections.length : 0;
-                let sectionTitles = []; let sectionMap = {}; let totalStudents = 0; let present = 0; let absentOrLate = 0;
+                let sectionTitles = []; let sectionMap = {}; let sectionSubjectMap = {}; let totalStudents = 0; let present = 0; let absentOrLate = 0;
                 if (totalSections > 0) {
-                    sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; });
+                    sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; sectionSubjectMap[s.id] = s.subject; });
                     const sectionIds = sections.map(s => s.id);
                     const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
                     totalStudents = students ? students.length : 0;
@@ -1983,17 +1987,11 @@
                     const secQtr = { Q1: {}, Q2: {}, Q3: {}, Q4: {} };
                     function trackSec(map, key, grade) { if (!map[key]) map[key] = { t: 0, c: 0 }; map[key].t += grade; map[key].c++; }
 
-                    function gradeFromRow(row) {
-                        let totalWW = 0, totalPT = 0;
-                        const totalQE = Number(row.qe) || 0;
-                        for (const key in row) {
-                            if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(row[key]) || 0;
-                            if (key.startsWith('pt_')) totalPT += Number(row[key]) || 0;
-                        }
-                        const ww = Math.min((totalWW / 100) * 100, 100) || 0;
-                        const pt = Math.min((totalPT / 100) * 100, 100) || 0;
-                        const qe = Math.min((totalQE / 50) * 100, 100) || 0;
-                        return Math.round((ww * 0.3) + (pt * 0.5) + (qe * 0.2));
+                    function gradeFromRow(row, subjectName) {
+                        // Dynamic per-subject weights (shared via grading.js).
+                        // att=100 here (dashboard overview); attendance weighting is
+                        // applied on the per-section Performance page and the faci.
+                        return window.MJR_finalGrade(row, subjectName, 100);
                     }
 
                     if (students && records) {
@@ -2011,7 +2009,7 @@
                                 }
                                 if (!hasScore) return;
                                 const qtr = String(row.quarter || '1');
-                                const grade = gradeFromRow(row);
+                                const grade = gradeFromRow(row, sectionSubjectMap[student.section_id]);
                                 const secTitle = sectionMap[student.section_id] || 'Unknown';
                                 if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; trackSec(secQtr.Q1, secTitle, grade); }
                                 else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; trackSec(secQtr.Q2, secTitle, grade); }
@@ -2026,7 +2024,7 @@
                                 });
                                 return acc;
                             }, {});
-                            allStudentsScores.push({ name: student.full_name || 'No Name', section: sectionMap[student.section_id], grade: gradeFromRow(merged) });
+                            allStudentsScores.push({ name: student.full_name || 'No Name', section: sectionMap[student.section_id], grade: gradeFromRow(merged, sectionSubjectMap[student.section_id]) });
                         });
                     }
                     const toSecArr = map => Object.entries(map).map(([sec, d]) => ({ sec, avg: Math.round(d.t / d.c) })).sort((a, b) => b.avg - a.avg);
