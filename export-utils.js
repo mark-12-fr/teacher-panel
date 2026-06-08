@@ -1,6 +1,7 @@
 /**
  * MJR Export Utilities
- * Provides PDF, Excel, and DOCX export of the AI chat conversation.
+ * Exports the AI Assistant's LATEST answer as a clean one-page report
+ * (PDF / Excel / Word) — NOT the whole chat history or the user's questions.
  * Libraries (jsPDF, SheetJS) are loaded on demand to keep page load fast.
  */
 (function () {
@@ -34,19 +35,25 @@
         return 'ai-report-' + page + '-' + date + '.' + ext;
     }
 
-    function getChatMessages() {
+    // The report content = only the most recent AI Assistant answer, as plain
+    // text lines. We deliberately skip the greeting, the typing indicator,
+    // the suggestion chips, and every "You" (user) message, so the export is
+    // the answer itself — not the conversation.
+    function getReportLines() {
         var chatBody = document.getElementById('aiChatBody');
         if (!chatBody) return [];
-        var msgs = [];
-        chatBody.querySelectorAll('.chat-msg').forEach(function (el) {
+        var aiNodes = [];
+        chatBody.querySelectorAll('.chat-msg.ai').forEach(function (el) {
             if (el.id === 'ai-typing-indicator' || el.id === 'aiGreeting') return;
             if (el.classList.contains('ai-suggestions-container')) return;
-            msgs.push({
-                role: el.classList.contains('user') ? 'You' : 'AI Assistant',
-                text: (el.innerText || el.textContent || '').trim()
-            });
+            aiNodes.push(el);
         });
-        return msgs;
+        if (!aiNodes.length) return [];
+        var last = aiNodes[aiNodes.length - 1];
+        var raw = (last.innerText || last.textContent || '').trim();
+        // Collapse blank runs, keep meaningful lines.
+        return raw.split('\n').map(function (l) { return l.replace(/\s+$/, ''); })
+            .filter(function (l, i, a) { return l.trim() !== '' || (a[i - 1] && a[i - 1].trim() !== ''); });
     }
 
     function showToast(msg, type) {
@@ -66,10 +73,12 @@
         setTimeout(function () { if (t.parentNode) t.remove(); }, 3000);
     }
 
+    var NOTHING = 'Ask the AI a question first, then export its answer.';
+
     /* ── PDF ─────────────────────────────────────────────────────────────── */
     window.MJR_exportPDF = async function () {
-        var msgs = getChatMessages();
-        if (!msgs.length) { showToast('No conversation to export yet.', 'error'); return; }
+        var lines = getReportLines();
+        if (!lines.length) { showToast(NOTHING, 'error'); return; }
 
         try {
             showToast('Generating PDF…');
@@ -84,7 +93,6 @@
             var maxW = pw - margin * 2;
             var y = margin;
 
-            // ── Title
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(18);
             doc.setTextColor(37, 99, 235);
@@ -94,37 +102,26 @@
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.setTextColor(100, 116, 139);
-            doc.text('Page: ' + getPageName() + '   |   Exported: ' + getTimestamp(), margin, y);
+            doc.text('Page: ' + getPageName() + '   |   Generated: ' + getTimestamp(), margin, y);
             y += 16;
 
             doc.setDrawColor(203, 213, 225);
             doc.line(margin, y, pw - margin, y);
-            y += 18;
+            y += 20;
 
-            msgs.forEach(function (m) {
-                var isUser = m.role === 'You';
-
-                if (y > 760) { doc.addPage(); y = margin; }
-
-                // Role badge
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(8.5);
-                doc.setTextColor(isUser ? 37 : 16, isUser ? 99 : 185, isUser ? 235 : 129);
-                doc.text(m.role.toUpperCase(), margin, y);
-                y += 13;
-
-                // Message body
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.setTextColor(30, 41, 59);
-
-                var lines = doc.splitTextToSize(m.text, maxW);
-                lines.forEach(function (line) {
-                    if (y > 770) { doc.addPage(); y = margin; }
-                    doc.text(line, margin, y);
-                    y += 13;
+            doc.setFontSize(10.5);
+            doc.setTextColor(30, 41, 59);
+            lines.forEach(function (line) {
+                var isBullet = /^[-*•]\s+/.test(line.trim());
+                var text = isBullet ? '•  ' + line.trim().replace(/^[-*•]\s+/, '') : line;
+                var indent = isBullet ? margin + 8 : margin;
+                doc.setFont('helvetica', isBullet ? 'normal' : (line === line.toUpperCase() && line.trim() ? 'bold' : 'normal'));
+                var wrapped = doc.splitTextToSize(text, maxW - (isBullet ? 8 : 0));
+                wrapped.forEach(function (w) {
+                    if (y > 780) { doc.addPage(); y = margin; }
+                    doc.text(w, indent, y);
+                    y += 14;
                 });
-                y += 10;
             });
 
             doc.save(getFilename('pdf'));
@@ -136,8 +133,8 @@
 
     /* ── Excel ───────────────────────────────────────────────────────────── */
     window.MJR_exportExcel = async function () {
-        var msgs = getChatMessages();
-        if (!msgs.length) { showToast('No conversation to export yet.', 'error'); return; }
+        var lines = getReportLines();
+        if (!lines.length) { showToast(NOTHING, 'error'); return; }
 
         try {
             showToast('Generating Excel…');
@@ -147,15 +144,11 @@
             if (!XLSX) throw new Error('SheetJS failed to load.');
 
             var wb = XLSX.utils.book_new();
-
-            // Sheet 1 — Conversation
-            var rows = [['Role', 'Message', 'Page', 'Exported At']];
-            msgs.forEach(function (m) {
-                rows.push([m.role, m.text, getPageName(), getTimestamp()]);
-            });
+            var rows = [['AI Assistant Report'], ['Page: ' + getPageName() + '  |  Generated: ' + getTimestamp()], []];
+            lines.forEach(function (l) { rows.push([l.replace(/^[-*•]\s+/, '• ')]); });
             var ws = XLSX.utils.aoa_to_sheet(rows);
-            ws['!cols'] = [{ wch: 16 }, { wch: 80 }, { wch: 22 }, { wch: 26 }];
-            XLSX.utils.book_append_sheet(wb, ws, 'AI Conversation');
+            ws['!cols'] = [{ wch: 100 }];
+            XLSX.utils.book_append_sheet(wb, ws, 'AI Report');
 
             XLSX.writeFile(wb, getFilename('xlsx'));
             showToast('Excel exported!');
@@ -166,19 +159,21 @@
 
     /* ── DOCX (Word-compatible HTML blob) ────────────────────────────────── */
     window.MJR_exportDOCS = function () {
-        var msgs = getChatMessages();
-        if (!msgs.length) { showToast('No conversation to export yet.', 'error'); return; }
+        var lines = getReportLines();
+        if (!lines.length) { showToast(NOTHING, 'error'); return; }
 
         try {
-            var rows = msgs.map(function (m) {
-                var isUser = m.role === 'You';
-                var color = isUser ? '#2563eb' : '#059669';
-                var bg = isUser ? '#eff6ff' : '#f0fdf4';
-                return '<div style="margin-bottom:14pt;">'
-                    + '<div style="font-size:9pt;font-weight:bold;color:' + color + ';margin-bottom:4pt;">' + m.role.toUpperCase() + '</div>'
-                    + '<div style="font-size:10.5pt;line-height:1.6;background:' + bg + ';padding:10pt 14pt;border-radius:6pt;white-space:pre-wrap;">'
-                    + m.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                    + '</div></div>';
+            var body = lines.map(function (line) {
+                var t = line.trim();
+                if (t === '') return '<div style="height:6pt;"></div>';
+                var esc = function (s) { return s.replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+                if (/^[-*•]\s+/.test(t)) {
+                    return '<div style="font-size:10.5pt;line-height:1.5;margin-left:16pt;">&bull;&nbsp;' + esc(t.replace(/^[-*•]\s+/, '')) + '</div>';
+                }
+                if (t === t.toUpperCase()) {
+                    return '<div style="font-size:11pt;font-weight:bold;color:#0f172a;margin-top:6pt;">' + esc(t) + '</div>';
+                }
+                return '<div style="font-size:10.5pt;line-height:1.5;">' + esc(t) + '</div>';
             }).join('');
 
             var html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office"'
@@ -190,9 +185,9 @@
                 + 'hr{border:none;border-top:1px solid #cbd5e1;margin:12pt 0;}'
                 + '</style></head><body>'
                 + '<h1>AI Assistant Report</h1>'
-                + '<div class="meta">Page: ' + getPageName() + ' &nbsp;|&nbsp; Exported: ' + getTimestamp() + '</div>'
+                + '<div class="meta">Page: ' + getPageName() + ' &nbsp;|&nbsp; Generated: ' + getTimestamp() + '</div>'
                 + '<hr>'
-                + rows
+                + body
                 + '</body></html>';
 
             var blob = new Blob(['﻿', html], { type: 'application/msword' });
