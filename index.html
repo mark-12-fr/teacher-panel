@@ -911,18 +911,6 @@
         [data-theme="dark"] .rate-warn { background: rgba(245,158,11,0.2); }
         [data-theme="dark"] .rate-bad  { background: rgba(239,68,68,0.2); }
 
-        /* ── Section avg pills under chart ── */
-        .sec-avg-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 11px;
-            border-radius: 20px;
-            font-size: 0.76rem;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
         /* ── Schedule status ── */
         .sched-now {
             border-left: 3px solid #22c55e;
@@ -1223,7 +1211,6 @@
                         <div id="chartOverallAvg" style="display: none; text-align: right; flex-shrink: 0;"></div>
                     </div>
                     <div style="position: relative; height: 230px; width: 100%;"><canvas id="dashboardBarChart"></canvas></div>
-                    <div id="sectionAvgStrip" style="display:none;flex-wrap:wrap;gap:6px;margin-top:12px;"></div>
                 </div>
 
                 <div class="dash-card side-list">
@@ -2068,17 +2055,6 @@
                             const gradeClr = s.grade >= 75 ? '#16a34a' : '#dc2626';
                             topList.innerHTML += `<li class="item-row" style="padding:7px 5px;align-items:center;gap:10px;"><div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">${medal}<div style="flex:1;min-width:0;"><div style="font-size:0.87rem;font-weight:600;color:var(--text-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name}</div><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">${s.section}</div><div style="height:4px;background:var(--border-color);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.min(s.grade,100)}%;background:${barClr};border-radius:3px;"></div></div></div></div><span style="font-weight:800;font-size:0.93rem;color:${gradeClr};flex-shrink:0;">${s.grade}%</span></li>`;
                         });
-                        /* Section avg strip */
-                        const secAvgMap = {};
-                        allStudentsScores.forEach(s => { if (!s.section) return; if (!secAvgMap[s.section]) secAvgMap[s.section] = { t: 0, c: 0 }; secAvgMap[s.section].t += s.grade; secAvgMap[s.section].c++; });
-                        const strip = document.getElementById('sectionAvgStrip');
-                        if (strip) {
-                            const entries = Object.entries(secAvgMap).map(([sec, d]) => ({ sec, avg: Math.round(d.t / d.c) })).sort((a, b) => b.avg - a.avg);
-                            if (entries.length > 0) {
-                                strip.innerHTML = entries.map(e => { const pass = e.avg >= 75; return `<span class="sec-avg-pill" style="background:${pass?'rgba(34,197,94,0.1)':'rgba(239,68,68,0.1)'};color:${pass?'#15803d':'#b91c1c'};border:1px solid ${pass?'rgba(34,197,94,0.22)':'rgba(239,68,68,0.22)'};">${e.sec} <strong>${e.avg}%</strong></span>`; }).join('');
-                                strip.style.display = 'flex';
-                            }
-                        }
                     } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
                 } else { updateChartBadges('both', []); initDashboardChart([null, null, null, null], 'both'); }
                 countUp(document.getElementById('val-total-sections'), totalSections);
