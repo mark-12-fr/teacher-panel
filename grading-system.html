@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Class Record</title>
+    <title>Grading System</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/jpeg" href="logo.jpg">
     <link rel="apple-touch-icon" href="logo.jpg">
@@ -34,14 +34,23 @@
             --sidebar-bg: #111827;
             --main-bg: #eef2ff;
             --accent-blue: #3b82f6;
-            --card-bg: #ffffff;
-            --text-dark: #111827;
+            --white: #ffffff;
+            --text-dark: #1f2937;
             --text-muted: #6b7280;
-            --border-color: #f1f5f9;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
             --input-bg: #f8faff;
-            --modal-border: #ddd;
             --shadow-color: rgba(0, 0, 0, 0.05);
-            --hover-bg: #f3f4f6;
+            --hover-bg: #f1f5f9;
+            --table-header: #f9fafb;
+
+
+            --btn-edit-bg: rgba(59, 130, 246, 0.1);
+            --btn-edit-hover: rgba(59, 130, 246, 0.2);
+            --btn-edit-text: #3b82f6;
+            --btn-delete-bg: rgba(239, 68, 68, 0.1);
+            --btn-delete-hover: rgba(239, 68, 68, 0.2);
+            --btn-delete-text: #ef4444;
         }
 
 
@@ -53,9 +62,17 @@
             --text-muted: #9ca3af;
             --border-color: #374151;
             --input-bg: #374151;
-            --modal-border: #4b5563;
             --shadow-color: rgba(0, 0, 0, 0.3);
-            --hover-bg: #374151;
+            --hover-bg: #4b5563;
+            --table-header: #111827;
+
+
+            --btn-edit-bg: #27374D;
+            --btn-edit-hover: #1E293B;
+            --btn-edit-text: #3b82f6;
+            --btn-delete-bg: #3F2C33;
+            --btn-delete-hover: #4C1D28;
+            --btn-delete-text: #ef4444;
         }
 
         * {
@@ -63,7 +80,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
 
         html {
             background-color: var(--main-bg);
@@ -102,7 +118,6 @@
             padding: 0 20px 30px;
             text-align: center;
         }
-
 
         .sidebar-profile {
             display: flex;
@@ -238,7 +253,6 @@
             font-size: 1.1rem;
         }
 
-
         .sidebar-overlay {
             display: none;
             position: fixed;
@@ -261,11 +275,12 @@
         .main-content {
             margin-left: 260px;
             flex-grow: 1;
-            min-width: 0;
             padding: 30px 30px 100px 30px;
             display: flex;
             flex-direction: column;
-            transition: margin-left 0.3s ease-in-out;
+            min-width: 0;
+            width: 100%;
+            transition: margin-left 0.3s, opacity 0.15s, transform 0.15s;
             opacity: 0;
             animation: fadeInContent 0.25s ease-out forwards;
         }
@@ -289,38 +304,80 @@
         }
 
         .topbar {
-            margin-bottom: 30px;
-            width: 100%;
             display: flex;
+            justify-content: space-between;
             align-items: center;
+            margin-bottom: 25px;
+            width: 100%;
+            position: relative;
         }
 
-        .topbar-header {
+        .topbar-left {
             display: flex;
             align-items: center;
-            width: 100%;
+            gap: 15px;
         }
 
         .menu-toggle {
             display: none;
             background: none;
             border: none;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             color: var(--text-dark);
             cursor: pointer;
-            margin-right: 15px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .topbar h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-dark);
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+
+        .top-info-card {
+            background: var(--card-bg);
+            padding: 25px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            align-items: center;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        .info-col h3 {
+            color: var(--text-muted);
+            font-size: 11px;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .info-col h4 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--accent-blue);
         }
 
 
         .search-container {
             position: relative;
             max-width: 450px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .search-container input {
             width: 100%;
-            padding: 14px 15px 14px 45px;
+            padding: 12px 15px 12px 45px;
             border: 1px solid var(--border-color);
             border-radius: 10px;
             outline: none;
@@ -346,218 +403,146 @@
         }
 
 
-        .sections-wrapper {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 25px;
-            width: 100%;
+        .table-card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            transition: background 0.3s, border 0.3s;
         }
 
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
 
-        .no-match-message {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+        th,
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
             color: var(--text-muted);
-            padding: 50px 20px;
-            grid-column: 1 / -1;
-            width: 100%;
-            background: var(--card-bg);
-            border-radius: 12px;
-            border: 1px dashed var(--border-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            background: var(--table-header);
         }
 
-        .no-match-message svg {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 15px;
-            opacity: 0.6;
-        }
-
-
-        .section-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 25px 30px;
-            border-left: 6px solid var(--accent-blue);
-            box-shadow: 0 4px 6px -1px var(--shadow-color);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 20px;
-            height: 100%;
-            transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
-        }
-
-        .section-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px var(--shadow-color);
-        }
-
-        .section-title {
-            font-size: 1.6rem;
-            font-weight: 700;
+        td {
+            font-size: 14px;
+            font-weight: 500;
             color: var(--text-dark);
-            margin-bottom: 5px;
+            vertical-align: middle;
         }
 
-        .section-subtitle {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            margin-bottom: 15px;
-            line-height: 1.4;
+        tbody tr:hover td {
+            background-color: var(--hover-bg);
+        }
+
+        th:nth-child(1),
+        td:nth-child(1) {
+            text-align: left;
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+            text-align: center;
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+            text-align: center;
+        }
+
+        th:nth-child(4),
+        td:nth-child(4) {
+            text-align: center;
+        }
+
+        th:nth-child(5),
+        td:nth-child(5) {
+            text-align: center;
+        }
+
+        .badge-section {
+            display: inline-block;
+            background: var(--input-bg);
+            color: var(--accent-blue);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
         }
 
 
-        .tags-wrapper {
+        .action-btns {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .tag {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .tag-students,
-        .tag-room,
-        .tag-sem,
-        .tag-quarter,
-        .tag-year {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-
-        .card-actions {
-            display: flex;
-            flex-direction: row;
-            width: 100%;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: auto;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .menu-container {
-            position: relative;
-            display: flex;
-            justify-content: flex-start;
-        }
-
-        .three-dots-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: background 0.2s, color 0.2s;
-            display: flex;
-            align-items: center;
             justify-content: center;
         }
 
-        .three-dots-btn:hover {
-            background: var(--hover-bg);
-            color: var(--text-dark);
-        }
-
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            left: 0;
-            top: 40px;
-            background: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            width: 140px;
-            z-index: 10;
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-            transition: background 0.3s;
-        }
-
-        .dropdown-menu.show {
-            display: block;
-            animation: fadeIn 0.2s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .dropdown-item {
-            width: 100%;
-            text-align: left;
-            padding: 12px 15px;
-            background: none;
+        .action-btn {
             border: none;
             cursor: pointer;
+            padding: 8px 18px;
+            border-radius: 6px;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .action-btn.edit {
+            color: var(--btn-edit-text);
+            background: var(--btn-edit-bg);
+        }
+
+        .action-btn.edit:hover {
+            background: var(--btn-edit-hover);
+        }
+
+        .action-btn.delete {
+            color: var(--btn-delete-text);
+            background: var(--btn-delete-bg);
+        }
+
+        .action-btn.delete:hover {
+            background: var(--btn-delete-hover);
+        }
+
+
+        .fab-add-btn {
+            position: fixed;
+            bottom: 120px !important;
+            right: 40px !important;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--accent-blue);
+            color: white;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.85rem;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-dark);
-            transition: background 0.2s;
-        }
-
-        .dropdown-item i,
-        .dropdown-item svg {
-            width: 16px;
-            height: 16px;
-        }
-
-        .dropdown-item:hover {
-            background: var(--hover-bg);
-        }
-
-        .dropdown-item.delete {
-            color: #ef4444;
-        }
-
-        .dropdown-item.delete:hover {
-            background: #fef2f2;
-            color: #dc2626;
-        }
-
-        [data-theme="dark"] .dropdown-item.delete:hover {
-            background: #451a1a;
-            color: #ef4444;
-        }
-
-        .view-btn {
-            background: var(--accent-blue);
-            color: white;
-            border: none;
-            padding: 8px 25px;
-            border-radius: 8px;
-            font-weight: 600;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
             cursor: pointer;
-            transition: background 0.2s;
+            z-index: 9999;
+            transition: transform 0.3s;
+            border: none;
         }
 
-        .view-btn:hover {
-            background: #2563eb;
+        .fab-add-btn:hover {
+            transform: scale(1.1);
         }
 
 
@@ -587,11 +572,12 @@
             transition: background 0.3s;
         }
 
-        .modal-input {
+        .modal-input,
+        .modal-select {
             width: 100%;
             padding: 12px;
             margin-bottom: 12px;
-            border: 1px solid var(--modal-border);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             outline: none;
             font-family: 'Inter', sans-serif;
@@ -628,31 +614,6 @@
             opacity: 1;
             transform: translateY(0);
         }
-
-
-        .fab-add-btn {
-            position: fixed;
-            bottom: 120px !important;
-            right: 40px !important;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: var(--accent-blue);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
-            cursor: pointer;
-            z-index: 9999;
-            transition: transform 0.3s;
-            border: none;
-        }
-
-        .fab-add-btn:hover {
-            transform: scale(1.1);
-        }
-
 
         .ai-floating-btn {
             position: fixed;
@@ -693,6 +654,7 @@
             transform-origin: bottom right;
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
             overflow: hidden;
+            border: 1px solid var(--border-color);
         }
 
         .ai-chat-widget.active {
@@ -777,13 +739,6 @@
             align-items: center;
         }
 
-
-        @media (max-width: 1200px) {
-            .sections-wrapper {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
         @media (max-width: 1024px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -798,6 +753,7 @@
                 margin-left: 0;
                 padding: 20px 20px 100px 20px;
                 width: 100%;
+                box-sizing: border-box;
             }
 
             .topbar-header {
@@ -809,15 +765,159 @@
             }
 
             .menu-toggle {
-                display: block;
-                position: absolute;
-                left: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .top-info-card {
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+                padding: 20px;
             }
         }
 
-        @media (max-width: 768px) {
-            .sections-wrapper {
+        /* Faci avatar hover */
+        .faci-avatar {
+            cursor: zoom-in;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .faci-avatar:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Pulse animation for active status */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.85); opacity: 1; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+        .pulse-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #16a34a;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 50%;
+            background: #16a34a;
+            animation: pulse-ring 1.6s ease-out infinite;
+        }
+        .status-cell {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Subject badge */
+        .badge-subject {
+            display: inline-block;
+            background: rgba(168, 85, 247, 0.08);
+            color: #9333ea;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(168, 85, 247, 0.18);
+        }
+        [data-theme="dark"] .badge-subject {
+            background: rgba(168, 85, 247, 0.18);
+            color: #d8b4fe;
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        /* Copy ID button */
+        .copy-id-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 1px 4px;
+            border-radius: 4px;
+            transition: 0.15s;
+            font-size: 0.7rem;
+            vertical-align: middle;
+            line-height: 1;
+        }
+        .copy-id-btn:hover { color: var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
+
+        /* Photo viewer lightbox */
+        .photo-viewer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.82);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .photo-viewer-inner {
+            position: relative;
+            text-align: center;
+            animation: fadeInContent 0.2s ease;
+        }
+        .photo-viewer-inner img {
+            max-width: min(520px, 92vw);
+            max-height: 85vh;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            object-fit: cover;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            display: block;
+        }
+        .photo-viewer-close {
+            position: absolute;
+            top: -44px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+        .photo-viewer-close:hover { background: rgba(255, 255, 255, 0.28); transform: scale(1.1); }
+        .photo-viewer-name {
+            color: rgba(255, 255, 255, 0.92);
+            margin-top: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 640px) {
+            .topbar-left h1 {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 1.5rem;
+                white-space: nowrap;
+            }
+
+            .top-info-card {
                 grid-template-columns: 1fr;
+                text-align: center;
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .info-col {
+                margin-bottom: 0;
+            }
+
+            .table-card {
+                padding: 15px;
             }
 
             .fab-add-btn {
@@ -884,13 +984,12 @@
             <nav class="sidebar-menu">
                 <a href="index.html" onclick="closeSidebar()"><i data-lucide="layout-dashboard"></i> Dashboard</a>
                 <a href="section.html" onclick="closeSidebar()"><i data-lucide="layers"></i> Section</a>
-                <a href="class-record.html" class="active" onclick="closeSidebar()"><i data-lucide="folder-open"></i>
-                    Class Record</a>
+                <a href="class-record.html" onclick="closeSidebar()"><i data-lucide="folder-open"></i> Class Record</a>
                 <a href="attendance.html" onclick="closeSidebar()"><i data-lucide="calendar-check"></i> Attendance</a>
                 <a href="performance.html" onclick="closeSidebar()"><i data-lucide="trending-up"></i>Class
                     Performance</a>
                 <a href="facilitators.html" onclick="closeSidebar()"><i data-lucide="users-round"></i> Facilitators</a>
-                <a href="grading-system.html" onclick="closeSidebar()"><i data-lucide="percent"></i> Grading System</a>
+                <a href="grading-system.html" class="active" onclick="closeSidebar()"><i data-lucide="percent"></i> Grading System</a>
                 <a href="about.html" onclick="closeSidebar()"><i data-lucide="info"></i> About</a>
                 <a href="help.html" onclick="closeSidebar()"><i data-lucide="help-circle"></i> Help</a>
             </nav>
@@ -908,83 +1007,137 @@
         <main class="main-content">
 
             <div class="topbar">
-                <div class="topbar-header">
-                    <button class="menu-toggle" onclick="openSidebar()">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
-                    <h1 style="font-size: 2rem; font-weight: 700; color: var(--text-dark);">Class Record</h1>
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
+                    <h1>Grading System</h1>
+                </div>
+            </div>
+
+            <div class="top-info-card">
+                <div class="info-col">
+                    <h3>TOTAL SUBJECTS</h3>
+                    <h4 id="totalSubjects">0</h4>
+                </div>
+                <div class="info-col">
+                    <h3>LINKED SECTIONS</h3>
+                    <h4 id="usedSections">0</h4>
                 </div>
             </div>
 
             <div class="search-container">
                 <i data-lucide="search" class="search-icon"></i>
-                <input type="text" id="searchInput" placeholder="Search sections...">
+                <input type="text" id="searchInput" placeholder="Search subject name..."
+                    onkeyup="filterTable()">
             </div>
 
-            <div class="sections-wrapper" id="sectionsWrapper">
-            </div>
-
-            <div id="noMatchMessage" class="no-match-message">
-                <i data-lucide="search-x"></i>
-                <h3 style="color: var(--text-dark); margin-bottom: 5px;">No match found</h3>
-                <p>We couldn't find any section matching your search.</p>
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Written Work</th>
+                            <th>Performance Tasks</th>
+                            <th>Exam</th>
+                            <th>Attendance</th>
+                            <th>Passing</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subjectList">
+                    </tbody>
+                </table>
             </div>
 
         </main>
     </div>
 
-    <button class="fab-add-btn" title="Add New Section" onclick="openAddModal()">
-        <i class="fa-solid fa-plus" style="font-size: 22px;"></i>
-    </button>
-
-    <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
-        <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
-    </button>
-
-    <div id="sectionModal" class="modal-overlay" style="display: none;">
+    <div id="subjectModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <h4 id="modalTitle" style="margin-bottom:20px; color: var(--text-dark);">Add New Section</h4>
+            <h4 id="modalTitle" style="margin-bottom:16px; color: var(--text-dark);">Add Subject</h4>
 
-            <input type="text" id="secTitle" class="modal-input" placeholder="Section Name (e.g. STEM12-1)">
-            <input type="text" id="secSubject" class="modal-input"
-                placeholder="Subject (e.g. APP 006: Practical Research 2)">
-            <input type="text" id="secRoom" class="modal-input" placeholder="Room (e.g. BLANCO-200)">
+            <input type="text" id="subjName" class="modal-input" placeholder="Subject Name (e.g. APP 006: Practical Research 2)">
 
-            <select id="secSemester" class="modal-input">
-                <option value="" disabled selected>Select Semester</option>
-                <option value="1st Sem">1st Semester</option>
-                <option value="2nd Sem">2nd Semester</option>
-            </select>
+            <p style="margin:4px 2px 10px; font-size:0.8rem; color:var(--text-muted); line-height:1.4;">Set the weight (%) of each grading component. Written Work, Performance Tasks, Exam and Attendance must total 100%.</p>
 
-            <select id="secQuarter" class="modal-input">
-                <option value="" disabled selected>Select Quarter</option>
-                <option value="1">Q1 - First Quarter</option>
-                <option value="2">Q2 - Second Quarter</option>
-                <option value="3">Q3 - Third Quarter</option>
-                <option value="4">Q4 - Fourth Quarter</option>
-            </select>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                    <label style="font-size:0.76rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Written Work</label>
+                    <div style="position:relative;">
+                        <input type="number" id="subjWW" class="modal-input" min="0" max="100" step="1" value="30" oninput="updatePctTotal()" style="margin:0; padding-right:28px;">
+                        <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600;">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.76rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Performance Tasks</label>
+                    <div style="position:relative;">
+                        <input type="number" id="subjPT" class="modal-input" min="0" max="100" step="1" value="50" oninput="updatePctTotal()" style="margin:0; padding-right:28px;">
+                        <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600;">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.76rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Exam</label>
+                    <div style="position:relative;">
+                        <input type="number" id="subjExam" class="modal-input" min="0" max="100" step="1" value="20" oninput="updatePctTotal()" style="margin:0; padding-right:28px;">
+                        <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600;">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.76rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Attendance</label>
+                    <div style="position:relative;">
+                        <input type="number" id="subjAtt" class="modal-input" min="0" max="100" step="1" value="0" oninput="updatePctTotal()" style="margin:0; padding-right:28px;">
+                        <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600;">%</span>
+                    </div>
+                </div>
+            </div>
 
-            <select id="secSchoolYear" class="modal-input">
-                <option value="" disabled selected>Select School Year</option>
-                <option value="2023-2024">2023-2024</option>
-                <option value="2024-2025">2024-2025</option>
-                <option value="2025-2026">2025-2026</option>
-                <option value="2026-2027">2026-2027</option>
-            </select>
+            <div id="pctTotalBar" style="margin:12px 0; padding:9px 12px; border-radius:8px; font-size:0.84rem; font-weight:600; text-align:center; background:rgba(16,185,129,0.12); color:#059669;">
+                Components total: <span id="pctTotal">100</span>%
+            </div>
 
-            <div style="display:flex; gap:10px; margin-top: 10px;">
-                <button onclick="toggleSectionModal()"
+            <label style="font-size:0.76rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Passing Grade</label>
+            <div style="position:relative;">
+                <input type="number" id="subjPassing" class="modal-input" min="0" max="100" step="1" value="75" style="padding-right:28px;">
+                <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600;">%</span>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top: 14px;">
+                <button onclick="toggleSubjectModal()"
                     style="flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; background: var(--input-bg); color: var(--text-dark); font-weight: 500;">Cancel</button>
-                <button onclick="saveSection()"
+                <button id="saveSubjBtn" onclick="saveSubject()"
                     style="flex:2; background:#3b82f6; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:600;">Save</button>
             </div>
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:360px; text-align:center;">
+            <div style="width:54px;height:54px;border-radius:50%;background:rgba(239,68,68,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 15px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;font-size:1.4rem;"></i>
+            </div>
+            <h4 style="margin-bottom:8px;color:var(--text-dark);">Remove Subject?</h4>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:22px;line-height:1.5;">
+                <strong id="deleteConfirmName" style="color:var(--text-dark);"></strong> will be permanently deleted.
+            </p>
+            <div style="display:flex;gap:10px;">
+                <button onclick="closeDeleteConfirm()" style="flex:1;padding:11px;border-radius:8px;border:none;cursor:pointer;background:var(--input-bg);color:var(--text-dark);font-weight:500;font-family:'Inter',sans-serif;font-size:0.9rem;">Cancel</button>
+                <button onclick="confirmDeleteSubject()" style="flex:1;padding:11px;border-radius:8px;border:none;cursor:pointer;background:#ef4444;color:white;font-weight:600;font-family:'Inter',sans-serif;font-size:0.9rem;">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="fab-add-btn" title="Add New Subject" onclick="openAddModal()">
+        <i class="fa-solid fa-plus" style="font-size: 22px;"></i>
+    </button>
+
     <div id="customToast" class="toast-notification">
         <i class="fa-solid fa-circle-check"></i>
         <span id="toastMessage">Success</span>
     </div>
+
+    <button class="ai-floating-btn" onclick="toggleAIChat()" title="Ask AI Assistant">
+        <i data-lucide="brain" style="width: 28px; height: 28px;"></i>
+    </button>
 
     <div class="ai-chat-widget" id="aiChatWidget">
         <div class="ai-chat-header">
@@ -1008,46 +1161,40 @@
 
     <script>
 
-        function toggleTheme() {
+        function toggleTheme(event) {
+            if (event) event.preventDefault();
             const root = document.documentElement;
             const icon = document.getElementById('themeIcon');
             const text = document.getElementById('themeText');
 
             if (root.getAttribute('data-theme') === 'dark') {
-                root.removeAttribute('data-theme');
-                localStorage.setItem('dashboard_theme', 'light');
-                if (icon) icon.className = 'fa-solid fa-moon';
-                if (text) text.textContent = 'Dark Mode';
+                root.removeAttribute('data-theme'); localStorage.setItem('dashboard_theme', 'light');
+                if (icon) icon.className = 'fa-solid fa-moon'; if (text) text.textContent = 'Dark Mode';
             } else {
-                root.setAttribute('data-theme', 'dark');
-                localStorage.setItem('dashboard_theme', 'dark');
-                if (icon) icon.className = 'fa-solid fa-sun';
-                if (text) text.textContent = 'Light Mode';
+                root.setAttribute('data-theme', 'dark'); localStorage.setItem('dashboard_theme', 'dark');
+                if (icon) icon.className = 'fa-solid fa-sun'; if (text) text.textContent = 'Light Mode';
             }
         }
 
         const savedTheme = localStorage.getItem('dashboard_theme');
         if (savedTheme === 'dark') {
             document.addEventListener('DOMContentLoaded', () => {
-                const icon = document.getElementById('themeIcon');
-                const text = document.getElementById('themeText');
-                if (icon && text) {
-                    icon.className = 'fa-solid fa-sun';
-                    text.textContent = 'Light Mode';
-                }
+                const icon = document.getElementById('themeIcon'); const text = document.getElementById('themeText');
+                if (icon && text) { icon.className = 'fa-solid fa-sun'; text.textContent = 'Light Mode'; }
             });
         }
 
         lucide.createIcons();
 
 
-        const API_URL = 'http://127.0.0.1:5000';
         const SUPABASE_URL = 'https://njzvuwkepaasnsvuujgx.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0';
         const accessToken = localStorage.getItem('access_token');
 
-
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? 'http://127.0.0.1:5000'
+            : 'https://teacher-panel-d1kw.onrender.com';
 
 
         function showNotification(message, type = 'success') {
@@ -1067,18 +1214,21 @@
         }
 
 
+        const checkUserId = localStorage.getItem('user_id');
+        const checkToken = localStorage.getItem('access_token');
+        const isOAuthLogin = window.location.hash.includes("access_token");
+
+        if ((!checkUserId || !checkToken) && !isOAuthLogin) {
+            window.location.replace("login.html");
+        }
+
         async function checkAuthAndLoadProfile() {
             const userId = localStorage.getItem('user_id');
             const accessToken = localStorage.getItem('access_token');
-
-            if (!userId) {
-                window.location.href = 'login.html';
-                return;
-            }
+            if (!userId || !accessToken) return;
 
             try {
-                let googleAvatar = null;
-                let googleName = null;
+                let googleAvatar = null; let tokenName = null;
                 try {
                     if (accessToken) {
                         const base64Url = accessToken.split('.')[1];
@@ -1086,17 +1236,12 @@
                         const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
                         const payload = JSON.parse(jsonPayload);
                         googleAvatar = payload.user_metadata?.avatar_url || payload.user_metadata?.picture;
-                        googleName = payload.user_metadata?.full_name || payload.user_metadata?.name;
+                        tokenName = payload.user_metadata?.full_name || payload.user_metadata?.name;
                     }
                 } catch (e) { console.error("Error decoding token"); }
 
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('full_name, avatar_url')
-                    .eq('id', userId)
-                    .single();
-
-                let fullName = profile?.full_name || googleName || 'Teacher';
+                const { data: profile } = await supabaseClient.from('profiles').select('full_name, avatar_url').eq('id', userId).single();
+                let fullName = profile?.full_name || tokenName || 'Teacher';
 
                 document.getElementById('userName').textContent = fullName;
                 localStorage.setItem('cached_user_name', fullName);
@@ -1113,17 +1258,13 @@
                 if (uAvatarEl) uAvatarEl.src = finalAvatarSrc;
                 localStorage.setItem('cached_user_avatar', finalAvatarSrc);
 
-            } catch (error) {
-                console.error("Error loading profile:", error);
-            }
+            } catch (error) { console.error("Error loading profile:", error); }
         }
 
 
         function uploadAvatar(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const userId = localStorage.getItem('user_id');
+            const file = event.target.files[0]; if (!file) return;
+            const userId = localStorage.getItem('user_id'); const accessToken = localStorage.getItem('access_token');
             const imgElement = document.getElementById('userAvatar');
             if (!imgElement) return;
 
@@ -1134,48 +1275,35 @@
                 const img = new Image();
                 img.onload = async function () {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 150;
-                    const MAX_HEIGHT = 150;
-                    let width = img.width;
-                    let height = img.height;
+                    const MAX_WIDTH = 150; const MAX_HEIGHT = 150;
+                    let width = img.width; let height = img.height;
+                    if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
+                    else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
 
-                    if (width > height) {
-                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    } else {
-                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
 
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
                     try {
-                        const { error } = await supabaseClient
-                            .from('profiles')
-                            .upsert({ id: userId, avatar_url: compressedBase64 })
-                            .select();
-
+                        const { error } = await supabaseClient.from('profiles').update({ avatar_url: compressedBase64 }).eq('id', userId);
                         if (error) throw error;
-
                         imgElement.src = compressedBase64;
                         localStorage.setItem('cached_user_avatar', compressedBase64);
-                        showNotification("Your profile picture has been updated successfully.");
+                        showNotification("Profile picture updated successfully!");
                     } catch (err) {
-                        console.error("Upload error:", err);
-                        showNotification("Error updating picture.", "error");
-                    } finally {
-                        imgElement.style.opacity = '1';
-                    }
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+                        console.error("Upload error:", err); showNotification("Error updating picture.", "error");
+                    } finally { imgElement.style.opacity = '1'; }
+                }; img.src = e.target.result;
+            }; reader.readAsDataURL(file);
         }
 
         function logoutUser() {
+            const userId = localStorage.getItem('user_id');
+            if (userId) {
+                localStorage.removeItem(`cached_subjects_${userId}`);
+            }
+
             localStorage.removeItem('access_token');
             localStorage.removeItem('user_id');
             localStorage.removeItem('cached_user_name');
@@ -1184,17 +1312,263 @@
         }
 
 
-        function openSidebar() {
-            document.getElementById('mySidebar').classList.add('active');
-            document.getElementById('sidebarOverlay').classList.add('active');
+        const subjectList = document.getElementById('subjectList');
+        let editingSubjId = null;
+        window.currentSubjects = [];
+
+        function esc(str) { return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+        function pctBadge(val, color) {
+            return `<span style="display:inline-block; min-width:44px; text-align:center; padding:3px 9px; border-radius:20px; font-size:0.8rem; font-weight:700; background:${color}1f; color:${color};">${Number(val || 0)}%</span>`;
         }
 
-        function closeSidebar() {
-            if (window.innerWidth <= 1024) {
-                document.getElementById('mySidebar').classList.remove('active');
-                document.getElementById('sidebarOverlay').classList.remove('active');
+        function renderSubjectTable(subjects, linkedCount) {
+            window.currentSubjects = subjects;
+            const totalEl = document.getElementById('totalSubjects');
+            const usedEl = document.getElementById('usedSections');
+            if (totalEl) totalEl.textContent = subjects.length;
+            if (usedEl) usedEl.textContent = (linkedCount == null ? '—' : linkedCount);
+
+            subjectList.innerHTML = '';
+            if (subjects.length === 0) {
+                subjectList.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:34px; color:var(--text-muted);">No subjects yet. Click the + button to add a subject and set its grading percentages.</td></tr>';
+                return;
+            }
+
+            subjects.forEach((sub) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td><div style="font-weight:600;color:var(--text-dark);">${esc(sub.name)}</div></td>
+                <td>${pctBadge(sub.ww_percent, '#3b82f6')}</td>
+                <td>${pctBadge(sub.pt_percent, '#8b5cf6')}</td>
+                <td>${pctBadge(sub.exam_percent, '#f59e0b')}</td>
+                <td>${pctBadge(sub.attendance_percent, '#10b981')}</td>
+                <td><span style="font-weight:700;color:var(--text-dark);">${Number(sub.passing_grade || 75)}%</span></td>
+                <td>
+                    <div class="action-btns">
+                        <button class="action-btn edit" onclick="editSubject('${sub.id}')">Edit</button>
+                        <button class="action-btn delete" onclick="openDeleteConfirm('${sub.id}')">Delete</button>
+                    </div>
+                </td>`;
+                subjectList.appendChild(tr);
+            });
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        async function loadSubjects(isSilent = false) {
+            const userId = localStorage.getItem('user_id');
+            if (!userId) return;
+            const cacheKey = `cached_subjects_${userId}`;
+            const cachedData = localStorage.getItem(cacheKey);
+
+            if (!isSilent) {
+                if (cachedData) {
+                    try { renderSubjectTable(JSON.parse(cachedData), null); } catch (e) { }
+                } else {
+                    subjectList.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:34px; color:var(--text-muted);"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading subjects...</td></tr>';
+                }
+            }
+
+            try {
+                const [subjRes, secRes] = await Promise.all([
+                    supabaseClient.from('subjects').select('*').eq('teacher_id', userId).order('created_at', { ascending: true }),
+                    supabaseClient.from('sections').select('subject').eq('teacher_id', userId)
+                ]);
+                if (subjRes.error) throw subjRes.error;
+                const subjList = subjRes.data || [];
+                const names = new Set(subjList.map(x => (x.name || '').trim().toLowerCase()));
+                const linked = (secRes.data || []).filter(x => names.has((x.subject || '').trim().toLowerCase())).length;
+
+                const stringified = JSON.stringify(subjList);
+                if (stringified !== cachedData) localStorage.setItem(cacheKey, stringified);
+                renderSubjectTable(subjList, linked);
+            } catch (error) {
+                console.error("Error fetching subjects:", error);
+                if (!cachedData && !isSilent) {
+                    subjectList.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:34px; color:#ef4444;">Failed to load subjects. Please check your connection.</td></tr>';
+                }
             }
         }
+
+        function filterTable() {
+            let input = document.getElementById("searchInput").value.toUpperCase();
+            let trs = subjectList.getElementsByTagName("tr");
+            for (let i = 0; i < trs.length; i++) {
+                let td = trs[i].getElementsByTagName("td")[0];
+                if (td) {
+                    let txt = td.textContent || td.innerText;
+                    trs[i].style.display = (txt.toUpperCase().indexOf(input) > -1) ? "" : "none";
+                }
+            }
+        }
+
+        function toggleSubjectModal() {
+            const m = document.getElementById('subjectModal');
+            m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none';
+        }
+
+        function updatePctTotal() {
+            const ww = Number(document.getElementById('subjWW').value) || 0;
+            const pt = Number(document.getElementById('subjPT').value) || 0;
+            const ex = Number(document.getElementById('subjExam').value) || 0;
+            const at = Number(document.getElementById('subjAtt').value) || 0;
+            const total = ww + pt + ex + at;
+            const bar = document.getElementById('pctTotalBar');
+            if (!bar) return;
+            const ok = total === 100;
+            bar.style.background = ok ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
+            bar.style.color = ok ? '#059669' : '#dc2626';
+            bar.innerHTML = ok
+                ? `<i class="fa-solid fa-circle-check"></i> Components total: ${total}% — looks good`
+                : `<i class="fa-solid fa-triangle-exclamation"></i> Components total: ${total}% — must equal 100%`;
+        }
+
+        function openAddModal() {
+            editingSubjId = null;
+            document.getElementById('modalTitle').textContent = "Add Subject";
+            document.getElementById('subjName').value = '';
+            document.getElementById('subjWW').value = 30;
+            document.getElementById('subjPT').value = 50;
+            document.getElementById('subjExam').value = 20;
+            document.getElementById('subjAtt').value = 0;
+            document.getElementById('subjPassing').value = 75;
+            document.getElementById('saveSubjBtn').textContent = 'Save';
+            updatePctTotal();
+            toggleSubjectModal();
+        }
+
+        function editSubject(id) {
+            editingSubjId = id;
+            const sub = (window.currentSubjects || []).find(x => x.id === id);
+            if (!sub) return;
+            document.getElementById('modalTitle').textContent = "Edit Subject";
+            document.getElementById('subjName').value = sub.name || '';
+            document.getElementById('subjWW').value = Number(sub.ww_percent || 0);
+            document.getElementById('subjPT').value = Number(sub.pt_percent || 0);
+            document.getElementById('subjExam').value = Number(sub.exam_percent || 0);
+            document.getElementById('subjAtt').value = Number(sub.attendance_percent || 0);
+            document.getElementById('subjPassing').value = Number(sub.passing_grade || 75);
+            document.getElementById('saveSubjBtn').textContent = 'Update';
+            updatePctTotal();
+            toggleSubjectModal();
+        }
+
+        async function saveSubject() {
+            const userId = localStorage.getItem('user_id');
+            const name = document.getElementById('subjName').value.trim();
+            const ww = Number(document.getElementById('subjWW').value) || 0;
+            const pt = Number(document.getElementById('subjPT').value) || 0;
+            const ex = Number(document.getElementById('subjExam').value) || 0;
+            const at = Number(document.getElementById('subjAtt').value) || 0;
+            const passing = Number(document.getElementById('subjPassing').value) || 0;
+
+            if (!name) { showNotification("Please enter a subject name.", "error"); return; }
+            if (ww + pt + ex + at !== 100) {
+                showNotification("Written Work + Performance Tasks + Exam + Attendance must total 100%.", "error");
+                return;
+            }
+
+            const btn = document.getElementById('saveSubjBtn');
+            const oldTxt = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Saving...';
+
+            const payload = {
+                teacher_id: userId, name,
+                ww_percent: ww, pt_percent: pt, exam_percent: ex,
+                attendance_percent: at, passing_grade: passing
+            };
+
+            try {
+                let error;
+                if (editingSubjId) {
+                    ({ error } = await supabaseClient.from('subjects').update(payload).eq('id', editingSubjId));
+                } else {
+                    ({ error } = await supabaseClient.from('subjects').insert([payload]));
+                }
+                if (error) {
+                    const m = String(error.message || '').toLowerCase();
+                    const msg = (m.includes('duplicate') || String(error.code) === '23505')
+                        ? "You already have a subject with that name."
+                        : "Error saving subject.";
+                    showNotification(msg, "error");
+                } else {
+                    loadSubjects();
+                    toggleSubjectModal();
+                    showNotification(editingSubjId ? "Subject updated!" : "Subject added!");
+                }
+            } catch (e) {
+                console.error(e); showNotification("Server error. Please try again.", "error");
+            } finally {
+                btn.disabled = false; btn.textContent = oldTxt;
+            }
+        }
+
+        let deleteTargetId = null;
+        function openDeleteConfirm(id) {
+            const sub = (window.currentSubjects || []).find(x => x.id === id);
+            deleteTargetId = id;
+            document.getElementById('deleteConfirmName').textContent = sub ? sub.name : 'this subject';
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+        }
+        function closeDeleteConfirm() {
+            deleteTargetId = null;
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+        }
+        async function confirmDeleteSubject() {
+            if (!deleteTargetId) return;
+            const id = deleteTargetId;
+            closeDeleteConfirm();
+            try {
+                const { error } = await supabaseClient.from('subjects').delete().eq('id', id);
+                if (!error) { loadSubjects(); showNotification('Subject deleted.'); }
+                else showNotification('Failed to delete subject.', 'error');
+            } catch (err) { console.error(err); }
+        }
+
+        function openSidebar() { document.getElementById('mySidebar').classList.add('active'); document.getElementById('sidebarOverlay').classList.add('active'); }
+        function closeSidebar() { if (window.innerWidth <= 1024) { document.getElementById('mySidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); } }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+            const mainContent = document.querySelector('.main-content');
+
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function (e) {
+                    const targetHref = this.getAttribute('href');
+                    if (targetHref && !targetHref.startsWith('#') && !targetHref.startsWith('javascript')) {
+                        e.preventDefault();
+                        mainContent.classList.add('page-leave');
+                        setTimeout(() => { window.location.href = targetHref; }, 150);
+                    }
+                });
+            });
+
+
+            checkAuthAndLoadProfile();
+            loadSubjects();
+
+
+            const presenceUserId = localStorage.getItem('user_id');
+            if (presenceUserId) {
+                supabaseClient
+                    .channel('subjects-changes')
+                    .on('postgres_changes', {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'subjects',
+                        filter: `teacher_id=eq.${presenceUserId}`
+                    }, () => {
+                        loadSubjects(true);
+                    })
+                    .subscribe();
+            }
+
+
+            setInterval(() => {
+                loadSubjects(true);
+            }, 30000);
+        });
 
 
         function toggleAIChat() { document.getElementById('aiChatWidget').classList.toggle('active'); }
@@ -1208,13 +1582,13 @@
             const userMsg = document.createElement('div');
             userMsg.className = 'chat-msg user'; userMsg.textContent = text;
             chatBody.appendChild(userMsg);
-
-            input.value = ''; chatBody.scrollTop = chatBody.scrollHeight;
+            input.value = '';
+            chatBody.scrollTop = chatBody.scrollHeight;
 
             const typingMsg = document.createElement('div');
             typingMsg.className = 'chat-msg ai'; typingMsg.id = 'ai-typing-indicator';
-            typingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing request...';
-            chatBody.appendChild(typingMsg); chatBody.scrollTop = chatBody.scrollHeight;
+            typingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
+            chatBody.appendChild(typingMsg);
 
             try {
                 const responseText = await processSmartDBQuery(text.toLowerCase());
@@ -1224,19 +1598,19 @@
                 aiMsg.innerHTML = responseText;
                 chatBody.appendChild(aiMsg);
             } catch (error) {
-                console.error("Custom AI Error:", error);
                 if (document.getElementById('ai-typing-indicator')) document.getElementById('ai-typing-indicator').remove();
-                const errorMsg = document.createElement('div'); errorMsg.className = 'chat-msg ai';
-                errorMsg.textContent = "I'm sorry, I encountered an error while retrieving your records. Please try again.";
-                chatBody.appendChild(errorMsg);
+                const err = document.createElement('div'); err.className = 'chat-msg ai';
+                err.textContent = "Error retrieving records.";
+                chatBody.appendChild(err);
             }
             chatBody.scrollTop = chatBody.scrollHeight;
         }
+
         document.getElementById('aiChatInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') sendAIMessage(); });
 
         async function processSmartDBQuery(query) {
             let teacherId = localStorage.getItem('user_id');
-            if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
+            if (!teacherId) return "Authentication error. Please log in again.";
 
             if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
                 return "Hello there! How can I assist you with your classes today?";
@@ -1244,7 +1618,6 @@
 
             const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
             const sections = secRes || [];
-
             if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
 
             const sectionIds = sections.map(s => s.id);
@@ -1346,7 +1719,7 @@
                 schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; });
                 return res;
             }
-            else if (query.includes('facilitator') || query.includes('faci')) {
+            else if (query.includes('facilitator') || query.includes('faci') || query.includes('assigned')) {
                 return await window.formatFacilitatorLogsHTML(facilitators, supabaseClient);
             }
             else if (query.includes('pila ka student') || query.includes('how many students') || query.includes('population')) {
@@ -1373,249 +1746,6 @@
             }
             const aiContext = window.MJR_buildAIContext(query, { students, sections, records, attendance });
             return await window.MJR_callAIEvaluate(query, aiContext);
-        }
-
-
-        const sectionsWrapper = document.getElementById('sectionsWrapper');
-        let editingId = null;
-
-        async function loadSections() {
-            const userId = localStorage.getItem('user_id');
-            if (!userId) return;
-
-            sectionsWrapper.innerHTML = '';
-            document.getElementById('noMatchMessage').style.display = 'none';
-
-            const { data: savedSections, error } = await supabaseClient
-                .from('sections')
-                .select('*, students(count)')
-                .eq('teacher_id', userId)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error("Error loading sections:", error);
-                showNotification("Failed to load sections", "error");
-                return;
-            }
-
-            if (!savedSections || savedSections.length === 0) {
-                sectionsWrapper.innerHTML = '<p style="color: var(--text-muted); font-size: 0.95rem; grid-column: 1 / -1; text-align: center; margin-top: 20px;">No sections added yet. Click the + button to add one.</p>';
-                return;
-            }
-
-            const latestSY = savedSections.find(s => s.school_year)?.school_year;
-            if (latestSY && typeof window.MJR_setSchoolYear === 'function') {
-                window.MJR_setSchoolYear(latestSY);
-            }
-
-            savedSections.forEach((sec) => {
-                const card = document.createElement('div');
-                card.className = 'section-card';
-
-                const secData = encodeURIComponent(JSON.stringify(sec));
-                const studentCount = (sec.students && sec.students[0] && sec.students[0].count) ? sec.students[0].count : 0;
-                const sem = sec.semester || '1st Sem';
-                const qtr = sec.quarter ? `Q${sec.quarter}` : 'Q1';
-
-                card.innerHTML = `
-                <div>
-                    <h2 class="section-title">${sec.title}</h2>
-                    <p class="section-subtitle">${sec.subject}</p>
-                    <div class="tags-wrapper">
-                        <span class="tag tag-students"><i data-lucide="user"></i> ${studentCount} Students</span>
-                        <span class="tag tag-room"><i data-lucide="building"></i> ${sec.room}</span>
-                        <span class="tag tag-sem"><i data-lucide="calendar"></i> ${sem}</span>
-                        <span class="tag tag-quarter"><i data-lucide="bookmark"></i> ${qtr}</span>
-                        <span class="tag tag-year"><i data-lucide="graduation-cap"></i> ${sec.school_year || 'N/A'}</span>
-                    </div>
-                </div>
-                <div class="card-actions">
-                    <div class="menu-container">
-                        <button class="three-dots-btn" onclick="toggleDropdown(event, '${sec.id}')">
-                            <i data-lucide="more-vertical"></i>
-                        </button>
-                        <div class="dropdown-menu" id="dropdown-${sec.id}">
-                            <button class="dropdown-item" onclick="editSection('${secData}')"><i data-lucide="edit-2"></i> Edit</button>
-                            <button class="dropdown-item delete" onclick="deleteSection('${sec.id}')"><i data-lucide="trash-2"></i> Delete</button>
-                        </div>
-                    </div>
-                    <button class="view-btn" onclick="viewSection('${sec.id}')">View</button>
-                </div>
-            `;
-                sectionsWrapper.appendChild(card);
-            });
-
-            lucide.createIcons();
-        }
-
-        function toggleDropdown(event, id) {
-            event.stopPropagation();
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu.id !== `dropdown-${id}`) {
-                    menu.classList.remove('show');
-                }
-            });
-            const dropdown = document.getElementById(`dropdown-${id}`);
-            if (dropdown) dropdown.classList.toggle('show');
-        }
-
-        document.addEventListener('click', function (event) {
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        });
-
-        document.getElementById('searchInput').addEventListener('input', function (e) {
-            const term = e.target.value.toLowerCase();
-            const cards = document.querySelectorAll('.section-card');
-            let visibleCount = 0;
-
-            cards.forEach(card => {
-                const title = card.querySelector('.section-title').textContent.toLowerCase();
-                const subject = card.querySelector('.section-subtitle').textContent.toLowerCase();
-
-                if (title.includes(term) || subject.includes(term)) {
-                    card.style.display = 'flex';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            const noMatchMsg = document.getElementById('noMatchMessage');
-            if (noMatchMsg) {
-                noMatchMsg.style.display = (visibleCount === 0 && cards.length > 0) ? 'flex' : 'none';
-            }
-        });
-
-        function toggleSectionModal() {
-            const m = document.getElementById('sectionModal');
-            m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none';
-        }
-
-        function openAddModal() {
-            editingId = null;
-            document.getElementById('modalTitle').textContent = "Add New Section";
-            document.getElementById('secTitle').value = '';
-            document.getElementById('secSubject').value = '';
-            document.getElementById('secRoom').value = '';
-            document.getElementById('secSemester').value = '';
-            document.getElementById('secQuarter').value = '';
-            document.getElementById('secSchoolYear').value = '';
-            toggleSectionModal();
-        }
-
-        function editSection(encodedData) {
-            const sec = JSON.parse(decodeURIComponent(encodedData));
-            editingId = sec.id;
-
-            document.getElementById('modalTitle').textContent = "Edit Section";
-            document.getElementById('secTitle').value = sec.title;
-            document.getElementById('secSubject').value = sec.subject;
-            document.getElementById('secRoom').value = sec.room;
-            document.getElementById('secSemester').value = sec.semester || '1st Sem';
-            document.getElementById('secQuarter').value = sec.quarter || '';
-            document.getElementById('secSchoolYear').value = sec.school_year || '';
-
-            toggleSectionModal();
-        }
-
-        async function saveSection() {
-            const title = document.getElementById('secTitle').value.trim();
-            const subject = document.getElementById('secSubject').value.trim();
-            const room = document.getElementById('secRoom').value.trim();
-            const semester = document.getElementById('secSemester').value;
-            const quarter = document.getElementById('secQuarter').value;
-            const school_year = document.getElementById('secSchoolYear').value;
-            const teacher_id = localStorage.getItem('user_id');
-
-            if (!title || !subject || !room || !semester || !quarter || !school_year) {
-                showNotification("Please fill in all fields including Semester and Quarter!", "error");
-                return;
-            }
-
-            const sectionData = {
-                teacher_id: teacher_id,
-                title: title,
-                subject: subject,
-                room: room,
-                semester: semester,
-                quarter: quarter,
-                school_year: school_year
-            };
-
-            try {
-                if (editingId) {
-                    const { error } = await supabaseClient
-                        .from('sections')
-                        .update(sectionData)
-                        .eq('id', editingId);
-
-                    if (error) throw error;
-                    showNotification("Record updated successfully!");
-                } else {
-                    const { error } = await supabaseClient
-                        .from('sections')
-                        .insert([sectionData]);
-
-                    if (error) throw error;
-                    showNotification("Record saved successfully!");
-                }
-
-                loadSections();
-                toggleSectionModal();
-                document.getElementById('searchInput').value = '';
-            } catch (error) {
-                console.error("Save error:", error);
-                showNotification("Error saving record.", "error");
-            }
-        }
-
-        async function deleteSection(id) {
-            if (confirm("Are you sure you want to delete this record?")) {
-                const { error } = await supabaseClient
-                    .from('sections')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) {
-                    console.error("Delete error:", error);
-                    showNotification("Error deleting record.", "error");
-                } else {
-                    showNotification("Record deleted.");
-                    loadSections();
-                    document.getElementById('searchInput').value = '';
-                }
-            }
-        }
-
-        function viewSection(id) {
-            window.location.href = `class-record(2).html?id=${id}`;
-        }
-
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
-
-            sidebarLinks.forEach(link => {
-                link.addEventListener('click', function (e) {
-                    const targetHref = this.getAttribute('href');
-
-                    if (targetHref && !targetHref.startsWith('#') && !targetHref.startsWith('javascript')) {
-                        e.preventDefault();
-                        document.querySelector('.main-content').classList.add('page-leave');
-
-                        setTimeout(() => {
-                            window.location.href = targetHref;
-                        }, 150);
-                    }
-                });
-            });
-        });
-
-        window.onload = () => {
-            checkAuthAndLoadProfile();
-            loadSections();
         }
     </script>
 
