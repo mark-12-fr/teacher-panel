@@ -873,6 +873,8 @@
         /* ── Failing students alert ── */
         .failing-alert {
             display: none;
+            width: fit-content;
+            max-width: 100%;
             align-items: center;
             gap: 10px;
             background: rgba(239,68,68,0.08);
@@ -1163,9 +1165,6 @@
                     <h1>Class Performance</h1>
                 </div>
                 <div class="topbar-actions">
-                    <select id="quarterSelect" class="quarter-select" title="Filter by quarter">
-                        <option value="all" selected>All Quarters</option>
-                    </select>
                     <button class="export-btn" id="exportCsvBtn" title="Export to CSV"><i class="fa-solid fa-file-csv"></i> <span
                             class="export-text">Export CSV</span></button>
                     <button class="export-btn" onclick="window.print()" title="Print report"><i class="fa-solid fa-print"></i> <span
