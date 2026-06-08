@@ -876,6 +876,7 @@
                 <a href="performance.html" onclick="closeSidebar()"><i data-lucide="trending-up"></i>Class
                     Performance</a>
                 <a href="facilitators.html" onclick="closeSidebar()"><i data-lucide="users-round"></i> Facilitators</a>
+                <a href="grading-system.html" onclick="closeSidebar()"><i data-lucide="percent"></i> Grading System</a>
                 <a href="about.html" onclick="closeSidebar()"><i data-lucide="info"></i> About</a>
                 <a href="help.html" onclick="closeSidebar()"><i data-lucide="help-circle"></i> Help</a>
             </nav>
@@ -956,8 +957,9 @@
             <h4 id="modalTitle" style="margin-bottom:20px; color: var(--text-dark);">Add New Section</h4>
 
             <input type="text" id="secTitle" class="modal-input" placeholder="Section Name (e.g. STEM12-1)">
-            <input type="text" id="secSubject" class="modal-input"
-                placeholder="Subject (e.g. APP 006: Practical Research 2)">
+            <select id="secSubject" class="modal-input">
+                <option value="" disabled selected>Select Subject</option>
+            </select>
             <input type="text" id="secRoom" class="modal-input" placeholder="Room (e.g. BLANCO-200)">
 
             <select id="secSemester" class="modal-input">
@@ -1484,11 +1486,49 @@
             m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none';
         }
 
+        // Populate the Subject dropdown from the subjects the teacher defined in
+        // the Grading System. A legacy/free-text subject that isn't defined there
+        // yet is still added (and pre-selected) so editing never loses it.
+        async function loadSubjectOptions(selectedValue) {
+            const sel = document.getElementById('secSubject');
+            if (!sel) return;
+            const want = (selectedValue || '').trim();
+            sel.innerHTML = '<option value="" disabled' + (want ? '' : ' selected') + '>Select Subject</option>';
+            const userId = localStorage.getItem('user_id');
+            if (!userId) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('subjects').select('name').eq('teacher_id', userId).order('name', { ascending: true });
+                const subjects = error ? [] : (data || []);
+                let matched = false;
+                subjects.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.name;
+                    if (want && s.name.trim().toLowerCase() === want.toLowerCase()) { opt.selected = true; matched = true; }
+                    sel.appendChild(opt);
+                });
+                if (want && !matched) {
+                    const opt = document.createElement('option');
+                    opt.value = selectedValue;
+                    opt.textContent = selectedValue + ' (not in Grading System)';
+                    opt.selected = true;
+                    sel.appendChild(opt);
+                }
+                if (subjects.length === 0 && !want) {
+                    const opt = document.createElement('option');
+                    opt.disabled = true;
+                    opt.textContent = 'No subjects yet — add them in Grading System';
+                    sel.appendChild(opt);
+                }
+            } catch (e) { console.error('loadSubjectOptions', e); }
+        }
+
         function openAddModal() {
             editingId = null;
             document.getElementById('modalTitle').textContent = "Add New Section";
             document.getElementById('secTitle').value = '';
-            document.getElementById('secSubject').value = '';
+            loadSubjectOptions('');
             document.getElementById('secRoom').value = '';
             document.getElementById('secSemester').value = '';
             document.getElementById('secQuarter').value = '';
@@ -1502,7 +1542,7 @@
 
             document.getElementById('modalTitle').textContent = "Edit Section";
             document.getElementById('secTitle').value = sec.title;
-            document.getElementById('secSubject').value = sec.subject;
+            loadSubjectOptions(sec.subject);
             document.getElementById('secRoom').value = sec.room;
             document.getElementById('secSemester').value = sec.semester || '1st Sem';
             document.getElementById('secQuarter').value = sec.quarter || '';
