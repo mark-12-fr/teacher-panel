@@ -503,17 +503,25 @@
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
+        /* MALE / FEMALE label rows — opaque --card-bg base + flat tint overlay so
+           the color stays connected on horizontal scroll (frozen sticky columns
+           fully cover the scrolling cell; no semi-transparent seam, no per-cell
+           gradient step at the column boundary). */
         .category-row.category-male td {
-            background: linear-gradient(90deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.06)) !important;
+            background-color: var(--card-bg) !important;
+            background-image: linear-gradient(rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.18)) !important;
         }
         .category-row.category-female td {
-            background: linear-gradient(90deg, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.06)) !important;
+            background-color: var(--card-bg) !important;
+            background-image: linear-gradient(rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.18)) !important;
         }
         [data-theme="dark"] .category-row.category-male td {
-            background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.08)) !important;
+            background-color: var(--card-bg) !important;
+            background-image: linear-gradient(rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.22)) !important;
         }
         [data-theme="dark"] .category-row.category-female td {
-            background: linear-gradient(90deg, rgba(236, 72, 153, 0.22), rgba(236, 72, 153, 0.08)) !important;
+            background-color: var(--card-bg) !important;
+            background-image: linear-gradient(rgba(236, 72, 153, 0.22), rgba(236, 72, 153, 0.22)) !important;
         }
 
         .action-btns {
