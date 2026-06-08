@@ -431,7 +431,13 @@
             }
             // Cap each component at 100 before applying weights
             const ww = Math.round(Math.min(totalWW, 100)), pt = Math.round(Math.min(totalPT, 100)), qe = Math.round(Math.min((totalQE / 50) * 100, 100));
-            const grade = Math.round(ww * 0.3 + pt * 0.5 + qe * 0.2);
+            // Dynamic per-subject weights (set by the teacher in the Grading System,
+            // loaded into window.MJR_SUBJECT_CFG by the host page). Falls back to the
+            // classic 30/50/20 when no config is loaded.
+            const _sec = sections.find(x => x.id === st.section_id) || {};
+            const grade = (typeof window !== 'undefined' && window.MJR_finalGrade)
+                ? window.MJR_finalGrade(merged, _sec.subject, 100)
+                : Math.round(ww * 0.3 + pt * 0.5 + qe * 0.2);
             const active = Array.from(activeBySection[st.section_id] || []);
             const missing = active.filter(k => isEmpty(merged[k])).map(pretty);
             const att = attendance.filter(a => (a.student_name || '').toLowerCase() === (st.full_name || '').toLowerCase());

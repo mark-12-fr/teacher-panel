@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="ai-assistant.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="grading.js"></script>
 
     <script>
 
@@ -1259,7 +1260,7 @@
                 let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
                 let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
                 let qe_score = Math.min((totalQE / 50) * 100, 100) || 0;
-                return Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
+                return window.MJR_finalGrade ? window.MJR_finalGrade(record, (sections.find(function (x) { return x.id === record.section_id; }) || {}).subject, 100) : Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
             };
 
             if (query.includes('top') || query.includes('highest') || query.includes('best')) {
