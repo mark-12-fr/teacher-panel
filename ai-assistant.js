@@ -27,7 +27,7 @@
  *   window.MJR_clearChat()       — clears today's chat from localStorage
  *   window.sendSuggestedMessage() — fills the input and sends a preset query
  *   window.formatFacilitatorLogsHTML() — formats facilitator log data for display
- */
+ */  
 (function () {
 
     /**
