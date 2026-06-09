@@ -1263,13 +1263,12 @@
                                 <th class="sortable" data-sort="ww">Written Works <span class="sort-arrow">▾</span></th>
                                 <th class="sortable" data-sort="pt">Perf. Task <span class="sort-arrow">▾</span></th>
                                 <th class="sortable" data-sort="qe">Quarterly Exam <span class="sort-arrow">▾</span></th>
-                                <th class="sortable" data-sort="att">Attendance <span class="sort-arrow">▾</span></th>
                                 <th class="sortable active" data-sort="grade">Final Grade <span class="sort-arrow">▾</span></th>
                             </tr>
                         </thead>
                         <tbody id="topStudentsTable">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                                <td colspan="6" style="text-align: center; color: var(--text-muted);">
                                     <div class="skeleton skeleton-line" style="width: 80%; margin: 6px auto;"></div>
                                     <div class="skeleton skeleton-line" style="width: 60%; margin: 6px auto;"></div>
                                     <div class="skeleton skeleton-line" style="width: 70%; margin: 6px auto;"></div>
@@ -1833,7 +1832,7 @@
             if (error || studErr) {
                 console.error("Error fetching performance data:", error || studErr);
                 showNotification(`DB Error: Failed to fetch records`, "error");
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--fail-color);">
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--fail-color);">
                     Database Error.
                     <button class="retry-btn" onclick="loadPerformanceData()">Retry</button>
                 </td></tr>`;
@@ -1841,7 +1840,7 @@
             }
 
             if (!studentsData || studentsData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No students assigned to this section yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No students assigned to this section yet.</td></tr>';
                 lastStudentsData = [];
                 return;
             }
@@ -2120,7 +2119,7 @@
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No students match the current filter.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No students match the current filter.</td></tr>`;
                 return;
             }
 
@@ -2129,22 +2128,12 @@
                 const rank = index + 1;
                 const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
 
-                let attCell;
-                if (student.attendance_total === 0) {
-                    attCell = `<td style="color: var(--text-muted);">—</td>`;
-                } else {
-                    const rate = student.attendance_rate;
-                    const rateColor = rate >= 90 ? '#16a34a' : (rate >= 75 ? '#f59e0b' : '#ef4444');
-                    attCell = `<td><strong style="color:${rateColor};">${rate}%</strong></td>`;
-                }
-
                 return `<tr>
                     <td><span class="rank-badge ${rankClass}">${rank}</span></td>
                     <td>${escapeHTML(student.full_name)}</td>
                     <td>${student.written_works || 0}</td>
                     <td>${student.perf_task || 0}</td>
                     <td>${student.quarterly_exam || 0}</td>
-                    ${attCell}
                     <td><strong>${student.final_grade || 0}</strong></td>
                 </tr>`;
             });
@@ -2172,7 +2161,7 @@
                 showNotification("No data to export.", "error");
                 return;
             }
-            const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Attendance %', 'Final Grade'];
+            const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Final Grade'];
             // Use the same sort/filter as the visible table
             let rows = lastStudentsData.slice();
             if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= PAGE_PASSING);
@@ -2203,7 +2192,6 @@
                     s.written_works || 0,
                     s.perf_task || 0,
                     s.quarterly_exam || 0,
-                    s.attendance_rate == null ? '' : s.attendance_rate + '%',
                     s.final_grade || 0
                 ].join(','));
             });
