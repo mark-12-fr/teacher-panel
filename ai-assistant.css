@@ -2,7 +2,7 @@
  * MJR AI Assistant — shared UI styles.
  *
  * Loaded from each page's <head> via <link rel="stylesheet">, so the
- * polished look is applied during the initial render (no flash when
+ * polished look is applied during the initial render (no flash when 
  * navigating between pages). The companion ai-assistant.js handles
  * DOM enhancements only (header avatar, suggestion chips, typing
  * dots, focus handling).
