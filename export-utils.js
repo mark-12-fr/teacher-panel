@@ -1,4 +1,4 @@
-/**
+/** 
  * MJR Export Utilities
  * Exports the AI Assistant's LATEST answer as a clean one-page report
  * (PDF / Excel / Word) — NOT the whole chat history or the user's questions.
