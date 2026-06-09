@@ -1861,6 +1861,19 @@
             const labels = ['Q1', 'Q2', 'Q3', 'Q4'];
             const chartData = dataArray || [null, null, null, null];
 
+            // Colour the Class Average line/points by value: green when the
+            // average is at/above the 75% passing mark, red when it's below.
+            const PASS_MARK = 75;
+            const upClr = '#22c55e', downClr = '#ef4444';
+            const neutralClr = isDark ? '#818cf8' : '#3b82f6';
+            const pointColors = chartData.map(v =>
+                (v === null || v === undefined) ? neutralClr : (Number(v) >= PASS_MARK ? upClr : downClr));
+            const segColor = (segCtx) => {
+                const v = (segCtx && segCtx.p1 && segCtx.p1.parsed) ? segCtx.p1.parsed.y : null;
+                if (v === null || v === undefined || isNaN(v)) return neutralClr;
+                return Number(v) >= PASS_MARK ? upClr : downClr;
+            };
+
             window.dashBarChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1869,10 +1882,11 @@
                         {
                             label: 'Class Average',
                             data: chartData,
-                            borderColor: isDark ? '#818cf8' : '#3b82f6',
+                            borderColor: neutralClr,
+                            segment: { borderColor: segColor },
                             backgroundColor: gradient,
                             borderWidth: 2.5,
-                            pointBackgroundColor: isDark ? '#818cf8' : '#3b82f6',
+                            pointBackgroundColor: pointColors,
                             pointBorderColor: isDark ? '#1f2937' : '#ffffff',
                             pointBorderWidth: 3,
                             pointRadius: 6,
