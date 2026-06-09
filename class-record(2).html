@@ -515,6 +515,34 @@
         }
 
 
+        /* ── Quarter selector + locked (past-quarter) history ── */
+        .quarter-bar {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+        }
+        .quarter-bar-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
+        .q-tab {
+            padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-dark); font-weight: 600;
+            font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .q-tab:hover { background: var(--hover-bg); }
+        .q-tab.viewing { background: var(--accent-blue); color: #fff; border-color: transparent; }
+        .q-tab.active-q::after {
+            content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;
+        }
+        .q-tab.viewing.active-q::after { background: #bbf7d0; }
+        .lock-banner {
+            display: none; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600;
+            color: #b45309; background: rgba(245,158,11,0.13); border: 1px solid rgba(245,158,11,0.25);
+            padding: 5px 11px; border-radius: 8px;
+        }
+        [data-theme="dark"] .lock-banner { color: #fbbf24; }
+        .editable-score.locked {
+            cursor: not-allowed; color: var(--text-muted); background: var(--hover-bg); opacity: 0.9;
+        }
+        .editable-score.locked:focus { box-shadow: none; background: var(--hover-bg); }
+
         .editable-score {
             cursor: text;
             outline: none;
@@ -1094,6 +1122,15 @@
                     <input type="text" id="searchInput" placeholder="Search student name...">
                 </div>
 
+                <div id="quarterBar" class="quarter-bar">
+                    <span class="quarter-bar-label">Quarter</span>
+                    <button class="q-tab" data-q="1" onclick="setViewQuarter('1')">Q1</button>
+                    <button class="q-tab" data-q="2" onclick="setViewQuarter('2')">Q2</button>
+                    <button class="q-tab" data-q="3" onclick="setViewQuarter('3')">Q3</button>
+                    <button class="q-tab" data-q="4" onclick="setViewQuarter('4')">Q4</button>
+                    <span id="lockBanner" class="lock-banner"></span>
+                </div>
+
                 <div class="table-responsive">
                     <table id="recordTable">
                         <thead>
@@ -1283,6 +1320,33 @@
 
 
         let currentQuarter = '1';
+        let viewQuarter = '1';   // the quarter currently being viewed (defaults to the active quarter)
+        function getViewQuarter() { return viewQuarter; }
+        // Only the section's active quarter is editable; any other quarter is
+        // locked, read-only history.
+        function isQuarterLocked() { return String(viewQuarter) !== String(currentQuarter); }
+
+        function updateQuarterBar() {
+            document.querySelectorAll('.q-tab').forEach(function (t) {
+                var q = t.dataset.q;
+                t.classList.toggle('viewing', q === String(viewQuarter));
+                t.classList.toggle('active-q', q === String(currentQuarter));
+            });
+            var banner = document.getElementById('lockBanner');
+            if (!banner) return;
+            if (isQuarterLocked()) {
+                banner.style.display = 'inline-flex';
+                banner.innerHTML = '<i class="fa-solid fa-lock"></i> Q' + viewQuarter + ' is locked history — only the active quarter (Q' + currentQuarter + ') can be edited. Change it on the Section page.';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        function setViewQuarter(q) {
+            viewQuarter = String(q);
+            updateQuarterBar();
+            loadClassRecordData();
+        }
 
         async function loadSectionDetails() {
             try {
@@ -1299,7 +1363,9 @@
                     document.getElementById('dashSection').innerText = secData.title || 'No Title';
                     document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
                     currentQuarter = secData.quarter ? String(secData.quarter) : '1';
+                    viewQuarter = currentQuarter;   // start on the active quarter
                     document.getElementById('dashQuarter').innerText = 'Q' + currentQuarter;
+                    updateQuarterBar();
                 }
             } catch (error) {
                 console.error("Error loading section details:", error);
@@ -1391,7 +1457,7 @@
         function createRow(student, index, allRecords) {
             const tr = document.createElement('tr');
             tr.className = 'student-data-row';
-            const quarter = getCurrentQuarter();
+            const quarter = getViewQuarter();
             const studentRecs = allRecords ? allRecords.filter(r => r.student_id === student.id) : [];
 
 
@@ -1409,6 +1475,9 @@
                     const v = currentRec[field];
                     if (v !== null && v !== undefined && v !== '') return v;
                 }
+                // Locked (past/other) quarter = pure history: show ONLY that
+                // quarter's own stored values, never carry-over from others.
+                if (isQuarterLocked()) return null;
                 for (const r of fallbackRecs) {
                     const v = r[field];
                     if (v !== null && v !== undefined && v !== '') return v;
@@ -1417,6 +1486,7 @@
             }
 
             function carriedFromOther(field) {
+                if (isQuarterLocked()) return false;
                 if (currentRec) {
                     const v = currentRec[field];
                     if (v !== null && v !== undefined && v !== '') return false;
@@ -1432,8 +1502,13 @@
             function cellFor(field, extraClass) {
                 const val = valueFor(field);
                 const display = (val === null || val === undefined || val === "") ? '' : val;
+                const locked = isQuarterLocked();
                 const carry = carriedFromOther(field) ? ' carried-over' : '';
-                const cls = 'editable-score' + (extraClass ? ' ' + extraClass : '') + carry;
+                const cls = 'editable-score' + (extraClass ? ' ' + extraClass : '') + carry + (locked ? ' locked' : '');
+                if (locked) {
+                    // Read-only history cell — no contenteditable, no save handler.
+                    return `<td class="${cls}" data-field="${field}" data-studentid="${student.id}">${display}</td>`;
+                }
                 return `<td class="${cls}"
                             contenteditable="true"
                             data-field="${field}"
@@ -1458,6 +1533,7 @@
             const oldVal = cell.dataset.oldVal || "";
 
             if (newValue === oldVal) return;
+            if (isQuarterLocked()) return;   // safety: never write to a locked (non-active) quarter
 
             if (window.MJR_markLocalSave) window.MJR_markLocalSave();
 
