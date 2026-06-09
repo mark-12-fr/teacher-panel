@@ -1856,7 +1856,10 @@
             let dist = { '90+': 0, '85-89': 0, '80-84': 0, '<80': 0 };
 
             const students = studentsData.map(student => {
-                const studentRecords = records.filter(r => r.student_id === student.id);
+                // Sort by quarter so the merge ("latest non-empty wins") resolves
+                // to the same record on both panels -> identical grades & ranking.
+                const studentRecords = records.filter(r => r.student_id === student.id)
+                    .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
 
                 const mergedScores = studentRecords.reduce((acc, curr) => {
                     Object.keys(curr).forEach(key => {
@@ -2099,10 +2102,15 @@
             filtered.sort((a, b) => {
                 let av, bv;
                 switch (key) {
-                    case 'rank':
-                        // rank sort uses grade desc by default
+                    case 'rank': {
                         av = a.final_grade || 0; bv = b.final_grade || 0;
-                        return (bv - av) * dir;
+                        if (av !== bv) return (av - bv) * dir;
+                        // tie -> same order as the faci panel: total points desc, then name asc
+                        const sumA = (a.written_works || 0) + (a.perf_task || 0) + (a.quarterly_exam || 0);
+                        const sumB = (b.written_works || 0) + (b.perf_task || 0) + (b.quarterly_exam || 0);
+                        if (sumA !== sumB) return sumB - sumA;
+                        return String(a.full_name || '').localeCompare(String(b.full_name || ''));
+                    }
                     case 'name':
                         av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase();
                         return av.localeCompare(bv) * dir;
@@ -2111,10 +2119,15 @@
                     case 'qe': av = a.quarterly_exam || 0; bv = b.quarterly_exam || 0; return (av - bv) * dir;
                     case 'att': av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir;
                     case 'grade':
-                    default:
+                    default: {
                         av = a.final_grade || 0; bv = b.final_grade || 0;
                         if (av !== bv) return (av - bv) * dir;
-                        return ((b.written_works + b.perf_task + b.quarterly_exam) - (a.written_works + a.perf_task + a.quarterly_exam)) * dir;
+                        // tie -> same order as the faci panel: total points desc, then name asc
+                        const sumA = (a.written_works || 0) + (a.perf_task || 0) + (a.quarterly_exam || 0);
+                        const sumB = (b.written_works || 0) + (b.perf_task || 0) + (b.quarterly_exam || 0);
+                        if (sumA !== sumB) return sumB - sumA;
+                        return String(a.full_name || '').localeCompare(String(b.full_name || ''));
+                    }
                 }
             });
 
