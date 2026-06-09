@@ -422,7 +422,8 @@
          * Merges all record rows for the student, then applies the grade weights.
          */
         const analyze = st => {
-            const recs = records.filter(r => r.student_id === st.id);
+            const recs = records.filter(r => r.student_id === st.id)
+                .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
             const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; }); return acc; }, {});
             let totalWW = 0, totalPT = 0; const totalQE = Number(merged.qe) || 0;
             for (const k in merged) {
@@ -487,9 +488,13 @@
         });
 
         // ── Per-student grade summary (base context for all class-wide queries) ─
+        // Pre-rank by final grade (highest first) so the AI lists top / failing
+        // students accurately and consistently with the dashboard & performance.
         const lines = students.map(st => {
             const a = analyze(st);
             const sec = sections.find(x => x.id === st.section_id) || {};
+            return { st, a, sec };
+        }).sort((x, y) => y.a.grade - x.a.grade).map(({ st, a, sec }) => {
             const missStr = a.missing.length ? (a.missing.length > 8 ? a.missing.slice(0, 8).join('/') + ' +' + (a.missing.length - 8) : a.missing.join('/')) : 'none';
             return `${cleanNm(st.full_name)} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | TotalAbsences-allDates ${a.abs}, TotalLates ${a.late}`;
         });
@@ -622,7 +627,7 @@
         // ── Final context string sent to the AI ───────────────────────────────
         // IMPORTANT: "ABSENT TODAY" and "LATE TODAY" use semicolons as separators.
         // The AI must use ONLY this list for today-specific queries, not the per-student allDates totals.
-        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student (these totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}${extraContext}`;
+        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student, already RANKED from highest to lowest final grade (use this order for top/failing/ranking; these absence/late totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}${extraContext}`;
     }
     window.MJR_buildAIContext = buildAIContext;
 
