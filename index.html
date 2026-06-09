@@ -1823,7 +1823,17 @@
             const container = document.getElementById('chartSemBadges');
             const avgEl = document.getElementById('chartOverallAvg');
             if (!container) return;
-            const semLabel = activeSem === '2nd Sem' ? '2nd Semester' : activeSem === '1st Sem' ? '1st Semester' : 'All Quarters';
+            // Label the semester(s) by which quarters actually have data:
+            // Q1/Q2 = 1st Sem, Q3/Q4 = 2nd Sem. If both halves have data the
+            // chart spans the whole year, so show "1st-2nd Semester".
+            const hasVal = v => v !== null && v !== undefined && Number(v) > 0;
+            const hasFirst = !!(dataArray && (hasVal(dataArray[0]) || hasVal(dataArray[1])));
+            const hasSecond = !!(dataArray && (hasVal(dataArray[2]) || hasVal(dataArray[3])));
+            let semLabel;
+            if (hasFirst && hasSecond) semLabel = '1st-2nd Semester';
+            else if (hasSecond) semLabel = '2nd Semester';
+            else if (hasFirst) semLabel = '1st Semester';
+            else semLabel = activeSem === '2nd Sem' ? '2nd Semester' : activeSem === '1st Sem' ? '1st Semester' : '1st-2nd Semester';
             const qtrLabel = 'Q1 – Q4';
             container.innerHTML =
                 `<span class="chart-badge chart-badge-sem"><i class="fa-regular fa-calendar" style="font-size:0.65rem;"></i> ${semLabel}</span>` +
