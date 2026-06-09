@@ -2247,10 +2247,23 @@
                         label: 'Class Average',
                         data: quarters.map(() => null),
                         borderColor: '#3b82f6',
+                        // Red below the 75% passing mark, green at/above it. Scriptable
+                        // so they re-evaluate when the quarter averages load via update().
+                        segment: {
+                            borderColor: (ctx) => {
+                                const v = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.y : null;
+                                if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
+                                return Number(v) >= 75 ? '#22c55e' : '#ef4444';
+                            }
+                        },
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 3,
-                        pointBackgroundColor: '#ffffff',
-                        pointBorderColor: '#3b82f6',
+                        pointBackgroundColor: (ctx) => {
+                            const v = ctx.raw;
+                            if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
+                            return Number(v) >= 75 ? '#22c55e' : '#ef4444';
+                        },
+                        pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
                         fill: true,
