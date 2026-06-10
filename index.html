@@ -1823,17 +1823,16 @@
             const container = document.getElementById('chartSemBadges');
             const avgEl = document.getElementById('chartOverallAvg');
             if (!container) return;
-            // Label the semester(s) by which quarters actually have data:
-            // Q1/Q2 = 1st Sem, Q3/Q4 = 2nd Sem. If both halves have data the
-            // chart spans the whole year, so show "1st-2nd Semester".
-            const hasVal = v => v !== null && v !== undefined && Number(v) > 0;
-            const hasFirst = !!(dataArray && (hasVal(dataArray[0]) || hasVal(dataArray[1])));
-            const hasSecond = !!(dataArray && (hasVal(dataArray[2]) || hasVal(dataArray[3])));
+            // The semester badge follows the semester actually SET on the
+            // teacher's sections (sections.semester), passed in here as
+            // activeSem. Only 1st Sem set → "1st Semester"; switch a section to
+            // 2nd Sem and it updates to "2nd Semester"; sections in both halves
+            // → "1st-2nd Semester". We no longer guess from which quarters have
+            // data, so the label matches what the teacher actually selected.
             let semLabel;
-            if (hasFirst && hasSecond) semLabel = '1st-2nd Semester';
-            else if (hasSecond) semLabel = '2nd Semester';
-            else if (hasFirst) semLabel = '1st Semester';
-            else semLabel = activeSem === '2nd Sem' ? '2nd Semester' : activeSem === '1st Sem' ? '1st Semester' : '1st-2nd Semester';
+            if (activeSem === '1st Sem') semLabel = '1st Semester';
+            else if (activeSem === '2nd Sem') semLabel = '2nd Semester';
+            else semLabel = '1st-2nd Semester';
             const qtrLabel = 'Q1 – Q4';
             container.innerHTML =
                 `<span class="chart-badge chart-badge-sem"><i class="fa-regular fa-calendar" style="font-size:0.65rem;"></i> ${semLabel}</span>` +
