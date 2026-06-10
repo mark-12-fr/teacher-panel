@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="ai-assistant.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
     <script src="grading.js"></script>
 
     <script>
@@ -1576,39 +1577,45 @@
             assignBtn.disabled = true;
             assignBtn.textContent = 'Saving...';
 
+            // Create / update directly via Supabase. RLS scopes this to the
+            // signed-in teacher (auth.uid() = teacher_id), so no other account's
+            // data is touched or exposed. The password is bcrypt-hashed in the
+            // browser in the SAME format the facilitator login verifies — so this
+            // no longer depends on the backend being awake.
+            const bcryptLib = (window.dcodeIO && window.dcodeIO.bcrypt) || window.bcrypt;
+            if (!bcryptLib) {
+                showNotification("Security library didn't load — please refresh and try again.", "error");
+                assignBtn.disabled = false; assignBtn.textContent = 'Assign';
+                return;
+            }
+
             try {
-                let res;
+                let error;
                 if (editingFacId) {
                     const payload = { teacher_id: userId, full_name, section, subject };
-                    if (password) payload.password = password;
-                    res = await fetch(`${API_URL}/api/facilitators/${editingFacId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                    if (password) payload.password = bcryptLib.hashSync(password, 10);
+                    ({ error } = await supabaseClient.from('facilitators').update(payload).eq('id', editingFacId));
                 } else {
-                    const payload = { teacher_id: userId, full_name, section, subject, account_id, password };
-                    res = await fetch(`${API_URL}/api/facilitators`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                    const payload = {
+                        teacher_id: userId, full_name, section, subject, account_id,
+                        password: bcryptLib.hashSync(password, 10)
+                    };
+                    ({ error } = await supabaseClient.from('facilitators').insert([payload]));
                 }
 
-                if (res.ok) {
+                if (!error) {
                     loadFacilitators();
                     toggleFacilitatorModal();
                     showNotification(editingFacId ? "Facilitator updated!" : "Facilitator assigned!");
                 } else {
-                    const result = await res.json().catch(() => ({}));
-                    const raw = result.error || "";
-                    const msg = (raw.includes('account_id') || raw.toLowerCase().includes('duplicate') || raw.toLowerCase().includes('already'))
-                        ? "That Account ID is already taken. Please use a different one."
-                        : (raw || "Error saving facilitator");
-                    showNotification(msg, "error");
+                    const m = String(error.message || '').toLowerCase();
+                    const dup = m.includes('duplicate') || String(error.code) === '23505' || m.includes('account_id');
+                    showNotification(dup ? "That Account ID is already taken. Please use a different one."
+                                         : "Error saving facilitator. Please try again.", "error");
                 }
             } catch (error) {
-                showNotification("Server error. Please try again.", "error");
+                console.error("Save facilitator error:", error);
+                showNotification("Error saving facilitator. Please try again.", "error");
             } finally {
                 assignBtn.disabled = false;
                 assignBtn.textContent = 'Assign';
