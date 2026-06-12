@@ -1597,8 +1597,14 @@
             let teacherId = localStorage.getItem('user_id');
             if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
 
-            if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning')) {
-                return "Hello there! How can I assist you with your class records today?";
+            // Friendly small talk → short, warm reply (no heavy analysis) unless
+            // the message has a data keyword, so real questions still get answered.
+            const isDataQ = /grade|grado|score|puntos|student|estudyante|pasa|bagsak|fail|pass|top|highest|lowest|best|rank|absent|present|late|attendance|missing|kulang|exam|module|activit|performance|section|honor|risk|improv|summary|overview|report|compare|schedule|klase|facilitator|logs|population|how many|pila|id number|id ni|id of/i;
+            if (!isDataQ.test(query)) {
+                if (/\b(thank|thanks|salamat)\b/i.test(query))
+                    return "You're welcome! 😊 Just ask anytime you need help with your class records.";
+                if (/\b(hi|hello|hey|yo|kamusta|kumusta|maayong|magandang)\b/i.test(query) || query.includes('good morning') || query.includes('good afternoon') || query.includes('good evening'))
+                    return "Hello! 👋 I'm your AcadTrack assistant. You can ask me about your students, grades, attendance, or class performance.";
             }
 
             const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
@@ -1650,8 +1656,21 @@
                     if (grade > 0 && grade < PAGE_PASSING) failing.push({ name: s.full_name, grade: grade });
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
-                let res = "<strong>The following students are currently falling behind (Below 75%):</strong><br><br>";
+                failing.sort((a, b) => a.grade - b.grade);
+                let res = `<strong>The following students are currently falling behind (below ${PAGE_PASSING}%):</strong><br><br>`;
                 failing.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> (${f.grade}%)<br>`);
+                return res;
+            }
+            else if (query.includes('who passed') || query.includes('who is passing') || query.includes('passing student') || query.includes('passing list') || query.includes('sin-o ang pasado') || query.includes('sin-o ang pasa') || query.includes('mga pasado') || query.includes('mga nakapasa')) {
+                let passingList = [];
+                students.forEach(s => {
+                    let grade = getFinalGrade(s.id);
+                    if (grade >= PAGE_PASSING) passingList.push({ name: s.full_name, grade: grade });
+                });
+                if (passingList.length === 0) return "No students have reached the passing grade yet.";
+                passingList.sort((a, b) => b.grade - a.grade);
+                let res = `<strong>Passing students (${passingList.length}, ${PAGE_PASSING}% and above):</strong><br><br>`;
+                passingList.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> (${f.grade}%)<br>`);
                 return res;
             }
             else if ((query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity'))) || query.includes('missing')) {
@@ -1670,6 +1689,23 @@
             }
             else if (query.includes('absent') || query.includes('attendance')) {
                 if (attendance.length === 0) return "I couldn't find any attendance records in your lists.";
+                // "today / subong / karon" → only today's absentees and lates.
+                if (/today|subong|karon|\bnow\b/i.test(query)) {
+                    const now = new Date(); const pad = n => String(n).padStart(2, '0');
+                    const todays = [
+                        `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`,
+                        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+                        `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`
+                    ];
+                    const isToday = d => d && todays.indexOf(String(d).trim()) !== -1;
+                    const absToday = attendance.filter(a => a.status === 'Absent' && isToday(a.date));
+                    const lateToday = attendance.filter(a => a.status === 'Late' && isToday(a.date));
+                    if (absToday.length === 0 && lateToday.length === 0) return "No absences or lates recorded for today. 🎉";
+                    let r = '';
+                    if (absToday.length) { r += `<strong>Absent today (${absToday.length}):</strong><br>`; absToday.forEach(a => r += `- <strong>${escapeHTML(a.student_name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(a.section || '')})</span><br>`); }
+                    if (lateToday.length) { r += `<br><strong>Late today (${lateToday.length}):</strong><br>`; lateToday.forEach(a => r += `- <strong>${escapeHTML(a.student_name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(a.section || '')})</span><br>`); }
+                    return r;
+                }
                 let absentCounts = {};
                 attendance.forEach(a => { if (a.status === 'Absent') absentCounts[a.student_name] = (absentCounts[a.student_name] || 0) + 1; });
                 let sortedAbsents = Object.keys(absentCounts).sort((a, b) => absentCounts[b] - absentCounts[a]);
@@ -1679,7 +1715,7 @@
                 sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${escapeHTML(name)}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
-            else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
+            else if (query.includes('schedule') || query.includes('klase') || query.includes('class sched')) {
                 if (schedules.length === 0) return "You do not have any schedules recorded. Would you like to add one via the Dashboard?";
                 let res = "<strong>Here is your current class schedule:</strong><br><br>";
                 schedules.forEach(s => { res += `📅 <strong>${escapeHTML(s.subject)}</strong><br><small>${escapeHTML(s.time)} | ${escapeHTML(s.details)}</small><br><br>`; });

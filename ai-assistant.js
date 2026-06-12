@@ -314,7 +314,14 @@
      * @returns {boolean} True if the query should be routed to the AI backend
      */
     function isEvaluationIntent(q) {
-        return /evaluate|analy|improve|suggest|recommend|advice|advis|next step|what should|remedial|focus|weak|strength|ano.{0,8}dapat|missing|kulang|wala.{0,6}pasa|wala.{0,6}kuha|absent|present|late|attendance|score|grade|exam|module|activity|performance|pasa|bagsak|fail|pass|kumusta|kamusta|pila|how many|who is|sin-?o|top|highest|lowest|rank|at.?risk|risk.*fail|parent.*message|message.*parent|draft.*message|draft.*parent|remediation|remediation plan|pattern|trend|compare|section comparison|predict|prediction|weekly|monthly|summary report|generate.*report|weekly summary|missing requirement|sin-?o.*wala|pila.*absent|pila.*late|pila.*fail|pila.*pass|palya|nagapalya|nakapalya|grade.*sang|kantidad|listahan|mga.*estudyante|estudyante.*nga|taas.*grado|manugsulat|rekomendasyon|bulig|suliran|kulang.*sang|wala.*sang|ngaa.*bagsak|pwede.*mag|ano.*mangin|honor.?roll|honor list|perfect.*attendance|perfect attendance|wala.*absent|zero.*absent|most.*improv|improv.*most|nag.?improv|progress.*student|monthly.*attendance|attendance.*month|monthly.*summary|month.*summary/i.test(q || '');
+        // Only OPEN-ENDED / advisory questions are sent to the AI model (advice,
+        // recommendations, comparisons, predictions, pre-computed reports like
+        // at-risk / honor roll / section comparison). Plain factual look-ups —
+        // who passed or failed, top/lowest, ranking, counts, a named student's
+        // score, who is absent — are answered by the deterministic handlers
+        // below, so the numbers ALWAYS match the dashboard and class record and
+        // never depend on the model guessing.
+        return /evaluate|analy|assess|improve|suggest|recommend|rekomendasyon|advice|advis|next step|what should i|ano.{0,8}dapat|dapat.{0,6}(himu|buhat)|remedial|remediation|intervention|action plan|strateg|draft.*(message|parent|letter)|(parent|message).*draft|predict|prediction|weekly summary|monthly summary|summary report|generate.*report|attendance.*month|month.*attendance|compare|comparison|section comparison|pattern|trend|at.?risk|risk.*fail|honor.?roll|honor list|perfect.*attendance|most.*improv|improv.*most|nag.?improv|progress.*student|how.*to.*help|how.*can.*help|paano.*bulig|bulig.*paano|ngaa.*(bagsak|fail|palya|nubo|mababa)/i.test(q || '');
     }
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
