@@ -1569,37 +1569,50 @@
             }
 
             if (query.includes('kulang') || query.includes('missing') || query.includes('wala pasa') || query.includes('wala ka kuha') || query.includes('wala na pasa')) {
+                const isAssess = k => /^(module_|activity_|pt_)\d+$/.test(k) || k === 'qe';
+                const pretty = k => k === 'qe' ? 'Quarterly Exam' : k.startsWith('pt_') ? 'PT ' + k.split('_')[1] : k.startsWith('module_') ? 'Module ' + k.split('_')[1] : 'Activity ' + k.split('_')[1];
+                const isBlank = v => v === null || v === undefined || v === '' || Number(v) === 0;
+                // A column counts as "assigned" if at least one student in that
+                // section scored > 0 in it; a student is "missing" it when their
+                // merged (latest-non-empty) value is blank or 0.
+                const activeBySection = {};
+                records.forEach(r => {
+                    const sid = r.section_id; if (!activeBySection[sid]) activeBySection[sid] = new Set();
+                    Object.keys(r).forEach(k => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[sid].add(k); });
+                });
+                const missingFor = (s) => {
+                    const recs = records.filter(r => r.student_id === s.id).sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                    if (recs.length === 0) return null;
+                    const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {});
+                    return Array.from(activeBySection[s.section_id] || []).filter(k => isBlank(merged[k])).map(pretty);
+                };
                 let nameExtracted = query.split(/ni |of |kay |si |for /)[1]?.replace('?', '').trim();
-                if (!nameExtracted) {
-                    return "Please specify the student's name to check their missing requirements.<br><br>💡 <strong>Example:</strong><br>💬 <em>'What is missing for John?'</em><br>💬 <em>'Ano ang wala napasa ni Anna?'</em>";
+                let stud = nameExtracted ? students.find(s => s.full_name.toLowerCase().includes(nameExtracted)) : null;
+                if (nameExtracted && !stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your list. Please check the spelling.`;
+                if (stud) {
+                    const studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
+                    const m = missingFor(stud);
+                    if (m === null) return `<strong>${stud.full_name} (${studentSection})</strong> currently has no recorded activities or grades in the system.`;
+                    if (m.length === 0) return `<strong>${stud.full_name} (${studentSection})</strong>: <span style="color:#10b981;">No missing items — all assigned requirements are in. ✅</span>`;
+                    let res = `<strong>${stud.full_name} (${studentSection})</strong> is missing ${m.length} item${m.length === 1 ? '' : 's'}:<ul class="ai-list">`;
+                    m.forEach(x => res += `<li style="color:#ef4444;">${x}</li>`);
+                    res += `</ul>`;
+                    return res;
                 }
-                let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
-                if (!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your list. Please check the spelling.`;
-
-                let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
-                let studRecs = records.filter(r => r.student_id === stud.id);
-
-                if (studRecs.length === 0) return `<strong>${stud.full_name} (${studentSection})</strong> currently has no recorded activities or grades in the system.`;
-
-                let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
-
-                let missing = [];
-                for (let key in merged) {
-                    if (key.startsWith('module_') || key.startsWith('activity_') || key.startsWith('pt_') || key === 'qe') {
-                        if (Number(merged[key]) === 0 || merged[key] === "0" || merged[key] === "") {
-                            missing.push(key.replace('_', ' ').toUpperCase());
-                        }
-                    }
-                }
-
-                let res = `<strong>Performance Report for ${stud.full_name} (${studentSection}):</strong><br>`;
-                if (missing.length > 0) {
-                    res += `<br>The student has missing or zero scores in the following:<ul class="ai-list">`;
-                    missing.forEach(m => res += `<li style="color:#ef4444;">${m}</li>`);
-                    res += `</ul>Please advise the student to comply.`;
-                } else {
-                    res += `<br><span style="color:#10b981;">Excellent! No missing modules or zero activities found based on current records.</span>`;
-                }
+                // Class-wide: every student who has at least one missing item.
+                let withMissing = [];
+                students.forEach(s => {
+                    const m = missingFor(s);
+                    if (m && m.length > 0) withMissing.push({ name: s.full_name, section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown Section', missing: m });
+                });
+                if (withMissing.length === 0) return "Great news! No students have missing requirements in the assigned modules, activities, or exams. ✅";
+                withMissing.sort((a, b) => b.missing.length - a.missing.length);
+                let res = `<strong>Students with missing requirements (${withMissing.length}):</strong><ul class='ai-list'>`;
+                withMissing.forEach(w => {
+                    const shown = w.missing.length > 6 ? w.missing.slice(0, 6).join(', ') + ` +${w.missing.length - 6} more` : w.missing.join(', ');
+                    res += `<li><strong>${w.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${w.section})</span> — ${w.missing.length} missing: <span style="color:#ef4444;">${shown}</span></li>`;
+                });
+                res += "</ul>";
                 return res;
 
             } else if (query.includes('top') || query.includes('highest') || query.includes('best')) {

@@ -1683,8 +1683,48 @@
                 passingList.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(f.section)})</span> — ${f.grade}%<br>`);
                 return res;
             }
-            else if ((query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity'))) || query.includes('missing')) {
-                return `<strong>Sorry, I can't check missing modules accurately right now due to merged records formatting.</strong>`;
+            else if (query.includes('missing') || query.includes('kulang') || (query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity')))) {
+                const isAssess = k => /^(module_|activity_|pt_)\d+$/.test(k) || k === 'qe';
+                const pretty = k => k === 'qe' ? 'Quarterly Exam' : k.startsWith('pt_') ? 'PT ' + k.split('_')[1] : k.startsWith('module_') ? 'Module ' + k.split('_')[1] : 'Activity ' + k.split('_')[1];
+                const isBlank = v => v === null || v === undefined || v === '' || Number(v) === 0;
+                // A column counts as "assigned" if at least one student in that
+                // section scored > 0 in it; a student is "missing" it when their
+                // merged (latest-non-empty) value is blank or 0.
+                const activeBySection = {};
+                records.forEach(r => {
+                    const sid = r.section_id; if (!activeBySection[sid]) activeBySection[sid] = new Set();
+                    Object.keys(r).forEach(k => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[sid].add(k); });
+                });
+                const missingFor = (s) => {
+                    const recs = records.filter(r => r.student_id === s.id).sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                    if (recs.length === 0) return null;
+                    const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {});
+                    return Array.from(activeBySection[s.section_id] || []).filter(k => isBlank(merged[k])).map(pretty);
+                };
+                // Named student? ("what is missing for Juan")
+                let nameExtracted = query.split(/ni |of |kay |para |for /)[1];
+                nameExtracted = nameExtracted ? nameExtracted.replace('?', '').trim() : '';
+                let target = nameExtracted ? students.find(s => (s.full_name || '').toLowerCase().includes(nameExtracted)) : null;
+                if (target) {
+                    const m = missingFor(target);
+                    const sec = sections.find(sec => sec.id === target.section_id)?.title || 'Unknown';
+                    if (!m || m.length === 0) return `<strong>${escapeHTML(target.full_name)}</strong> (${escapeHTML(sec)}) has no missing items — all assigned requirements are in. ✅`;
+                    return `<strong>${escapeHTML(target.full_name)}</strong> (${escapeHTML(sec)}) is missing ${m.length} item${m.length === 1 ? '' : 's'}:<br><span style="color:#ef4444;">${escapeHTML(m.join(', '))}</span>`;
+                }
+                // Class-wide
+                let withMissing = [];
+                students.forEach(s => {
+                    const m = missingFor(s);
+                    if (m && m.length > 0) withMissing.push({ name: s.full_name, section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown', missing: m });
+                });
+                if (withMissing.length === 0) return "Great news! No students have missing requirements in the assigned modules, activities, or exams. ✅";
+                withMissing.sort((a, b) => b.missing.length - a.missing.length);
+                let res = `<strong>Students with missing requirements (${withMissing.length}):</strong><br><br>`;
+                withMissing.forEach(w => {
+                    const shown = w.missing.length > 6 ? w.missing.slice(0, 6).join(', ') + ` +${w.missing.length - 6} more` : w.missing.join(', ');
+                    res += `- <strong>${escapeHTML(w.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(w.section)})</span> — ${w.missing.length} missing: <span style="color:#ef4444;">${escapeHTML(shown)}</span><br>`;
+                });
+                return res;
             }
             else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
                 let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
