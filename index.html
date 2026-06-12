@@ -1625,6 +1625,22 @@
                 res += "</ul>";
                 return res;
 
+            } else if (query.includes('who passed') || query.includes('who is passing') || query.includes('passing student') || query.includes('passing list') || query.includes('sin-o ang pasado') || query.includes('sin-o ang pasa') || query.includes('mga pasado') || query.includes('mga nakapasa')) {
+                let passingList = [];
+                students.forEach(s => {
+                    let grade = getFinalGrade(s.id);
+                    if (grade >= passingFor(s.section_id)) {
+                        let secTitle = sections.find(sec => sec.id === s.section_id)?.title || 'Unknown Section';
+                        passingList.push({ name: s.full_name, grade: grade, section: secTitle });
+                    }
+                });
+                if (passingList.length === 0) return "No students have reached the passing grade yet.";
+                passingList.sort((a, b) => b.grade - a.grade);
+                let res = `<strong>Passing students (${passingList.length}):</strong><ul class='ai-list'>`;
+                passingList.forEach(f => res += `<li><strong>${f.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section})</span> - ${f.grade}%</li>`);
+                res += "</ul>";
+                return res;
+
             } else if (query.includes('score ni') || query.includes('grade of') || query.includes('grade ni') || query.includes('pasado ba si') || query.includes('nakapasa bala si') || query.includes('score of')) {
                 let nameExtracted = query.split(/ni |of |si /)[1]?.replace('?', '').trim();
                 if (!nameExtracted) return "Please specify the student's name.";
@@ -1638,6 +1654,24 @@
 
             } else if (query.includes('absent') || query.includes('attendance') || query.includes('wala nag sulod')) {
                 if (attendance.length === 0) return "No attendance records found.";
+
+                // "today / subong / karon" → only today's absentees and lates.
+                if (/today|subong|karon|\bnow\b/i.test(query)) {
+                    const now = new Date(); const pad = n => String(n).padStart(2, '0');
+                    const todays = [
+                        `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`,
+                        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+                        `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`
+                    ];
+                    const isToday = d => d && todays.indexOf(String(d).trim()) !== -1;
+                    const absToday = attendance.filter(a => a.status === 'Absent' && isToday(a.date));
+                    const lateToday = attendance.filter(a => a.status === 'Late' && isToday(a.date));
+                    if (absToday.length === 0 && lateToday.length === 0) return "No absences or lates recorded for today. 🎉";
+                    let r = '';
+                    if (absToday.length) { r += `<strong>Absent today (${absToday.length}):</strong><ul class='ai-list'>`; absToday.forEach(a => r += `<li><strong>${a.student_name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${a.section || ''})</span></li>`); r += '</ul>'; }
+                    if (lateToday.length) { r += `<strong>Late today (${lateToday.length}):</strong><ul class='ai-list'>`; lateToday.forEach(a => r += `<li><strong>${a.student_name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${a.section || ''})</span></li>`); r += '</ul>'; }
+                    return r;
+                }
 
                 let ac = {};
                 attendance.forEach(a => {
@@ -1659,7 +1693,7 @@
                 res += "</ul>";
                 return res;
 
-            } else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
+            } else if (query.includes('schedule') || query.includes('klase') || query.includes('class sched')) {
                 if (schedules.length === 0) return "No schedules recorded yet.";
                 let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; }); return res;
 
