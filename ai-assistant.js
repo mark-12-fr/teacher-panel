@@ -384,8 +384,9 @@
      * analysis (at-risk, section comparison, honor roll, etc.) before packaging
      * everything as a plain-text string for the AI prompt.
      *
-     * Grade formula: Written Work (30%) + Performance Tasks (50%) + Exam (20%)
-     * Passing grade: 75%
+     * Grade weights and the passing grade are per-subject (set by the teacher
+     * in the Grading System and loaded into window.MJR_SUBJECT_CFG). They fall
+     * back to the classic 30/50/20 split with a 75% passing grade when unset.
      *
      * @param {string} query   - The teacher's question (used to include extra context)
      * @param {Object} data    - Object with { students, sections, records, attendance }
@@ -439,11 +440,14 @@
             const grade = (typeof window !== 'undefined' && window.MJR_finalGrade)
                 ? window.MJR_finalGrade(merged, _sec.subject, 100)
                 : Math.round(ww * 0.3 + pt * 0.5 + qe * 0.2);
+            // Per-subject passing grade, set by the teacher in the Grading
+            // System (window.MJR_passingFor). Falls back to 75 when unset.
+            const passing = (typeof window !== 'undefined' && window.MJR_passingFor) ? window.MJR_passingFor(_sec.subject) : 75;
             const active = Array.from(activeBySection[st.section_id] || []);
             const missing = active.filter(k => isEmpty(merged[k])).map(pretty);
             const att = attendance.filter(a => (a.student_name || '').toLowerCase() === (st.full_name || '').toLowerCase());
             const abs = att.filter(a => a.status === 'Absent').length, late = att.filter(a => a.status === 'Late').length;
-            return { merged, active, ww, pt, qe, grade, missing, abs, late };
+            return { merged, active, ww, pt, qe, grade, passing, missing, abs, late };
         };
 
         // Build today's date in multiple formats to match whatever format the DB stores dates in
@@ -475,7 +479,7 @@
             });
             const tAtt = attendance.filter(x => (x.student_name || '').toLowerCase() === (s.full_name || '').toLowerCase() && isToday(x.date));
             const todayStatus = tAtt.length ? tAtt[0].status : 'no record for today';
-            return `STUDENT: ${cleanNm(s.full_name)}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal grade: ${a.grade}% (${a.grade >= 75 ? 'PASSING' : 'FAILING'}; passing is 75%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam: ${a.qe}%\nScores per assigned assessment: ${scoreLines.join('; ') || 'none recorded'}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(', ') : 'none'}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
+            return `STUDENT: ${cleanNm(s.full_name)}\nSection: ${sec.title || 'N/A'} | Subject: ${sec.subject || 'N/A'}\nFinal grade: ${a.grade}% (${a.grade >= a.passing ? 'PASSING' : 'FAILING'}; passing is ${a.passing}%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam: ${a.qe}%\nScores per assigned assessment: ${scoreLines.join('; ') || 'none recorded'}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(', ') : 'none'}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
         }
 
         // ── Today's attendance snapshot ────────────────────────────────────────
@@ -496,7 +500,7 @@
             return { st, a, sec };
         }).sort((x, y) => y.a.grade - x.a.grade).map(({ st, a, sec }) => {
             const missStr = a.missing.length ? (a.missing.length > 8 ? a.missing.slice(0, 8).join('/') + ' +' + (a.missing.length - 8) : a.missing.join('/')) : 'none';
-            return `${cleanNm(st.full_name)} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | TotalAbsences-allDates ${a.abs}, TotalLates ${a.late}`;
+            return `${cleanNm(st.full_name)} (${sec.title || 'N/A'}): Final ${a.grade}% [${a.grade >= a.passing ? 'PASS' : 'FAIL'}] | Missing(${a.missing.length}): ${missStr} | TotalAbsences-allDates ${a.abs}, TotalLates ${a.late}`;
         });
 
         const q = (query || '').toLowerCase();
@@ -504,8 +508,8 @@
 
         // ── At-Risk Students: failing grade AND 3+ absences ────────────────────
         if (/at.?risk|risk.*fail|posible.*fail/.test(q)) {
-            const atRisk = students.filter(st => { const a = analyze(st); return a.grade < 75 && a.abs >= 3; });
-            extraContext += `\n\nAT-RISK STUDENTS (grade below 75 AND 3+ absences, count=${atRisk.length}):\n` +
+            const atRisk = students.filter(st => { const a = analyze(st); return a.grade < a.passing && a.abs >= 3; });
+            extraContext += `\n\nAT-RISK STUDENTS (grade below the subject's passing grade AND 3+ absences, count=${atRisk.length}):\n` +
                 (atRisk.map(st => { const a = analyze(st); const sec = sections.find(x => x.id === st.section_id) || {}; return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): grade=${a.grade}%, absences=${a.abs}, missing=${a.missing.length} items`; }).join('\n') || 'None found.');
         }
 
@@ -514,10 +518,11 @@
             const sectionAvgs = sections.map(sec => {
                 const ss = students.filter(st => st.section_id === sec.id);
                 if (!ss.length) return null;
-                const grades = ss.map(st => analyze(st).grade);
+                const ana = ss.map(st => analyze(st));
+                const grades = ana.map(a => a.grade);
                 const avg = Math.round(grades.reduce((a, b) => a + b, 0) / grades.length);
-                const passing = grades.filter(g => g >= 75).length;
-                const failing = grades.filter(g => g < 75).length;
+                const passing = ana.filter(a => a.grade >= a.passing).length;
+                const failing = ana.filter(a => a.grade < a.passing).length;
                 const topStudent = ss.map(st => ({ name: cleanNm(st.full_name), grade: analyze(st).grade })).sort((a, b) => b.grade - a.grade)[0];
                 return `- ${sec.title || 'N/A'} (${sec.subject || 'N/A'}): avg=${avg}%, passing=${passing}, failing=${failing}, total=${ss.length}, top student=${topStudent ? topStudent.name + ' ' + topStudent.grade + '%' : 'N/A'}`;
             }).filter(Boolean);
@@ -545,8 +550,8 @@
             const recentAtt = attendance.filter(a => { const d = new Date(a.date); return !isNaN(d.getTime()) && d >= sevenDaysAgo; });
             const weeklyAbsent = recentAtt.filter(a => a.status === 'Absent').length;
             const weeklyLate = recentAtt.filter(a => a.status === 'Late').length;
-            const failingCount = students.filter(st => analyze(st).grade < 75).length;
-            const passingCount = students.filter(st => analyze(st).grade >= 75).length;
+            const failingCount = students.filter(st => { const a = analyze(st); return a.grade < a.passing; }).length;
+            const passingCount = students.filter(st => { const a = analyze(st); return a.grade >= a.passing; }).length;
             const avgGrade = students.length ? Math.round(students.reduce((sum, st) => sum + analyze(st).grade, 0) / students.length) : 0;
             extraContext += `\n\nWEEKLY SUMMARY (last 7 days):\nAttendance: ${weeklyAbsent} absence records, ${weeklyLate} late records\nGrades: ${passingCount} passing, ${failingCount} failing, class average=${avgGrade}%\nTotal students: ${students.length} across ${sections.length} section(s)`;
         }
@@ -619,15 +624,21 @@
                 const sec = sections.find(x => x.id === st.section_id) || {};
                 // Rough estimate: each missing item is worth ~3 points if submitted
                 const potential = Math.min(100, a.grade + a.missing.length * 3);
-                return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): current=${a.grade}% [${a.grade >= 75 ? 'PASS' : 'FAIL'}], potential if missing submitted=~${potential}% [${potential >= 75 ? 'PASS' : 'FAIL'}], missing=${a.missing.length} items`;
+                return `- ${cleanNm(st.full_name)} (${sec.title || 'N/A'}): current=${a.grade}% [${a.grade >= a.passing ? 'PASS' : 'FAIL'}], potential if missing submitted=~${potential}% [${potential >= a.passing ? 'PASS' : 'FAIL'}], missing=${a.missing.length} items`;
             });
             extraContext += `\n\nGRADE PREDICTIONS (current vs potential if all missing items submitted):\n${predictions.join('\n') || 'No data.'}`;
         }
 
         // ── Final context string sent to the AI ───────────────────────────────
+        // Passing grade(s) come from the teacher's Grading System (per subject),
+        // so the AI never assumes a fixed 75%.
+        const passingSet = [...new Set(sections.map(sec => (typeof window !== 'undefined' && window.MJR_passingFor) ? window.MJR_passingFor(sec.subject) : 75))].sort((a, b) => a - b);
+        const passingNote = passingSet.length <= 1
+            ? `passing grade ${passingSet[0] || 75}%`
+            : `passing grade varies by subject (${passingSet.join('%, ')}%) — use each student's own [PASS]/[FAIL] tag`;
         // IMPORTANT: "ABSENT TODAY" and "LATE TODAY" use semicolons as separators.
         // The AI must use ONLY this list for today-specific queries, not the per-student allDates totals.
-        return `CLASS DATA (passing grade 75%; weights: Written Work 30%, Performance Tasks 50%, Exam 20%). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student, already RANKED from highest to lowest final grade (use this order for top/failing/ranking; these absence/late totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}${extraContext}`;
+        return `CLASS DATA (${passingNote}; component weights are set per subject in the Grading System). ${sections.length} section(s), ${students.length} student(s).\nToday's date: ${todays[0]}.\nABSENT TODAY (count=${todayAbsent.length}): ${todayAbsent.length ? todayAbsent.join('; ') : 'none'}.\nLATE TODAY (count=${todayLate.length}): ${todayLate.length ? todayLate.join('; ') : 'none'}.\nIMPORTANT: For "who is absent today" / "how many absent today", use ONLY the ABSENT TODAY list above (each name is one student, separated by ';'). Do NOT use the per-student TotalAbsences-allDates numbers below for "today".\nPer-student, already RANKED from highest to lowest final grade (use this order for top/failing/ranking; these absence/late totals are across ALL dates, not today):\n${lines.join('\n') || 'No students yet.'}${extraContext}`;
     }
     window.MJR_buildAIContext = buildAIContext;
 
