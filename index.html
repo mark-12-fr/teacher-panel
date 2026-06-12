@@ -1513,8 +1513,18 @@
         async function processSmartDBQuery(query) {
             let teacherId = localStorage.getItem('user_id');
             if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
-            if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
-                return "Hello there! How can I assist you with your classes today?";
+            // Friendly small talk → short, warm reply. We only treat it as small
+            // talk when the message has no "data" keyword (grade, student,
+            // attendance…), so real questions like "kamusta ang grades?" still
+            // get a proper answer below instead of a generic greeting.
+            const isDataQ = /grade|grado|score|puntos|student|estudyante|pasa|bagsak|fail|pass|top|highest|lowest|best|rank|absent|present|late|attendance|missing|kulang|exam|module|activit|performance|section|honor|risk|improv|summary|overview|report|compare|schedule|klase|facilitator|logs|population|how many|pila|id number|id ni|id of/i;
+            if (!isDataQ.test(query)) {
+                if (/\b(thank|thanks|salamat)\b/i.test(query))
+                    return "You're welcome! 😊 Just ask anytime you need help with your classes.";
+                if (/\b(hi|hello|hey|yo|kamusta|kumusta|maayong|magandang)\b/i.test(query) || query.includes('good morning') || query.includes('good afternoon') || query.includes('good evening'))
+                    return "Hello! 👋 I'm your AcadTrack assistant. You can ask me about your students, grades, attendance, or class performance.";
+                if (/\b(who are you|sin-?o ka|what can you do|what do you do)\b/i.test(query))
+                    return "I'm your AcadTrack assistant. 🙂 I can check grades, attendance, top or struggling students, and class summaries — just ask in English or Hiligaynon.";
             }
 
             if (query.includes('how to check grade') || query.includes('check a student\'s grade')) {
@@ -1523,6 +1533,9 @@
 
             const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
             const sections = secRes || [];
+            // Make sure the per-subject grading config (weights + passing grade)
+            // is loaded so the AI's grades and pass/fail match the dashboard.
+            if (window.MJR_loadSubjectConfigs) await window.MJR_loadSubjectConfigs(supabaseClient, teacherId);
             if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
             const sectionIds = sections.map(s => s.id); const sectionTitles = sections.map(s => s.title);
             const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
@@ -1542,6 +1555,12 @@
                 for (let key in merged) { if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0; if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0; }
                 let ww = Math.min((totalWW / 100) * 100, 100) || 0; let pt = Math.min((totalPT / 100) * 100, 100) || 0; let qe = Math.min((totalQE / 50) * 100, 100) || 0;
                 return window.MJR_finalGrade ? window.MJR_finalGrade(merged, (sections.find(function (x) { return x.id === merged.section_id; }) || {}).subject, 100) : Math.round((ww * 0.3) + (pt * 0.5) + (qe * 0.2));
+            };
+
+            // Per-student passing grade, from the section's subject config.
+            const passingFor = (sectionId) => {
+                const subj = (sections.find(sec => sec.id === sectionId) || {}).subject;
+                return window.MJR_passingFor ? window.MJR_passingFor(subj) : 75;
             };
 
             if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) {
@@ -1595,13 +1614,13 @@
                 let failing = [];
                 students.forEach(s => {
                     let grade = getFinalGrade(s.id);
-                    if (grade > 0 && grade < 75) {
+                    if (grade > 0 && grade < passingFor(s.section_id)) {
                         let secTitle = sections.find(sec => sec.id === s.section_id)?.title || 'Unknown Section';
                         failing.push({ name: s.full_name, grade: grade, section: secTitle });
                     }
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
-                let res = "<strong>Students falling behind (Below 75%):</strong><ul class='ai-list'>";
+                let res = "<strong>Students falling behind:</strong><ul class='ai-list'>";
                 failing.forEach(f => res += `<li><strong>${f.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section})</span> - ${f.grade}%</li>`);
                 res += "</ul>";
                 return res;
@@ -1614,7 +1633,7 @@
 
                 let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
                 let grade = getFinalGrade(stud.id);
-                let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
+                let status = grade >= passingFor(stud.section_id) ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
                 return `Grade for <strong>${stud.full_name} (${studentSection})</strong>: <strong>${grade}%</strong> - ${status}.`;
 
             } else if (query.includes('absent') || query.includes('attendance') || query.includes('wala nag sulod')) {
@@ -1659,13 +1678,15 @@
                 let studentSection = sections.find(sec => sec.id === stud.section_id)?.title || 'Unknown Section';
                 return `ID for <strong>${stud.full_name} (${studentSection})</strong>: <strong>${stud.id}</strong>.`;
             } else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
-                let passCount = 0; students.forEach(s => { if (getFinalGrade(s.id) >= 75) passCount++; });
+                let passCount = 0; students.forEach(s => { if (getFinalGrade(s.id) >= passingFor(s.section_id)) passCount++; });
                 let passRate = students.length > 0 ? Math.round((passCount / students.length) * 100) : 0;
                 return `<strong>Class Overview:</strong><ul class='ai-list'><li>Total Sections: <strong>${sections.length}</strong></li><li>Total Students: <strong>${students.length}</strong></li><li>Passing Rate: <strong>${passRate}%</strong></li></ul>`;
             }
 
-            const aiSummary = students.map(s => `${s.full_name} (${sections.find(x => x.id === s.section_id)?.title || 'N/A'}): ${getFinalGrade(s.id)}%`).join('\n');
-            const aiContext = `Teacher's class: ${sections.length} section(s), ${students.length} student(s). Passing grade is 75%.\nStudents and their final grades:\n${aiSummary || 'No students yet.'}`;
+            const aiSummary = students.map(s => `${s.full_name} (${sections.find(x => x.id === s.section_id)?.title || 'N/A'}): ${getFinalGrade(s.id)}% [pass ${passingFor(s.section_id)}%]`).join('\n');
+            const passVals = [...new Set(students.map(s => passingFor(s.section_id)))];
+            const passText = passVals.length === 1 ? `The passing grade is ${passVals[0]}%.` : `Passing grades vary by subject (shown per student as [pass X%]).`;
+            const aiContext = `Teacher's class: ${sections.length} section(s), ${students.length} student(s). ${passText}\nStudents and their final grades:\n${aiSummary || 'No students yet.'}`;
             return await window.MJR_callAIEvaluate(query, aiContext);
         }
 
@@ -1819,10 +1840,12 @@
             requestAnimationFrame(tick);
         }
 
-        function updateChartBadges(activeSem, dataArray) {
+        function updateChartBadges(activeSem, dataArray, passing) {
             const container = document.getElementById('chartSemBadges');
             const avgEl = document.getElementById('chartOverallAvg');
             if (!container) return;
+            // Passing grade comes from the teacher's Grading System (default 75).
+            const passMark = (passing === null || passing === undefined) ? 75 : passing;
             // The semester badge follows the semester actually SET on the
             // teacher's sections (sections.semester), passed in here as
             // activeSem. Only 1st Sem set → "1st Semester"; switch a section to
@@ -1837,11 +1860,11 @@
             container.innerHTML =
                 `<span class="chart-badge chart-badge-sem"><i class="fa-regular fa-calendar" style="font-size:0.65rem;"></i> ${semLabel}</span>` +
                 `<span class="chart-badge chart-badge-qtr"><i class="fa-solid fa-layer-group" style="font-size:0.65rem;"></i> ${qtrLabel}</span>` +
-                `<span class="chart-badge chart-badge-pass"><i class="fa-solid fa-minus" style="font-size:0.65rem;"></i> 75% Passing</span>`;
+                `<span class="chart-badge chart-badge-pass"><i class="fa-solid fa-minus" style="font-size:0.65rem;"></i> ${passMark}% Passing</span>`;
             const validData = (dataArray || []).filter(v => v !== null && v !== undefined && v > 0);
             if (validData.length > 0 && avgEl) {
                 const avg = Math.round(validData.reduce((sum, v) => sum + v, 0) / validData.length);
-                const color = avg >= 75 ? '#16a34a' : '#dc2626';
+                const color = avg >= passMark ? '#16a34a' : '#dc2626';
                 avgEl.style.display = 'block';
                 avgEl.innerHTML = `<div style="font-size:0.7rem;color:var(--text-muted);font-weight:500;margin-bottom:1px;">Overall Avg</div><div style="font-size:1.55rem;font-weight:800;color:${color};line-height:1;">${avg}%</div>`;
             } else if (avgEl) {
@@ -1849,7 +1872,7 @@
             }
         }
 
-        function initDashboardChart(dataArray, semester) {
+        function initDashboardChart(dataArray, semester, passing) {
             const canvas = document.getElementById('dashboardBarChart');
             const ctx = canvas.getContext('2d');
             if (window.dashBarChart) window.dashBarChart.destroy();
@@ -1871,8 +1894,9 @@
             const chartData = dataArray || [null, null, null, null];
 
             // Colour the Class Average line/points by value: green when the
-            // average is at/above the 75% passing mark, red when it's below.
-            const PASS_MARK = 75;
+            // average is at/above the passing mark, red when it's below. The
+            // passing mark comes from the teacher's Grading System (default 75).
+            const PASS_MARK = (passing === null || passing === undefined) ? 75 : passing;
             const upClr = '#22c55e', downClr = '#ef4444';
             const neutralClr = isDark ? '#818cf8' : '#3b82f6';
             const pointColors = chartData.map(v =>
@@ -1908,8 +1932,8 @@
                             spanGaps: true
                         },
                         {
-                            label: 'Passing (75%)',
-                            data: Array(labels.length).fill(75),
+                            label: 'Passing (' + PASS_MARK + '%)',
+                            data: Array(labels.length).fill(PASS_MARK),
                             borderColor: 'rgba(34, 197, 94, 0.6)',
                             backgroundColor: 'transparent',
                             borderWidth: 1.5,
@@ -1968,7 +1992,7 @@
                             callbacks: {
                                 title: items => items[0].label,
                                 label: ctx => {
-                                    if (ctx.dataset.label === 'Passing (75%)') return null;
+                                    if (ctx.dataset.label && ctx.dataset.label.indexOf('Passing (') === 0) return null;
                                     return ctx.parsed.y !== null ? `Class Average: ${ctx.parsed.y.toFixed(1)}%` : 'No data yet';
                                 },
                                 footer: items => {
@@ -2063,8 +2087,14 @@
                     const q3avg = q3_c > 0 ? Number((q3_t / q3_c).toFixed(2)) : null;
                     const q4avg = q4_c > 0 ? Number((q4_t / q4_c).toFixed(2)) : null;
                     const chartData = [q1avg, q2avg, q3avg, q4avg];
-                    updateChartBadges(activeSem, chartData);
-                    initDashboardChart(chartData, activeSem);
+                    // Passing grade for the whole dashboard, from the teacher's
+                    // Grading System. If every section's subject shares one
+                    // passing grade, use it; if they differ, use the most lenient
+                    // (lowest) as the overview floor. Falls back to 75 when unset.
+                    const passSet = [...new Set((sections || []).map(s => window.MJR_passingFor ? window.MJR_passingFor(s.subject) : 75))];
+                    const dashPassing = passSet.length === 1 ? passSet[0] : (passSet.length ? Math.min(...passSet) : 75);
+                    updateChartBadges(activeSem, chartData, dashPassing);
+                    initDashboardChart(chartData, activeSem, dashPassing);
                     const topList = document.getElementById('topPerformersList');
                     allStudentsScores.sort((a, b) => b.grade - a.grade); topList.innerHTML = '';
                     if (allStudentsScores.length > 0) {
@@ -2074,8 +2104,8 @@
                             const medal = i < 3
                                 ? `<span style="min-width:26px;height:26px;border-radius:50%;background:${rankBgs[i]};color:${rankColors[i]};display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:0.78rem;flex-shrink:0;">#${i+1}</span>`
                                 : `<span style="min-width:26px;height:26px;border-radius:50%;background:var(--hover-bg);color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.78rem;flex-shrink:0;">${i+1}</span>`;
-                            const barClr  = s.grade >= 75 ? '#22c55e' : '#ef4444';
-                            const gradeClr = s.grade >= 75 ? '#16a34a' : '#dc2626';
+                            const barClr  = s.grade >= dashPassing ? '#22c55e' : '#ef4444';
+                            const gradeClr = s.grade >= dashPassing ? '#16a34a' : '#dc2626';
                             topList.innerHTML += `<li class="item-row" style="padding:7px 5px;align-items:center;gap:10px;"><div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">${medal}<div style="flex:1;min-width:0;"><div style="font-size:0.87rem;font-weight:600;color:var(--text-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name}</div><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">${s.section}</div><div style="height:4px;background:var(--border-color);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.min(s.grade,100)}%;background:${barClr};border-radius:3px;"></div></div></div></div><span style="font-weight:800;font-size:0.93rem;color:${gradeClr};flex-shrink:0;">${s.grade}%</span></li>`;
                         });
                     } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
