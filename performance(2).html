@@ -1631,13 +1631,20 @@
 
             if (window.MJR_isEvaluationIntent && window.MJR_isEvaluationIntent(query)) return await window.MJR_callAIEvaluate(query, window.MJR_buildAIContext(query, { students, sections, records, attendance }));
 
-            // Use shared grading function (single source of truth).
+            // Use shared grading function (single source of truth). Sort by
+            // quarter so the merge (latest non-empty wins) matches the ranking
+            // table and dashboard, and grade each student with THEIR OWN
+            // section's subject so cross-section lists stay accurate.
+            const subjectFor = (sectionId) => (sections.find(sec => sec.id === sectionId) || {}).subject || window.PAGE_SUBJECT;
+            const passingFor = (sectionId) => window.MJR_passingFor ? window.MJR_passingFor(subjectFor(sectionId)) : PAGE_PASSING;
             const getFinalGrade = (studentId) => {
-                let studRecs = records.filter(r => r.student_id === studentId);
+                const stud = students.find(x => x.id === studentId) || {};
+                let studRecs = records.filter(r => r.student_id === studentId)
+                    .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
                 let merged = studRecs.reduce((acc, curr) => {
-                    Object.keys(curr).forEach(key => { if (curr[key] !== null) acc[key] = curr[key]; }); return acc;
+                    Object.keys(curr).forEach(key => { if (curr[key] !== null && curr[key] !== undefined && curr[key] !== '') acc[key] = curr[key]; }); return acc;
                 }, {});
-                return computeFinalGrade(merged);
+                return window.MJR_finalGrade ? window.MJR_finalGrade(merged, subjectFor(stud.section_id), 100) : computeFinalGrade(merged);
             };
 
             if (query.includes('top') || query.includes('highest') || query.includes('best')) {
@@ -1653,24 +1660,27 @@
                 let failing = [];
                 students.forEach(s => {
                     let grade = getFinalGrade(s.id);
-                    if (grade > 0 && grade < PAGE_PASSING) failing.push({ name: s.full_name, grade: grade });
+                    let pass = passingFor(s.section_id);
+                    if (grade > 0 && grade < pass) failing.push({ name: s.full_name, grade: grade, section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown', passing: pass });
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
                 failing.sort((a, b) => a.grade - b.grade);
-                let res = `<strong>The following students are currently falling behind (below ${PAGE_PASSING}%):</strong><br><br>`;
-                failing.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> (${f.grade}%)<br>`);
+                const pset = [...new Set(failing.map(f => f.passing))];
+                const hdr = pset.length === 1 ? `currently falling behind (below ${pset[0]}%)` : 'currently falling behind';
+                let res = `<strong>The following students are ${hdr}:</strong><br><br>`;
+                failing.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(f.section)})</span> — ${f.grade}%<br>`);
                 return res;
             }
             else if (query.includes('who passed') || query.includes('who is passing') || query.includes('passing student') || query.includes('passing list') || query.includes('sin-o ang pasado') || query.includes('sin-o ang pasa') || query.includes('mga pasado') || query.includes('mga nakapasa')) {
                 let passingList = [];
                 students.forEach(s => {
                     let grade = getFinalGrade(s.id);
-                    if (grade >= PAGE_PASSING) passingList.push({ name: s.full_name, grade: grade });
+                    if (grade >= passingFor(s.section_id)) passingList.push({ name: s.full_name, grade: grade, section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown' });
                 });
                 if (passingList.length === 0) return "No students have reached the passing grade yet.";
                 passingList.sort((a, b) => b.grade - a.grade);
-                let res = `<strong>Passing students (${passingList.length}, ${PAGE_PASSING}% and above):</strong><br><br>`;
-                passingList.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> (${f.grade}%)<br>`);
+                let res = `<strong>Passing students (${passingList.length}):</strong><br><br>`;
+                passingList.forEach(f => res += `- <strong>${escapeHTML(f.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(f.section)})</span> — ${f.grade}%<br>`);
                 return res;
             }
             else if ((query.includes('wala') && (query.includes('pasa') || query.includes('module') || query.includes('activity'))) || query.includes('missing')) {
@@ -1684,7 +1694,7 @@
                 if (!stud) return `I could not find a student named "<strong>${escapeHTML(nameExtracted)}</strong>" in your class lists.`;
 
                 let grade = getFinalGrade(stud.id);
-                let status = grade >= PAGE_PASSING ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
+                let status = grade >= passingFor(stud.section_id) ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
                 return `The current calculated grade for <strong>${escapeHTML(stud.full_name)}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
             }
             else if (query.includes('absent') || query.includes('attendance')) {
@@ -1736,7 +1746,7 @@
             }
             else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let totalStuds = students.length; let passCount = 0;
-                students.forEach(s => { if (getFinalGrade(s.id) >= PAGE_PASSING) passCount++; });
+                students.forEach(s => { if (getFinalGrade(s.id) >= passingFor(s.section_id)) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount / totalStuds) * 100) : 0;
                 return `<strong>Class Performance Overview:</strong><br><br>` +
                     `• Total Active Sections: <strong>${sections.length}</strong><br>` +
