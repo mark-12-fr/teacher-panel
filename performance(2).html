@@ -2340,15 +2340,31 @@
                                 const v = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.y : null;
                                 if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
                                 return Number(v) >= PAGE_PASSING ? '#22c55e' : '#ef4444';
+                            },
+                            // Fill under the line: transparent green at/above the
+                            // section's passing grade, transparent red below it.
+                            backgroundColor: (ctx) => {
+                                const v = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.y : null;
+                                if (v === null || v === undefined || isNaN(v)) return 'rgba(59, 130, 246, 0.08)';
+                                return Number(v) >= PAGE_PASSING ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)';
                             }
                         },
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
                         borderWidth: 3,
                         pointBackgroundColor: (ctx) => {
                             const v = ctx.raw;
                             if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
                             return Number(v) >= PAGE_PASSING ? '#22c55e' : '#ef4444';
                         },
+                        // On hover keep the point red (fail) / green (pass).
+                        pointHoverBackgroundColor: (ctx) => {
+                            const v = ctx.raw;
+                            if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
+                            return Number(v) >= PAGE_PASSING ? '#22c55e' : '#ef4444';
+                        },
+                        pointHoverBorderColor: '#ffffff',
+                        pointHoverBorderWidth: 2,
+                        pointHoverRadius: 7,
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
