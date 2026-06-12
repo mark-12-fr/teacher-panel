@@ -1932,11 +1932,6 @@
             const tooltipBody = isDark ? '#d1d5db' : '#374151';
             const tooltipBorder = isDark ? '#374151' : '#e5e7eb';
 
-            const gradient = ctx.createLinearGradient(0, 0, 0, 230);
-            gradient.addColorStop(0, isDark ? 'rgba(99, 102, 241, 0.28)' : 'rgba(59, 130, 246, 0.22)');
-            gradient.addColorStop(0.65, isDark ? 'rgba(59, 130, 246, 0.07)' : 'rgba(99, 102, 241, 0.06)');
-            gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-
             const labels = ['Q1', 'Q2', 'Q3', 'Q4'];
             const chartData = dataArray || [null, null, null, null];
 
@@ -1953,13 +1948,15 @@
                 if (v === null || v === undefined || isNaN(v)) return neutralClr;
                 return Number(v) >= PASS_MARK ? upClr : downClr;
             };
-            // Light, professional fill under the line: subtle green at/above the
-            // passing mark, subtle red below it.
-            const segFill = (segCtx) => {
-                const v = (segCtx && segCtx.p1 && segCtx.p1.parsed) ? segCtx.p1.parsed.y : null;
-                if (v === null || v === undefined || isNaN(v)) return 'rgba(59, 130, 246, 0.06)';
-                return Number(v) >= PASS_MARK ? 'rgba(34, 197, 94, 0.10)' : 'rgba(239, 68, 68, 0.10)';
-            };
+            // Single-colour gradient fill that fades to transparent: green when
+            // the overall class average is at/above the passing mark, red below.
+            const _valid = chartData.filter(v => v !== null && v !== undefined && !isNaN(v));
+            const _avg = _valid.length ? _valid.reduce((a, b) => a + Number(b), 0) / _valid.length : null;
+            const _fillRGB = (_avg === null) ? '59, 130, 246' : (_avg >= PASS_MARK ? '34, 197, 94' : '239, 68, 68');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 230);
+            gradient.addColorStop(0, `rgba(${_fillRGB}, 0.28)`);
+            gradient.addColorStop(0.6, `rgba(${_fillRGB}, 0.07)`);
+            gradient.addColorStop(1, `rgba(${_fillRGB}, 0)`);
 
             window.dashBarChart = new Chart(ctx, {
                 type: 'line',
@@ -1970,7 +1967,7 @@
                             label: 'Class Average',
                             data: chartData,
                             borderColor: neutralClr,
-                            segment: { borderColor: segColor, backgroundColor: segFill },
+                            segment: { borderColor: segColor },
                             backgroundColor: gradient,
                             borderWidth: 2.5,
                             pointBackgroundColor: pointColors,

@@ -2340,16 +2340,24 @@
                                 const v = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.y : null;
                                 if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
                                 return Number(v) >= PAGE_PASSING ? '#22c55e' : '#ef4444';
-                            },
-                            // Fill under the line: transparent green at/above the
-                            // section's passing grade, transparent red below it.
-                            backgroundColor: (ctx) => {
-                                const v = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.y : null;
-                                if (v === null || v === undefined || isNaN(v)) return 'rgba(59, 130, 246, 0.08)';
-                                return Number(v) >= PAGE_PASSING ? 'rgba(34, 197, 94, 0.10)' : 'rgba(239, 68, 68, 0.10)';
                             }
                         },
-                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        // Single-colour gradient fill (fades to transparent): green
+                        // when the overall average is at/above the section's passing
+                        // grade, red below. Recomputes when data loads via update().
+                        backgroundColor: (context) => {
+                            const chart = context.chart;
+                            const area = chart.chartArea;
+                            if (!area) return 'rgba(59, 130, 246, 0.08)';
+                            const vals = (chart.data.datasets[0].data || []).filter(v => v !== null && v !== undefined && !isNaN(v));
+                            const avg = vals.length ? vals.reduce((a, b) => a + Number(b), 0) / vals.length : null;
+                            const rgb = (avg === null) ? '59, 130, 246' : (avg >= PAGE_PASSING ? '34, 197, 94' : '239, 68, 68');
+                            const g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                            g.addColorStop(0, `rgba(${rgb}, 0.28)`);
+                            g.addColorStop(0.6, `rgba(${rgb}, 0.07)`);
+                            g.addColorStop(1, `rgba(${rgb}, 0)`);
+                            return g;
+                        },
                         borderWidth: 3,
                         pointBackgroundColor: (ctx) => {
                             const v = ctx.raw;
