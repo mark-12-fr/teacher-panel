@@ -1618,7 +1618,7 @@
             const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
                 supabaseClient.from('students').select('*').in('section_id', sectionIds),
                 supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
-                supabaseClient.from('attendance').select('*').in('section', sectionTitles),
+                supabaseClient.from('attendance').select('*').in('section', sectionTitles).eq('teacher_id', teacherId),
                 supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
                 supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
             ]);
@@ -2339,7 +2339,7 @@
                             borderColor: (ctx) => {
                                 const v = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.y : null;
                                 if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
-                                return Number(v) >= 75 ? '#22c55e' : '#ef4444';
+                                return Number(v) >= PAGE_PASSING ? '#22c55e' : '#ef4444';
                             }
                         },
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -2347,7 +2347,7 @@
                         pointBackgroundColor: (ctx) => {
                             const v = ctx.raw;
                             if (v === null || v === undefined || isNaN(v)) return '#3b82f6';
-                            return Number(v) >= 75 ? '#22c55e' : '#ef4444';
+                            return Number(v) >= PAGE_PASSING ? '#22c55e' : '#ef4444';
                         },
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,

@@ -1541,7 +1541,7 @@
             const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
                 supabaseClient.from('students').select('*').in('section_id', sectionIds),
                 supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
-                supabaseClient.from('attendance').select('*').in('section', sectionTitles),
+                supabaseClient.from('attendance').select('*').in('section', sectionTitles).eq('teacher_id', teacherId),
                 supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
                 supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
             ]);
@@ -1753,7 +1753,7 @@
             await supabaseClient.from('notes').insert([{ user_id: localStorage.getItem('user_id'), content: text }]);
             loadNotes(); noteInput.value = "";
         };
-        async function deleteNote(id) { await supabaseClient.from('notes').delete().eq('id', id); loadNotes(); }
+        async function deleteNote(id) { await supabaseClient.from('notes').delete().eq('id', id).eq('user_id', localStorage.getItem('user_id')); loadNotes(); }
         noteInput.addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('addNoteBtn').click(); });
 
         const noticeTableBody = document.getElementById('noticeTableBody');
@@ -1806,7 +1806,7 @@
             document.getElementById('noticeText').value = ''; document.getElementById('noticeDate').value = ''; document.getElementById('noticeTime').value = '';
             showNotification("Notice added!");
         }
-        async function deleteNotice(id) { await supabaseClient.from('notices').delete().eq('id', id); loadNotices(); }
+        async function deleteNotice(id) { await supabaseClient.from('notices').delete().eq('id', id).eq('user_id', localStorage.getItem('user_id')); loadNotices(); }
 
         const scheduleList = document.getElementById('scheduleList');
         async function loadSchedules() {
@@ -1864,7 +1864,7 @@
             document.getElementById('schedSubject').value = ''; document.getElementById('schedTime').value = ''; document.getElementById('schedDetails').value = '';
             showNotification("Schedule added!");
         }
-        async function deleteSchedule(id) { await supabaseClient.from('schedules').delete().eq('id', id); loadSchedules(); }
+        async function deleteSchedule(id) { await supabaseClient.from('schedules').delete().eq('id', id).eq('user_id', localStorage.getItem('user_id')); loadSchedules(); }
 
         function updateTime() {
             const now = new Date();
@@ -2073,7 +2073,7 @@
                     const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
                     totalStudents = students ? students.length : 0;
                     const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`;
-                    const { data: attData } = await supabaseClient.from('attendance').select('status, student_name, section').in('section', sectionTitles).eq('date', exactTodayDate);
+                    const { data: attData } = await supabaseClient.from('attendance').select('status, student_name, section').in('section', sectionTitles).eq('teacher_id', teacherId).eq('date', exactTodayDate);
                     if (attData) { todayAttendanceData = attData; attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; }); }
 
                     const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
