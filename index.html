@@ -589,13 +589,21 @@
             color: var(--text-dark);
             font-weight: 500;
             margin-bottom: 3px;
-            word-break: break-word;
+            overflow-wrap: break-word;
+            word-break: normal;
         }
 
         .notice-date {
             font-size: 0.8rem;
             color: var(--text-muted);
         }
+
+        /* Responsive notice rows: the text+date cell takes all remaining width
+           so the message wraps at word boundaries; the dot and delete columns
+           shrink to their content. */
+        .notice-main-cell { width: 100%; }
+        .notice-dot-cell,
+        .notice-action-cell { width: 1%; white-space: nowrap; }
 
         #noticeTableBody td {
             padding: 10px 5px;
@@ -1619,7 +1627,7 @@
                 if (students.length === 0) return "You don't have any students registered yet.";
                 let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown Section' })).sort((a, b) => b.grade - a.grade).slice(0, 5);
                 let res = "<strong>Top Performing Students:</strong><ul class='ai-list'>";
-                scored.forEach((s, i) => { res += `<li><strong>#${i + 1} ${s.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${s.section})</span> - ${s.grade}%</li>`; });
+                scored.forEach((s, i) => { res += `<li><strong>#${i + 1} ${esc(s.name)}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${esc(s.section)})</span> - ${s.grade}%</li>`; });
                 res += "</ul>";
                 return res;
 
@@ -1708,7 +1716,7 @@
 
             } else if (query.includes('schedule') || query.includes('klase') || query.includes('class sched')) {
                 if (schedules.length === 0) return "No schedules recorded yet.";
-                let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; }); return res;
+                let res = "<strong>Your schedule:</strong><br><br>"; schedules.forEach(s => { res += `📅 <strong>${esc(s.subject)}</strong><br><small>${esc(s.time)} | ${esc(s.details)}</small><br><br>`; }); return res;
 
 
             } else if (query.includes('facilitator') || query.includes('faci') || query.includes('logs')) {
@@ -1738,13 +1746,20 @@
         }
 
         const noteInput = document.getElementById('noteInput'); const notesList = document.getElementById('notesList');
+        // Escape user-entered text before inserting it through innerHTML, so a
+        // notice/note/title that contains HTML or a <script> tag is shown as
+        // plain text and can never run (prevents stored-XSS — the closest thing
+        // to a "virus" in a web app).
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
         async function loadNotes() {
             const userId = localStorage.getItem('user_id'); if (!userId) return;
             const { data: savedNotes } = await supabaseClient.from('notes').select('*').eq('user_id', userId).order('created_at', { ascending: false });
             notesList.innerHTML = '';
             if (savedNotes) savedNotes.forEach(n => {
                 const li = document.createElement('li'); li.className = 'item-row';
-                li.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dark); word-break:break-word;">${n.content}</span><button class="delete-btn" onclick="deleteNote('${n.id}')"><i class="fas fa-trash-alt"></i></button>`;
+                li.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dark); overflow-wrap:break-word; word-break:normal;">${esc(n.content)}</span><button class="delete-btn" onclick="deleteNote('${n.id}')"><i class="fas fa-trash-alt"></i></button>`;
                 notesList.appendChild(li);
             });
         }
@@ -1761,7 +1776,7 @@
             const userId = localStorage.getItem('user_id'); if (!userId) return;
             const { data: savedNotices } = await supabaseClient.from('notices').select('*').eq('user_id', userId).order('created_at', { ascending: false });
             noticeTableBody.innerHTML = '';
-            if (!savedNotices || savedNotices.length === 0) { noticeTableBody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No notices.</td></tr>'; return; }
+            if (!savedNotices || savedNotices.length === 0) { noticeTableBody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No notices.</td></tr>'; return; }
 
             savedNotices.forEach(n => {
                 let displayDateTime = n.date;
@@ -1779,7 +1794,7 @@
                 }
 
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${n.color}" style="margin-top:0;"></div></td><td><div class="notice-text" style="margin-bottom:0;">${n.text}</div></td><td><div class="notice-date">${displayDateTime}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
+                tr.innerHTML = `<td class="notice-dot-cell"><div class="notice-dot ${esc(n.color)}" style="margin-top:6px;"></div></td><td class="notice-main-cell"><div class="notice-text" style="margin-bottom:2px;">${esc(n.text)}</div><div class="notice-date">${esc(displayDateTime)}</div></td><td class="notice-action-cell"><button class="delete-btn" onclick="deleteNotice('${n.id}')"><i class="fas fa-trash-alt"></i></button></td>`;
                 noticeTableBody.appendChild(tr);
             });
         }
@@ -1842,7 +1857,7 @@
                 const subjectWeight = status === 'current' ? '700' : '600';
                 const nowTag = status === 'current'
                     ? `<span style="font-size:0.65rem;color:#22c55e;font-weight:700;background:rgba(34,197,94,0.12);padding:2px 7px;border-radius:4px;margin-left:6px;">NOW</span>` : '';
-                li.innerHTML = `<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;flex-wrap:wrap;"><span style="color:${subjectColor};font-size:0.88rem;font-weight:${subjectWeight};">${s.subject}</span>${nowTag}</div><small style="color:${detailColor};opacity:${status==='past'?'1':'0.72'};font-size:0.78rem;">${s.time}${s.details ? ' · ' + s.details : ''}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
+                li.innerHTML = `<div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;flex-wrap:wrap;"><span style="color:${subjectColor};font-size:0.88rem;font-weight:${subjectWeight};">${esc(s.subject)}</span>${nowTag}</div><small style="color:${detailColor};opacity:${status==='past'?'1':'0.72'};font-size:0.78rem;">${esc(s.time)}${s.details ? ' · ' + esc(s.details) : ''}</small></div><i class="fa-solid fa-trash-can delete-btn" onclick="deleteSchedule('${s.id}')"></i>`;
                 scheduleList.appendChild(li);
             });
         }
@@ -2157,7 +2172,7 @@
                                 : `<span style="min-width:26px;height:26px;border-radius:50%;background:var(--hover-bg);color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.78rem;flex-shrink:0;">${i+1}</span>`;
                             const barClr  = s.grade >= dashPassing ? '#22c55e' : '#ef4444';
                             const gradeClr = s.grade >= dashPassing ? '#16a34a' : '#dc2626';
-                            topList.innerHTML += `<li class="item-row" style="padding:7px 5px;align-items:center;gap:10px;"><div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">${medal}<div style="flex:1;min-width:0;"><div style="font-size:0.87rem;font-weight:600;color:var(--text-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name}</div><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">${s.section}</div><div style="height:4px;background:var(--border-color);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.min(s.grade,100)}%;background:${barClr};border-radius:3px;"></div></div></div></div><span style="font-weight:800;font-size:0.93rem;color:${gradeClr};flex-shrink:0;">${s.grade}%</span></li>`;
+                            topList.innerHTML += `<li class="item-row" style="padding:7px 5px;align-items:center;gap:10px;"><div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">${medal}<div style="flex:1;min-width:0;"><div style="font-size:0.87rem;font-weight:600;color:var(--text-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.name)}</div><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">${esc(s.section)}</div><div style="height:4px;background:var(--border-color);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.min(s.grade,100)}%;background:${barClr};border-radius:3px;"></div></div></div></div><span style="font-weight:800;font-size:0.93rem;color:${gradeClr};flex-shrink:0;">${s.grade}%</span></li>`;
                         });
                     } else { topList.innerHTML = `<li style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">No performance data available yet</li>`; }
                 } else { updateChartBadges('both', []); initDashboardChart([null, null, null, null], 'both'); }
@@ -2188,7 +2203,7 @@
                 filteredStudents.sort((a, b) => a.section.localeCompare(b.section)); filteredStudents.forEach(student => {
                     let statusColor = student.status === 'Present' ? '#22c55e' : (student.status === 'Late' ? '#f59e0b' : '#ef4444');
                     const li = document.createElement('li'); li.className = 'item-row';
-                    li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${student.student_name}</strong><small style="color: var(--text-muted);">${student.section} - <span style="font-weight: 600; color: ${statusColor};">${student.status}</span></small></div>`;
+                    li.innerHTML = `<div style="display: flex; flex-direction: column;"><strong style="color: var(--text-dark); font-size: 0.95rem;">${esc(student.student_name)}</strong><small style="color: var(--text-muted);">${esc(student.section)} - <span style="font-weight: 600; color: ${statusColor};">${esc(student.status)}</span></small></div>`;
                     listContainer.appendChild(li);
                 });
             }
@@ -2203,7 +2218,7 @@
                 let sorted = [...globalSectionsData].sort((a, b) => a.title.localeCompare(b.title));
                 sorted.forEach((section, index) => {
                     const li = document.createElement('li'); li.className = 'item-row';
-                    li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${section.title}</strong></div>`;
+                    li.innerHTML = `<div style="display: flex; align-items: center; gap: 12px;"><span style="background: var(--accent-blue); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold;">${index + 1}</span><strong style="color: var(--text-dark); font-size: 0.95rem;">${esc(section.title)}</strong></div>`;
                     listContainer.appendChild(li);
                 });
             }
