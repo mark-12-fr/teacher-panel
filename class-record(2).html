@@ -500,8 +500,8 @@
 
         .sticky-col:nth-child(2) {
             left: 45px;
-            min-width: 220px;
-            max-width: 220px;
+            min-width: 160px;
+            max-width: 160px;
             border-right: 2px solid #475569 !important;
             white-space: nowrap;
             overflow: hidden;
@@ -970,6 +970,16 @@
         }
         [data-theme="dark"] #recordTable tbody tr:nth-child(even):not(.category-row) td {
             background-color: rgba(255,255,255,0.02);
+        }
+        /* Keep the frozen #/name columns FULLY OPAQUE even on striped (even)
+           rows, so horizontally-scrolled scores hide behind them instead of
+           bleeding through the name (the subtle stripe is dropped only on these
+           two frozen cells). */
+        #recordTable tbody tr:nth-child(even):not(.category-row) td.sticky-col {
+            background-color: var(--card-bg);
+        }
+        [data-theme="dark"] #recordTable tbody tr:nth-child(even):not(.category-row) td.sticky-col {
+            background-color: var(--card-bg);
         }
         /* MALE / FEMALE divider rows: each gender gets its own colored
            band so the two groups read as visually distinct sections
