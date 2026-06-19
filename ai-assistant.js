@@ -333,6 +333,27 @@
     window.MJR_isEvaluationIntent = isEvaluationIntent;
 
 
+    /**
+     * Shared friendly small-talk reply (greetings / thanks / "who are you"),
+     * in a warm, ChatGPT-like tone. Returns the reply string, or null when the
+     * message is a real data question (so the page's own handlers answer it).
+     * Understands Hiligaynon/Filipino greetings; always replies in English.
+     */
+    function smallTalk(query) {
+        const q = String(query || '').toLowerCase();
+        const dataWord = /grade|grado|score|puntos|student|estudyante|pasa|bagsak|fail|pass|top|highest|lowest|best|rank|absent|present|late|attendance|missing|kulang|exam|module|activit|performance|section|honor|risk|improv|summary|overview|report|compare|schedule|klase|facilitator|logs|population|how many|pila|id number|id ni|id of/i;
+        if (dataWord.test(q)) return null;
+        if (/\b(thank|thanks|salamat)\b/.test(q))
+            return "You're very welcome! 😊 I'm always here if you need anything else about your classes.";
+        if (/\b(hi|hello|hey|yo|kamusta|kumusta|maayong|magandang)\b/.test(q) || q.includes('good morning') || q.includes('good afternoon') || q.includes('good evening'))
+            return "Hi there! 👋 I'm your AcadTrack assistant. I can help you check grades, attendance, top or struggling students, missing requirements, and quick class summaries. What would you like to know?";
+        if (/\b(who are you|sin-?o ka|what can you do|what do you do)\b/.test(q))
+            return "I'm your AcadTrack AI assistant. 🙂 I can pull up grades and pass/fail, find your top or struggling students, check who's absent today, list missing requirements, and summarize how your class is doing. I understand Hiligaynon, Filipino, and English — just ask me anything about your classes!";
+        return null;
+    }
+    window.MJR_smallTalk = smallTalk;
+
+
     // ══════════════════════════════════════════════════════════════════════════
     // BACKEND API CALL
     // ══════════════════════════════════════════════════════════════════════════
