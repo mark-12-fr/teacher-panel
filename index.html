@@ -1528,11 +1528,11 @@
             const isDataQ = /grade|grado|score|puntos|student|estudyante|pasa|bagsak|fail|pass|top|highest|lowest|best|rank|absent|present|late|attendance|missing|kulang|exam|module|activit|performance|section|honor|risk|improv|summary|overview|report|compare|schedule|klase|facilitator|logs|population|how many|pila|id number|id ni|id of/i;
             if (!isDataQ.test(query)) {
                 if (/\b(thank|thanks|salamat)\b/i.test(query))
-                    return "You're welcome! 😊 Just ask anytime you need help with your classes.";
+                    return "You're very welcome! 😊 I'm always here if you need anything else about your classes.";
                 if (/\b(hi|hello|hey|yo|kamusta|kumusta|maayong|magandang)\b/i.test(query) || query.includes('good morning') || query.includes('good afternoon') || query.includes('good evening'))
-                    return "Hello! 👋 I'm your AcadTrack assistant. You can ask me about your students, grades, attendance, or class performance.";
+                    return "Hi there! 👋 I'm your AcadTrack assistant. I can help you check grades, attendance, top or struggling students, missing requirements, and quick class summaries. What would you like to know?";
                 if (/\b(who are you|sin-?o ka|what can you do|what do you do)\b/i.test(query))
-                    return "I'm your AcadTrack assistant. 🙂 I can check grades, attendance, top or struggling students, and class summaries — just ask in English or Hiligaynon.";
+                    return "I'm your AcadTrack AI assistant. 🙂 I can pull up grades and pass/fail, find your top or struggling students, check who's absent today, list missing requirements, and summarize how your class is doing. I understand Hiligaynon, Filipino, and English — just ask me anything about your classes!";
             }
 
             if (query.includes('how to check grade') || query.includes('check a student\'s grade')) {
@@ -1626,7 +1626,7 @@
             } else if (query.includes('top') || query.includes('highest') || query.includes('best')) {
                 if (students.length === 0) return "You don't have any students registered yet.";
                 let scored = students.map(s => ({ name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec => sec.id === s.section_id)?.title || 'Unknown Section' })).sort((a, b) => b.grade - a.grade).slice(0, 5);
-                let res = "<strong>Top Performing Students:</strong><ul class='ai-list'>";
+                let res = "<strong>🌟 Here are your top performers:</strong><ul class='ai-list'>";
                 scored.forEach((s, i) => { res += `<li><strong>#${i + 1} ${esc(s.name)}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${esc(s.section)})</span> - ${s.grade}%</li>`; });
                 res += "</ul>";
                 return res;
@@ -1641,7 +1641,7 @@
                     }
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
-                let res = "<strong>Students falling behind:</strong><ul class='ai-list'>";
+                let res = "<strong>📉 These students are currently below the passing grade:</strong><ul class='ai-list'>";
                 failing.forEach(f => res += `<li><strong>${f.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section})</span> - ${f.grade}%</li>`);
                 res += "</ul>";
                 return res;
@@ -1657,7 +1657,7 @@
                 });
                 if (passingList.length === 0) return "No students have reached the passing grade yet.";
                 passingList.sort((a, b) => b.grade - a.grade);
-                let res = `<strong>Passing students (${passingList.length}):</strong><ul class='ai-list'>`;
+                let res = `<strong>✅ Great news — ${passingList.length} student${passingList.length === 1 ? '' : 's'} are passing:</strong><ul class='ai-list'>`;
                 passingList.forEach(f => res += `<li><strong>${f.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${f.section})</span> - ${f.grade}%</li>`);
                 res += "</ul>";
                 return res;
@@ -1707,7 +1707,7 @@
                 let sorted = Object.keys(ac).sort((a, b) => ac[b].count - ac[a].count);
                 if (sorted.length === 0) return "Perfect attendance! No absences recorded.";
 
-                let res = "<strong>Frequently Absent Students:</strong><ul class='ai-list'>";
+                let res = "<strong>📅 Here are the students with the most absences:</strong><ul class='ai-list'>";
                 sorted.slice(0, 5).forEach(n => {
                     res += `<li><strong>${n}</strong> <span style="font-size:0.85rem; color:var(--text-muted);">(${ac[n].section})</span> <span style="color:#ef4444;">(${ac[n].count} absences)</span></li>`;
                 });
@@ -1735,7 +1735,7 @@
             } else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let passCount = 0; students.forEach(s => { if (getFinalGrade(s.id) >= passingFor(s.section_id)) passCount++; });
                 let passRate = students.length > 0 ? Math.round((passCount / students.length) * 100) : 0;
-                return `<strong>Class Overview:</strong><ul class='ai-list'><li>Total Sections: <strong>${sections.length}</strong></li><li>Total Students: <strong>${students.length}</strong></li><li>Passing Rate: <strong>${passRate}%</strong></li></ul>`;
+                return `<strong>📊 Here's a quick snapshot of your class:</strong><ul class='ai-list'><li>Total Sections: <strong>${sections.length}</strong></li><li>Total Students: <strong>${students.length}</strong></li><li>Passing Rate: <strong>${passRate}%</strong></li></ul>`;
             }
 
             const aiSummary = students.map(s => `${s.full_name} (${sections.find(x => x.id === s.section_id)?.title || 'N/A'}): ${getFinalGrade(s.id)}% [pass ${passingFor(s.section_id)}%]`).join('\n');
