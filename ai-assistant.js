@@ -275,27 +275,34 @@
     function formatAIText(text) {
         let html = escapeHtml(text)
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>');
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            // inline `code`
+            .replace(/`([^`]+?)`/g, '<code style="background:rgba(125,125,125,0.16);padding:1px 6px;border-radius:5px;font-size:0.9em;font-family:ui-monospace,Menlo,Consolas,monospace;">$1</code>');
         html = applyStatusBadges(html);
         const lines = html.split('\n');
-        let out = '', inList = false;
+        let out = '', listType = null; // null | 'ul' | 'ol'
+        const closeList = () => { if (listType) { out += (listType === 'ol' ? '</ol>' : '</ul>'); listType = null; } };
         lines.forEach(line => {
             const t = line.trim();
             if (/^###\s+/.test(t)) {
-                if (inList) { out += '</ul>'; inList = false; }
+                closeList();
                 out += '<div class="ai-subheader">' + t.replace(/^###\s+/, '') + '</div>';
             } else if (/^##\s+/.test(t)) {
-                if (inList) { out += '</ul>'; inList = false; }
-                out += '<div class="ai-section-header">' + t.replace(/^##\s+/, '') + '</div>';
+                closeList();
+                out += '<div class="ai-section-header">' + t.replace(/^#{1,2}\s+/, '') + '</div>';
+            } else if (/^\d+\.\s+/.test(t)) {
+                // numbered / ordered list (ChatGPT-style steps)
+                if (listType !== 'ol') { closeList(); out += "<ol class='ai-list' style='list-style:decimal;padding-left:22px;'>"; listType = 'ol'; }
+                out += '<li style="margin:2px 0;">' + t.replace(/^\d+\.\s+/, '') + '</li>';
             } else if (/^[-*•]\s+/.test(t)) {
-                if (!inList) { out += "<ul class='ai-list'>"; inList = true; }
+                if (listType !== 'ul') { closeList(); out += "<ul class='ai-list'>"; listType = 'ul'; }
                 out += '<li>' + t.replace(/^[-*•]\s+/, '') + '</li>';
             } else {
-                if (inList) { out += '</ul>'; inList = false; }
+                closeList();
                 if (t) out += '<p>' + t + '</p>';
             }
         });
-        if (inList) out += '</ul>';
+        closeList();
         return out || escapeHtml(text);
     }
     window.MJR_formatAIText = formatAIText;
