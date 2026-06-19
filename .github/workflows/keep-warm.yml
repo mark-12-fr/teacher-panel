@@ -1,0 +1,41 @@
+name: Keep backend warm
+
+# The AI assistant runs on a free Render service that "sleeps" after ~15 minutes
+# of inactivity, which causes a slow 30-60s cold start on the next request.
+# This scheduled ping keeps the service awake so the AI responds quickly.
+#
+# NOTE: GitHub's scheduled runs can be delayed by several minutes. For the most
+# reliable keep-alive, ALSO add a free monitor at https://uptimerobot.com that
+# pings the same URL every 5 minutes (HTTP monitor -> the /api/ping URL below).
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # every 10 minutes (just under Render's ~15 min sleep)
+  workflow_dispatch: {}        # also lets you run it manually from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the backend (/api/ping)
+        run: |
+          URL="https://teacher-panel-d1kw.onrender.com/api/ping"
+          for i in 1 2 3; do
+            if curl -fsS --max-time 90 "$URL"; then
+              echo ""
+              echo "Backend is awake."
+              exit 0
+            fi
+            echo "Attempt $i could not reach the backend; retrying in 15s..."
+            sleep 15
+          done
+          # Never fail the workflow — the server may simply be cold-starting.
+          echo "Backend did not respond yet (it may be waking up)."
+          exit 0
