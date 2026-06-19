@@ -1214,9 +1214,9 @@
             let teacherId = localStorage.getItem('user_id');
             if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
 
-            if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
-                return "Hello there! How can I assist you with your classes today?";
-            }
+            // Friendly small talk → shared warm reply (greetings / thanks).
+            const _st = window.MJR_smallTalk && window.MJR_smallTalk(query);
+            if (_st) return _st;
 
 
             const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
@@ -1269,7 +1269,7 @@
                     return { name: s.full_name, grade: getFinalGrade(rec), section: sections.find(sec => sec.id === s.section_id)?.title };
                 }).sort((a, b) => b.grade - a.grade).slice(0, 5);
 
-                let res = "<strong>Here are your top performing students:</strong><br><br>";
+                let res = "<strong>🌟 Here are your top performers:</strong><br><br>";
                 scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
                 return res;
             }
@@ -1281,7 +1281,7 @@
                     if (grade > 0 && grade < passingFor(s.section_id)) failing.push({ name: s.full_name, grade: grade });
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
-                let res = "<strong>The following students are currently falling behind:</strong><br><br>";
+                let res = "<strong>📉 These students are currently below the passing grade:</strong><br><br>";
                 failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`);
                 return res;
             }
@@ -1319,7 +1319,7 @@
                 let sortedAbsents = Object.keys(absentCounts).sort((a, b) => absentCounts[b] - absentCounts[a]);
                 if (sortedAbsents.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
 
-                let res = "<strong>Attendance Report (Frequently Absent):</strong><br><br>";
+                let res = "<strong>📅 Here are the students with the most absences:</strong><br><br>";
                 sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${name}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
@@ -1348,7 +1348,7 @@
                 students.forEach(s => { if (getFinalGrade(mergedRec(s.id)) >= passingFor(s.section_id)) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount / totalStuds) * 100) : 0;
 
-                return `<strong>Class Performance Overview:</strong><br><br>` +
+                return `<strong>📊 Here's a quick snapshot of your class:</strong><br><br>` +
                     `• Total Active Sections: <strong>${sections.length}</strong><br>` +
                     `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
                     `• Overall Passing Rate: <strong>${passRate}%</strong><br><br>` +

@@ -1597,15 +1597,9 @@
             let teacherId = localStorage.getItem('user_id');
             if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
 
-            // Friendly small talk → short, warm reply (no heavy analysis) unless
-            // the message has a data keyword, so real questions still get answered.
-            const isDataQ = /grade|grado|score|puntos|student|estudyante|pasa|bagsak|fail|pass|top|highest|lowest|best|rank|absent|present|late|attendance|missing|kulang|exam|module|activit|performance|section|honor|risk|improv|summary|overview|report|compare|schedule|klase|facilitator|logs|population|how many|pila|id number|id ni|id of/i;
-            if (!isDataQ.test(query)) {
-                if (/\b(thank|thanks|salamat)\b/i.test(query))
-                    return "You're welcome! 😊 Just ask anytime you need help with your class records.";
-                if (/\b(hi|hello|hey|yo|kamusta|kumusta|maayong|magandang)\b/i.test(query) || query.includes('good morning') || query.includes('good afternoon') || query.includes('good evening'))
-                    return "Hello! 👋 I'm your AcadTrack assistant. You can ask me about your students, grades, attendance, or class performance.";
-            }
+            // Friendly small talk → shared warm reply (greetings / thanks).
+            const _st = window.MJR_smallTalk && window.MJR_smallTalk(query);
+            if (_st) return _st;
 
             const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
             const sections = secRes || [];
@@ -1652,7 +1646,7 @@
                 let scoredStudents = students.map(s => {
                     return { name: s.full_name, grade: getFinalGrade(s.id), section: sections.find(sec => sec.id === s.section_id)?.title };
                 }).sort((a, b) => b.grade - a.grade).slice(0, 5);
-                let res = "<strong>Here are your top performing students:</strong><br><br>";
+                let res = "<strong>🌟 Here are your top performers:</strong><br><br>";
                 scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${escapeHTML(s.name)}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHTML(s.section || '')})</span><br>`; });
                 return res;
             }
@@ -1761,7 +1755,7 @@
                 let sortedAbsents = Object.keys(absentCounts).sort((a, b) => absentCounts[b] - absentCounts[a]);
                 if (sortedAbsents.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
 
-                let res = "<strong>Attendance Report (Frequently Absent):</strong><br><br>";
+                let res = "<strong>📅 Here are the students with the most absences:</strong><br><br>";
                 sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${escapeHTML(name)}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
@@ -1788,7 +1782,7 @@
                 let totalStuds = students.length; let passCount = 0;
                 students.forEach(s => { if (getFinalGrade(s.id) >= passingFor(s.section_id)) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount / totalStuds) * 100) : 0;
-                return `<strong>Class Performance Overview:</strong><br><br>` +
+                return `<strong>📊 Here's a quick snapshot of your class:</strong><br><br>` +
                     `• Total Active Sections: <strong>${sections.length}</strong><br>` +
                     `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
                     `• Overall Passing Rate: <strong>${passRate}%</strong><br><br>` +
