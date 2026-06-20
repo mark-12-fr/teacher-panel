@@ -505,7 +505,7 @@ def ai_evaluate():
         return jsonify({"error": "The AI service is having trouble right now. Please try again in a moment."}), 502
     except Exception as e:
         print(f"AI Evaluate Error: {e}")
-        return jsonify({"error": "AI error: " + str(e)[:300]}), 500
+        return jsonify({"error": "The AI service is having trouble right now. Please try again in a moment."}), 500
 
 
 if __name__ == '__main__':
