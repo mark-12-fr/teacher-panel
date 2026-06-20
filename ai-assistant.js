@@ -359,39 +359,54 @@
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Posts the teacher's question and class context to the /api/ai-evaluate endpoint.
-     * Includes a 60-second timeout and one automatic retry on transient failures.
-     * Rate-limit (429) responses are surfaced with a friendly message.
+     * Posts the teacher's question and class context to the AI endpoint.
+     * Tries the co-located Vercel function first (fast — no cold start), then
+     * falls back to the Render backend automatically, so the AI keeps working
+     * even if the Vercel function isn't configured yet. 60s timeout per try.
      *
      * @param {string} question - The teacher's question
      * @param {string} context  - Class data string built by buildAIContext()
      * @returns {Promise<string>} HTML-formatted AI reply, or an error message string
      */
+    async function _postAIEvaluate(url, payload) {
+        const controller = new AbortController();
+        const timer = setTimeout(function () { controller.abort(); }, 60000);
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload,
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            const data = await res.json().catch(() => ({}));
+            return { ok: res.ok, status: res.status, reply: data.reply, error: data.error };
+        } catch (e) {
+            clearTimeout(timer);
+            return { ok: false, status: 0, error: 'network' };
+        }
+    }
+
     async function callAIEvaluate(question, context) {
         const payload = JSON.stringify({ question: question, context: context });
-        for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-                const controller = new AbortController();
-                // Abort the fetch if the backend doesn't respond within 60 seconds
-                const timer = setTimeout(function () { controller.abort(); }, 60000);
-                const res = await fetch(MJR_API_URL + '/api/ai-evaluate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: payload,
-                    signal: controller.signal
-                });
-                clearTimeout(timer);
-                const data = await res.json().catch(() => ({}));
-                if (res.ok) return formatAIText(data.reply || 'No analysis available.');
-                if (res.status === 429) return escapeHtml(data.error || 'Please wait a moment and try again.');
-                // First attempt failed — retry once before giving up
-                if (attempt === 0) continue;
-                return escapeHtml(data.error || 'The AI assistant is unavailable right now.');
-            } catch (e) {
-                if (attempt === 0) { await new Promise(r => setTimeout(r, 1200)); continue; }
-                return 'The server is waking up and took too long. Please send your question again.';
+        // Vercel function first (same domain, fast), then the Render backend.
+        const endpoints = ['/api/ai-evaluate', MJR_API_URL + '/api/ai-evaluate'];
+        let lastError = null;
+        for (let i = 0; i < endpoints.length; i++) {
+            let r = await _postAIEvaluate(endpoints[i], payload);
+            // One transient retry (network / 5xx, but not a clean 503 "not configured").
+            if (!r.ok && (r.status === 0 || (r.status >= 500 && r.status !== 503))) {
+                await new Promise(res => setTimeout(res, 1000));
+                r = await _postAIEvaluate(endpoints[i], payload);
             }
+            if (r.ok && r.reply) return formatAIText(r.reply);
+            if (r.status === 429) return escapeHtml(r.error || 'Please wait a moment and try again.');
+            lastError = r.error || ('HTTP ' + r.status);
+            // Any other failure (404/503/5xx/network) → fall through to the next endpoint.
         }
+        return escapeHtml(lastError && lastError !== 'network'
+            ? lastError
+            : 'The server is waking up and took too long. Please send your question again.');
     }
     window.MJR_callAIEvaluate = callAIEvaluate;
 
