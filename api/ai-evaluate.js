@@ -153,7 +153,10 @@ module.exports = async (req, res) => {
             const msg = String((e && (e.raw || e.message)) || '').toLowerCase();
             const isLimit = ['429', '413', 'limit', 'rate', 'token', 'quota'].some((x) => msg.includes(x));
             if (!(geminiKey && isLimit)) {
-                res.status(502).json({ error: 'AI error: ' + String((e && e.message) || e).slice(0, 300) });
+                // Log the full upstream detail server-side (Vercel logs); return a
+                // generic message so provider/internal details never reach the client.
+                console.error('Groq AI upstream error:', (e && (e.raw || e.message)) || e);
+                res.status(502).json({ error: 'The AI service is having trouble right now. Please try again in a moment.' });
                 return;
             }
             // rate-limited → fall through to Gemini
@@ -175,6 +178,7 @@ module.exports = async (req, res) => {
             res.status(429).json({ error: 'The AI hit its free-tier rate limit. Please wait a moment and try again.' });
             return;
         }
-        res.status(502).json({ error: 'AI error: ' + String((e && e.message) || e).slice(0, 300) });
+        console.error('Gemini AI upstream error:', (e && e.message) || e);
+        res.status(502).json({ error: 'The AI service is having trouble right now. Please try again in a moment.' });
     }
 };
