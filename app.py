@@ -477,7 +477,7 @@ def ai_evaluate():
             else:
                 # Non-rate-limit error (e.g. bad key, model error) — return immediately
                 print(f"Groq error: {groq_err}")
-                return jsonify({"error": "AI error: " + groq_err[:300]}), 502
+                return jsonify({"error": "The AI service is having trouble right now. Please try again in a moment."}), 502
 
     # ── Step 2: Gemini fallback ────────────────────────────────────────────────
     # Used when Groq hits rate/token limits, or when only a Gemini key is configured
@@ -502,7 +502,7 @@ def ai_evaluate():
                 if '429' in es or 'RESOURCE_EXHAUSTED' in es:
                     return jsonify({"error": "The AI hit its free-tier rate limit. Please wait a moment and try again."}), 429
         print(f"Gemini error: {last_err}")
-        return jsonify({"error": "AI error: " + (str(last_err)[:300] if last_err else "No usable Gemini model found.")}), 502
+        return jsonify({"error": "The AI service is having trouble right now. Please try again in a moment."}), 502
     except Exception as e:
         print(f"AI Evaluate Error: {e}")
         return jsonify({"error": "AI error: " + str(e)[:300]}), 500
