@@ -532,6 +532,11 @@
             content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;
         }
         .q-tab.viewing.active-q::after { background: #bbf7d0; }
+        .s-tab { background: var(--input-bg); border: 1px solid var(--border-color); padding: 6px 16px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dark); transition: all 0.2s; }
+        .s-tab:hover { background: var(--hover-bg); }
+        .s-tab.viewing-s { background: #8b5cf6; color: #fff; border-color: transparent; }
+        .s-tab.active-s::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; }
+        .s-tab.viewing-s.active-s::after { background: #bbf7d0; }
         .lock-banner {
             display: none; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600;
             color: #b45309; background: rgba(245,158,11,0.13); border: 1px solid rgba(245,158,11,0.25);
@@ -1147,6 +1152,14 @@
                     <button id="activateQuarterBtn" class="q-activate-btn" style="display:none;" onclick="activateViewedQuarter()">Activate</button>
                 </div>
 
+                <div id="semesterBar" class="quarter-bar" style="margin-bottom:10px;">
+                    <span class="quarter-bar-label">Semester</span>
+                    <button class="s-tab" data-sem="1st Sem" onclick="setViewSemester('1st Sem')">1st Sem</button>
+                    <button class="s-tab" data-sem="2nd Sem" onclick="setViewSemester('2nd Sem')">2nd Sem</button>
+                    <span id="semBanner" class="lock-banner"></span>
+                    <button id="activateSemBtn" class="q-activate-btn" style="display:none;" onclick="activateViewedSemester()">Activate</button>
+                </div>
+
                 <div class="table-responsive">
                     <table id="recordTable">
                         <thead>
@@ -1336,11 +1349,12 @@
 
 
         let currentQuarter = '1';
-        let viewQuarter = '1';   // the quarter currently being viewed (defaults to the active quarter)
+        let viewQuarter = '1';
+        let currentSemester = '1st Sem';
+        let viewSemester = '1st Sem';
         function getViewQuarter() { return viewQuarter; }
-        // Only the section's active quarter is editable; any other quarter is
-        // locked, read-only history.
         function isQuarterLocked() { return String(viewQuarter) !== String(currentQuarter); }
+        function isSemesterLocked() { return viewSemester !== currentSemester; }
 
         function updateQuarterBar() {
             document.querySelectorAll('.q-tab').forEach(function (t) {
@@ -1361,10 +1375,34 @@
             }
         }
 
+        function updateSemesterBar() {
+            document.querySelectorAll('.s-tab').forEach(function (t) {
+                var sem = t.dataset.sem;
+                t.classList.toggle('viewing-s', sem === viewSemester);
+                t.classList.toggle('active-s', sem === currentSemester);
+            });
+            var banner = document.getElementById('semBanner');
+            if (!banner) return;
+            var activateBtn = document.getElementById('activateSemBtn');
+            if (isSemesterLocked()) {
+                banner.style.display = 'inline-flex';
+                banner.innerHTML = '<i class="fa-solid fa-lock"></i> ' + viewSemester + ' is not yet active.';
+                if (activateBtn) { activateBtn.style.display = 'inline-flex'; activateBtn.textContent = 'Activate ' + viewSemester; }
+            } else {
+                banner.style.display = 'none';
+                if (activateBtn) activateBtn.style.display = 'none';
+            }
+        }
+
         function setViewQuarter(q) {
             viewQuarter = String(q);
             updateQuarterBar();
             loadClassRecordData();
+        }
+
+        function setViewSemester(sem) {
+            viewSemester = sem;
+            updateSemesterBar();
         }
 
         async function activateViewedQuarter() {
@@ -1389,6 +1427,34 @@
             }
         }
 
+        async function activateViewedSemester() {
+            if (isSemesterLocked() && !confirm('Switch to ' + viewSemester + '? Quarter will reset to Q' + (viewSemester === '1st Sem' ? '1' : '3') + '. Past records stay saved.')) return;
+            var userId = localStorage.getItem('user_id');
+            if (!userId) return;
+            try {
+                var btn = document.getElementById('activateSemBtn');
+                if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+                var newQuarter = viewSemester === '1st Sem' ? '1' : '3';
+                var { error } = await supabaseClient.from('sections').update({ semester: viewSemester, quarter: newQuarter }).eq('id', currentSectionId).eq('teacher_id', userId);
+                if (error) throw error;
+                currentSemester = viewSemester;
+                currentQuarter = newQuarter;
+                viewQuarter = newQuarter;
+                document.getElementById('dashSemester').innerText = currentSemester;
+                document.getElementById('dashQuarter').innerText = 'Q' + currentQuarter;
+                updateSemesterBar();
+                updateQuarterBar();
+                loadClassRecordData();
+                showNotification('Section updated to ' + viewSemester + '!');
+            } catch (e) {
+                console.error(e);
+                showNotification('Failed to update semester.', 'error');
+            } finally {
+                var btn = document.getElementById('activateSemBtn');
+                if (btn) { btn.disabled = false; btn.textContent = 'Activate ' + viewSemester; }
+            }
+        }
+
         async function loadSectionDetails() {
             const userId = localStorage.getItem('user_id');
             try {
@@ -1402,18 +1468,19 @@
                 if (error) throw error;
 
                 if (!secData) {
-                    // Not this teacher's own section (or it doesn't exist) — refuse
-                    // to load and send them back to their own class-record list.
                     window.location.href = 'class-record.html';
                     return;
                 }
                 if (secData) {
                     document.getElementById('dashSubject').innerText = secData.subject || 'No Subject';
                     document.getElementById('dashSection').innerText = secData.title || 'No Title';
-                    document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
+                    currentSemester = secData.semester || '1st Sem';
+                    viewSemester = currentSemester;
+                    document.getElementById('dashSemester').innerText = currentSemester;
                     currentQuarter = secData.quarter ? String(secData.quarter) : '1';
-                    viewQuarter = currentQuarter;   // start on the active quarter
+                    viewQuarter = currentQuarter;
                     document.getElementById('dashQuarter').innerText = 'Q' + currentQuarter;
+                    updateSemesterBar();
                     updateQuarterBar();
                 }
             } catch (error) {
