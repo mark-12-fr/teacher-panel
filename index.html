@@ -2154,11 +2154,19 @@
                     const q4avg = q4_c > 0 ? Number((q4_t / q4_c).toFixed(2)) : null;
                     const chartData = [q1avg, q2avg, q3avg, q4avg];
                     // Passing grade for the whole dashboard, from the teacher's
-                    // Grading System. If every section's subject shares one
-                    // passing grade, use it; if they differ, use the most lenient
-                    // (lowest) as the overview floor. Falls back to 75 when unset.
-                    const passSet = [...new Set((sections || []).map(s => window.MJR_passingFor ? window.MJR_passingFor(s.subject) : 75))];
-                    const dashPassing = passSet.length === 1 ? passSet[0] : (passSet.length ? Math.min(...passSet) : 75);
+                    // Grading System. Map each section's subject to its passing
+                    // grade; if a section's subject isn't matched (so it would
+                    // fall back to the 75 default) but the teacher has a single
+                    // configured subject, use THAT subject's passing — so the
+                    // dashboard always reflects the Grading System even when a
+                    // section's subject name doesn't line up exactly.
+                    const _cfgPassings = [...new Set(Object.values(window.MJR_SUBJECT_CFG || {}).map(c => Number(c.passing)))];
+                    const _soleCfg = _cfgPassings.length === 1 ? _cfgPassings[0] : null;
+                    const passSet = [...new Set((sections || []).map(s => {
+                        const p = window.MJR_passingFor ? window.MJR_passingFor(s.subject) : 75;
+                        return (p === 75 && _soleCfg !== null) ? _soleCfg : p;
+                    }))];
+                    const dashPassing = passSet.length === 1 ? passSet[0] : (passSet.length ? Math.min(...passSet) : (_soleCfg !== null ? _soleCfg : 75));
                     updateChartBadges(activeSem, chartData, dashPassing);
                     initDashboardChart(chartData, activeSem, dashPassing);
                     const topList = document.getElementById('topPerformersList');
