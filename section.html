@@ -1609,20 +1609,33 @@
         }
 
         async function deleteSection(id) {
-            if (confirm("Are you sure you want to delete this record?")) {
-                const { error } = await supabaseClient
-                    .from('sections')
-                    .delete()
-                    .eq('id', id);
+            if (!confirm("Delete this section and ALL of its data? This permanently removes its students, class records, and attendance too — this cannot be undone.")) return;
+            const userId = localStorage.getItem('user_id');
+            try {
+                // Look up the section (attendance is linked by title, not id) and
+                // confirm it's yours before deleting anything.
+                const { data: sec, error: secErr } = await supabaseClient
+                    .from('sections').select('title').eq('id', id).eq('teacher_id', userId).maybeSingle();
+                if (secErr) throw secErr;
+                if (!sec) { showNotification("Section not found.", "error"); return; }
 
-                if (error) {
-                    console.error("Delete error:", error);
-                    showNotification("Error deleting record.", "error");
-                } else {
-                    showNotification("Record deleted.");
-                    loadSections();
-                    document.getElementById('searchInput').value = '';
-                }
+                // Delete dependents first, then the section itself. class_records
+                // reference students, so records must be removed before students.
+                let res = await supabaseClient.from('class_records').delete().eq('section_id', id);
+                if (res.error) throw res.error;
+                res = await supabaseClient.from('students').delete().eq('section_id', id);
+                if (res.error) throw res.error;
+                res = await supabaseClient.from('attendance').delete().eq('section', sec.title).eq('teacher_id', userId);
+                if (res.error) throw res.error;
+                res = await supabaseClient.from('sections').delete().eq('id', id).eq('teacher_id', userId);
+                if (res.error) throw res.error;
+
+                showNotification("Section and all its data deleted.");
+                loadSections();
+                document.getElementById('searchInput').value = '';
+            } catch (error) {
+                console.error("Delete error:", error);
+                showNotification("Error deleting the section.", "error");
             }
         }
 
