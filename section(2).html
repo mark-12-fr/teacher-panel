@@ -1172,7 +1172,6 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>ID no</th>
                                 <th>Student Name</th>
                                 <th>Gender</th>
                                 <th>Actions</th>
@@ -1192,7 +1191,6 @@
     <div id="modal2" class="modal">
         <div class="modal-content">
             <h3>Add New Student</h3>
-            <input type="text" id="addIdNo" placeholder="ID Number">
             <input type="text" id="addFullName" placeholder="Full Name">
             <select id="addGender">
                 <option value="" disabled selected>Select Gender</option>
@@ -1211,7 +1209,6 @@
             <span id="closeEditModal"
                 style="position:absolute; right:15px; top:10px; cursor:pointer; font-size:24px; color: var(--text-muted);">&times;</span>
             <h3>Edit Student Info</h3>
-            <input type="text" id="editIdNo" placeholder="ID Number">
             <input type="text" id="editFullName" placeholder="Full Name">
             <select id="editGender">
                 <option value="Male">Male</option>
@@ -1730,7 +1727,6 @@
                     ? `<span class="gender-badge gender-badge-${gLower}">${gLower === 'male' ? 'Male' : 'Female'}</span>`
                     : (stud.gender || '');
                 tr.innerHTML = `
-                <td>${stud.id_no}</td>
                 <td>${stud.full_name}</td>
                 <td>${genderBadge}</td>
                 <td>
@@ -1801,11 +1797,10 @@
         };
 
         confirmAdd.onclick = async () => {
-            const idNo = document.getElementById("addIdNo").value.trim();
             const fullName = document.getElementById("addFullName").value.trim();
             const gender = document.getElementById("addGender").value;
 
-            if (!idNo || !fullName || !gender) {
+            if (!fullName || !gender) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -1815,14 +1810,12 @@
                     .from('students')
                     .insert([{
                         section_id: currentSectionId,
-                        id_no: idNo,
                         full_name: fullName,
                         gender: gender
                     }]);
 
                 if (error) throw error;
 
-                document.getElementById("addIdNo").value = '';
                 document.getElementById("addFullName").value = '';
                 document.getElementById("addGender").value = '';
 
@@ -1841,7 +1834,6 @@
             const stud = JSON.parse(decodeURIComponent(encodedData));
             currentEditId = stud.id;
 
-            document.getElementById("editIdNo").value = stud.id_no;
             document.getElementById("editFullName").value = stud.full_name;
             document.getElementById("editGender").value = stud.gender;
 
@@ -1851,11 +1843,10 @@
         updateBtn.onclick = async () => {
             if (!currentEditId) return;
 
-            const idNo = document.getElementById("editIdNo").value.trim();
             const fullName = document.getElementById("editFullName").value.trim();
             const gender = document.getElementById("editGender").value;
 
-            if (!idNo || !fullName || !gender) {
+            if (!fullName || !gender) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -1863,7 +1854,7 @@
             try {
                 const { error } = await supabaseClient
                     .from('students')
-                    .update({ id_no: idNo, full_name: fullName, gender: gender })
+                    .update({ full_name: fullName, gender: gender })
                     .eq('id', currentEditId);
 
                 if (error) throw error;
