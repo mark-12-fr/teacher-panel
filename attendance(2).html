@@ -2254,7 +2254,7 @@
                 const monthStr = (selectedMonth + 1).toString().padStart(2, '0');
                 const targetDate = `${dayStr}/${monthStr}/${selectedYear}`;
 
-                const record = allAttendance ? allAttendance.find(a => (a.student_id_no === student.id_no || a.student_name === student.full_name) && a.date === targetDate) : null;
+                const record = allAttendance ? allAttendance.find(a => ((student.id_no && a.student_id_no === student.id_no) || a.student_name === student.full_name) && a.date === targetDate) : null;
 
                 let mark = '-'; let markClass = 'mark-none';
                 if (record) {
