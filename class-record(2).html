@@ -566,15 +566,20 @@
             font-weight: 400;
         }
 
-        .editable-score.carried-over {
-            opacity: 0.55;
-            font-style: italic;
+        .q-activate-btn {
+            background: #10b981;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.2s;
+            white-space: nowrap;
         }
-
-        .editable-score.carried-over:focus {
-            opacity: 1;
-            font-style: normal;
-        }
+        .q-activate-btn:hover { background: #059669; }
 
 
         .toast-notification {
@@ -1139,6 +1144,7 @@
                     <button class="q-tab" data-q="3" onclick="setViewQuarter('3')">Q3</button>
                     <button class="q-tab" data-q="4" onclick="setViewQuarter('4')">Q4</button>
                     <span id="lockBanner" class="lock-banner"></span>
+                    <button id="activateQuarterBtn" class="q-activate-btn" style="display:none;" onclick="activateViewedQuarter()">Activate</button>
                 </div>
 
                 <div class="table-responsive">
@@ -1344,11 +1350,14 @@
             });
             var banner = document.getElementById('lockBanner');
             if (!banner) return;
+            var activateBtn = document.getElementById('activateQuarterBtn');
             if (isQuarterLocked()) {
                 banner.style.display = 'inline-flex';
-                banner.innerHTML = '<i class="fa-solid fa-lock"></i> Q' + viewQuarter + ' is locked history — only the active quarter (Q' + currentQuarter + ') can be edited. Change it on the Section page.';
+                banner.innerHTML = '<i class="fa-solid fa-lock"></i> Q' + viewQuarter + ' is not yet active.';
+                if (activateBtn) { activateBtn.style.display = 'inline-flex'; activateBtn.textContent = 'Activate Q' + viewQuarter; }
             } else {
                 banner.style.display = 'none';
+                if (activateBtn) activateBtn.style.display = 'none';
             }
         }
 
@@ -1356,6 +1365,28 @@
             viewQuarter = String(q);
             updateQuarterBar();
             loadClassRecordData();
+        }
+
+        async function activateViewedQuarter() {
+            if (isQuarterLocked() && !confirm('Switch active quarter to Q' + viewQuarter + '? Past records stay saved.')) return;
+            var userId = localStorage.getItem('user_id');
+            if (!userId) return;
+            try {
+                var btn = document.getElementById('activateQuarterBtn');
+                if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+                var { error } = await supabaseClient.from('sections').update({ quarter: viewQuarter }).eq('id', currentSectionId).eq('teacher_id', userId);
+                if (error) throw error;
+                currentQuarter = viewQuarter;
+                updateQuarterBar();
+                loadClassRecordData();
+                showNotification('Section updated to Q' + viewQuarter + '!');
+            } catch (e) {
+                console.error(e);
+                showNotification('Failed to update quarter.', 'error');
+            } finally {
+                var btn = document.getElementById('activateQuarterBtn');
+                if (btn) { btn.disabled = false; btn.textContent = 'Activate Q' + viewQuarter; }
+            }
         }
 
         async function loadSectionDetails() {
@@ -1483,37 +1514,15 @@
                 || studentRecs.find(r => r.quarter === null || r.quarter === undefined)
                 || null;
 
-
-            const fallbackRecs = studentRecs
-                .filter(r => r !== currentRec)
-                .sort((a, b) => Number(b.quarter || 0) - Number(a.quarter || 0));
-
             function valueFor(field) {
                 if (currentRec) {
                     const v = currentRec[field];
                     if (v !== null && v !== undefined && v !== '') return v;
                 }
-                // Locked (past/other) quarter = pure history: show ONLY that
-                // quarter's own stored values, never carry-over from others.
-                if (isQuarterLocked()) return null;
-                for (const r of fallbackRecs) {
-                    const v = r[field];
-                    if (v !== null && v !== undefined && v !== '') return v;
-                }
                 return null;
             }
 
-            function carriedFromOther(field) {
-                if (isQuarterLocked()) return false;
-                if (currentRec) {
-                    const v = currentRec[field];
-                    if (v !== null && v !== undefined && v !== '') return false;
-                }
-                return fallbackRecs.some(r => {
-                    const v = r[field];
-                    return v !== null && v !== undefined && v !== '';
-                });
-            }
+            function carriedFromOther() { return false; }
 
             let html = `<td class="sticky-col">${index}</td><td class="sticky-col text-left group-divider search-target" title="${student.full_name}"><strong>${student.full_name}</strong></td>`;
 
