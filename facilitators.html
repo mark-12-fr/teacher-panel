@@ -1722,9 +1722,9 @@
             const sectionTitles = sections.map(s => s.title);
 
             const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
-                supabaseClient.from('students').select('*').in('section_id', sectionIds),
-                supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
-                supabaseClient.from('attendance').select('*').in('section', sectionTitles).eq('teacher_id', teacherId),
+                window.MJR_fetchAll(supabaseClient, 'students', q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true })).then(data => ({ data })).catch(() => ({ data: [] })),
+                window.MJR_fetchAll(supabaseClient, 'class_records', q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true })).then(data => ({ data })).catch(() => ({ data: [] })),
+                window.MJR_fetchAll(supabaseClient, 'attendance', q => q.select('*').in('section', sectionTitles).eq('teacher_id', teacherId).order('id', { ascending: true })).then(data => ({ data })).catch(() => ({ data: [] })),
                 supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
                 supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
             ]);

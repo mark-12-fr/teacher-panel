@@ -1546,14 +1546,16 @@
             if (window.MJR_loadSubjectConfigs) await window.MJR_loadSubjectConfigs(supabaseClient, teacherId);
             if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
             const sectionIds = sections.map(s => s.id); const sectionTitles = sections.map(s => s.title);
-            const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
-                supabaseClient.from('students').select('*').in('section_id', sectionIds),
-                supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
-                supabaseClient.from('attendance').select('*').in('section', sectionTitles).eq('teacher_id', teacherId),
+            // Paginate the big tables past Supabase's 1000-row cap so the AI
+            // sees every student's records (otherwise the newest quarter's rows
+            // silently drop for a large class).
+            const [students, records, attendance, schedRes, facRes] = await Promise.all([
+                window.MJR_fetchAll(supabaseClient, 'students', q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true })),
+                window.MJR_fetchAll(supabaseClient, 'class_records', q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true })),
+                window.MJR_fetchAll(supabaseClient, 'attendance', q => q.select('*').in('section', sectionTitles).eq('teacher_id', teacherId).order('id', { ascending: true })),
                 supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
                 supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
             ]);
-            const students = studRes.data || []; const records = recRes.data || []; const attendance = attRes.data || [];
             const schedules = schedRes.data || []; const facilitators = facRes.data || [];
 
             const getFinalGrade = (studentId) => {
@@ -2089,13 +2091,18 @@
                 if (totalSections > 0) {
                     sections.forEach(s => { sectionTitles.push(s.title); sectionMap[s.id] = s.title; sectionSubjectMap[s.id] = s.subject; });
                     const sectionIds = sections.map(s => s.id);
-                    const { data: students } = await supabaseClient.from('students').select('id, full_name, section_id').in('section_id', sectionIds);
+                    // Paginate past Supabase's 1000-row cap: with many students a
+                    // plain select silently drops the newest rows (e.g. Q4), so a
+                    // whole quarter would disappear from this chart.
+                    const students = await window.MJR_fetchAll(supabaseClient, 'students',
+                        q => q.select('id, full_name, section_id').in('section_id', sectionIds).order('id', { ascending: true }));
                     totalStudents = students ? students.length : 0;
                     const exactTodayDate = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`;
                     const { data: attData } = await supabaseClient.from('attendance').select('status, student_name, section').in('section', sectionTitles).eq('teacher_id', teacherId).eq('date', exactTodayDate);
                     if (attData) { todayAttendanceData = attData; attData.forEach(r => { if (r.status === 'Present') present++; else absentOrLate++; }); }
 
-                    const { data: records } = await supabaseClient.from('class_records').select('*').in('section_id', sectionIds);
+                    const records = await window.MJR_fetchAll(supabaseClient, 'class_records',
+                        q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true }));
                     let q1_t = 0, q1_c = 0, q2_t = 0, q2_c = 0, q3_t = 0, q3_c = 0, q4_t = 0, q4_c = 0; let allStudentsScores = [];
                     const secQtr = { Q1: {}, Q2: {}, Q3: {}, Q4: {} };
                     function trackSec(map, key, grade) { if (!map[key]) map[key] = { t: 0, c: 0 }; map[key].t += grade; map[key].c++; }
