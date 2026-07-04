@@ -1557,7 +1557,7 @@
             const schedules = schedRes.data || []; const facilitators = facRes.data || [];
 
             const getFinalGrade = (studentId) => {
-                let studRecs = records.filter(r => r.student_id === studentId).sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                let studRecs = records.filter(r => r.student_id === studentId).sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
                 let merged = studRecs.reduce((acc, curr) => { Object.keys(curr).forEach(key => { if (curr[key] !== null && curr[key] !== undefined && curr[key] !== "") acc[key] = curr[key]; }); return acc; }, {});
                 let totalWW = 0, totalPT = 0, totalQE = Number(merged.qe) || 0;
                 for (let key in merged) { if (key.startsWith('module_') || key.startsWith('activity_') || key === 'at') totalWW += Number(merged[key]) || 0; if (key.startsWith('pt_')) totalPT += Number(merged[key]) || 0; }
@@ -1589,7 +1589,7 @@
                     Object.keys(r).forEach(k => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[sid].add(k); });
                 });
                 const missingFor = (s) => {
-                    const recs = records.filter(r => r.student_id === s.id).sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                    const recs = records.filter(r => r.student_id === s.id).sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
                     if (recs.length === 0) return null;
                     const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {});
                     return Array.from(activeBySection[s.section_id] || []).filter(k => isBlank(merged[k])).map(pretty);
@@ -2110,7 +2110,7 @@
                     if (students && records) {
                         students.forEach(student => {
                             const studentRecords = records.filter(r => r.student_id === student.id)
-                                .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                                .sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
                             if (studentRecords.length === 0) return;
 
 
@@ -2122,13 +2122,18 @@
                                     if ((key.startsWith('module_') || key.startsWith('activity_') || key.startsWith('pt_') || key === 'at' || key === 'qe') && Number(row[key]) > 0) { hasScore = true; break; }
                                 }
                                 if (!hasScore) return;
-                                const qtr = String(row.quarter || '1');
+                                // Quarter may be stored as a bare number, '1'/'1st', or a
+                                // longer label like 'Q4'/'Q4 - Fourth Quarter' — strip
+                                // everything but the 1-4 digit so every stored format
+                                // still lands in the right bucket (matches the same
+                                // normalization used by the per-section trend chart).
+                                const qtr = String(row.quarter || '1').replace(/[^1-4]/g, '') || '1';
                                 const grade = gradeFromRow(row, sectionSubjectMap[student.section_id]);
                                 const secTitle = sectionMap[student.section_id] || 'Unknown';
-                                if (qtr === '1' || qtr === '1st') { q1_t += grade; q1_c++; trackSec(secQtr.Q1, secTitle, grade); }
-                                else if (qtr === '2' || qtr === '2nd') { q2_t += grade; q2_c++; trackSec(secQtr.Q2, secTitle, grade); }
-                                else if (qtr === '3' || qtr === '3rd') { q3_t += grade; q3_c++; trackSec(secQtr.Q3, secTitle, grade); }
-                                else if (qtr === '4' || qtr === '4th') { q4_t += grade; q4_c++; trackSec(secQtr.Q4, secTitle, grade); }
+                                if (qtr === '1') { q1_t += grade; q1_c++; trackSec(secQtr.Q1, secTitle, grade); }
+                                else if (qtr === '2') { q2_t += grade; q2_c++; trackSec(secQtr.Q2, secTitle, grade); }
+                                else if (qtr === '3') { q3_t += grade; q3_c++; trackSec(secQtr.Q3, secTitle, grade); }
+                                else if (qtr === '4') { q4_t += grade; q4_c++; trackSec(secQtr.Q4, secTitle, grade); }
                             });
 
 

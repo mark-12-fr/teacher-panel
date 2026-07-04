@@ -1634,7 +1634,7 @@
             const getFinalGrade = (studentId) => {
                 const stud = students.find(x => x.id === studentId) || {};
                 let studRecs = records.filter(r => r.student_id === studentId)
-                    .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                    .sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
                 let merged = studRecs.reduce((acc, curr) => {
                     Object.keys(curr).forEach(key => { if (curr[key] !== null && curr[key] !== undefined && curr[key] !== '') acc[key] = curr[key]; }); return acc;
                 }, {});
@@ -1690,7 +1690,7 @@
                     Object.keys(r).forEach(k => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[sid].add(k); });
                 });
                 const missingFor = (s) => {
-                    const recs = records.filter(r => r.student_id === s.id).sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                    const recs = records.filter(r => r.student_id === s.id).sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
                     if (recs.length === 0) return null;
                     const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {});
                     return Array.from(activeBySection[s.section_id] || []).filter(k => isBlank(merged[k])).map(pretty);
@@ -1939,7 +1939,7 @@
                 // Sort by quarter so the merge ("latest non-empty wins") resolves
                 // to the same record on both panels -> identical grades & ranking.
                 const studentRecords = records.filter(r => r.student_id === student.id)
-                    .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                    .sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
 
                 const mergedScores = studentRecords.reduce((acc, curr) => {
                     Object.keys(curr).forEach(key => {

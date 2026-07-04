@@ -474,7 +474,7 @@
          */
         const analyze = st => {
             const recs = records.filter(r => r.student_id === st.id)
-                .sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0));
+                .sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0));
             const merged = recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; }); return acc; }, {});
             let totalWW = 0, totalPT = 0; const totalQE = Number(merged.qe) || 0;
             for (const k in merged) {
