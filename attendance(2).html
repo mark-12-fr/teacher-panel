@@ -2310,6 +2310,21 @@
             });
         });
 
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('customToast');
+            const textElement = document.getElementById('toastMessage');
+            const iconElement = toast?.querySelector('i');
+            if (!toast || !textElement || !iconElement) return;
+            textElement.textContent = message;
+            if (type === 'success') {
+                toast.style.backgroundColor = '#10b981'; iconElement.className = 'fa-solid fa-circle-check';
+            } else {
+                toast.style.backgroundColor = '#ef4444'; iconElement.className = 'fa-solid fa-circle-exclamation';
+            }
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
         async function exportAttendanceToCSV() {
             try {
                 showNotification("Generating Excel...");
@@ -2330,6 +2345,7 @@
 
                 let ws = XLSX.utils.aoa_to_sheet(rows);
                 window.autoFitColumns(XLSX, ws);
+                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
 

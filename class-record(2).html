@@ -1726,6 +1726,7 @@
 
                 let ws = XLSX.utils.aoa_to_sheet(rows);
                 window.autoFitColumns(XLSX, ws);
+                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Class Record');
 
