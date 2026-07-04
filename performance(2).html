@@ -2132,7 +2132,13 @@
             // Line chart — only re-render labels/data if quarter filter
             // changed; otherwise keep the global per-quarter trend.
             if (chartInstances.line) {
-                const quarters = SEMESTER_QUARTERS[currentSemester] || ['1', '2'];
+                // Show this semester's own quarters, PLUS any quarter that
+                // actually has scores — so real Q3/Q4 data is never hidden just
+                // because the section is tagged 1st Sem (and vice-versa). Falls
+                // back to the semester default when nothing has data yet.
+                const semQ = SEMESTER_QUARTERS[currentSemester] || ['1', '2'];
+                const withData = ['1', '2', '3', '4'].filter(q => Number(stats['q' + q + '_count']) > 0);
+                const quarters = [...new Set([...semQ, ...withData])].sort();
                 let labels, data;
                 if (qFilter === 'all') {
                     labels = quarters.map(q => q + (q === '1' ? 'st' : q === '2' ? 'nd' : q === '3' ? 'rd' : 'th') + ' Qtr');
