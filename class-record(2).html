@@ -1109,8 +1109,8 @@
                     <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
                     <h1>Class Record</h1>
                 </div>
-                <button class="export-btn" onclick="exportToCSV()"><i class="fa-solid fa-download"></i> Export
-                    CSV</button>
+                <button class="export-btn" onclick="exportToCSV()"><i class="fa-solid fa-file-excel"></i> Export
+                    Excel</button>
             </div>
 
             <div class="dashboard-wrapper">
@@ -1706,32 +1706,35 @@
         });
 
 
-        function exportToCSV() {
-            let csv = [];
-            let rows = document.querySelectorAll("#recordTable tr");
+        async function exportToCSV() {
+            try {
+                showNotification("Generating Excel...");
+                await window.loadSheetJS();
+                let XLSX = window.XLSX;
+                if (!XLSX) throw new Error('SheetJS failed to load.');
 
-            for (let i = 0; i < rows.length; i++) {
-                if (rows[i].style.display === 'none') continue;
-
-                let row = [], cols = rows[i].querySelectorAll("td, th");
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/"/g, '""');
-                    row.push('"' + text + '"');
+                let rows = [];
+                let tableRows = document.querySelectorAll("#recordTable tr");
+                for (let i = 0; i < tableRows.length; i++) {
+                    if (tableRows[i].style.display === 'none') continue;
+                    let row = [], cols = tableRows[i].querySelectorAll("td, th");
+                    for (let j = 0; j < cols.length; j++) {
+                        row.push(cols[j].innerText.trim());
+                    }
+                    rows.push(row);
                 }
-                csv.push(row.join(","));
+
+                let ws = XLSX.utils.aoa_to_sheet(rows);
+                window.autoFitColumns(XLSX, ws);
+                let wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Class Record');
+
+                const sectionName = document.getElementById('dashSection').innerText || 'Section';
+                XLSX.writeFile(wb, `Class_Record_${sectionName.replace(/\s+/g, '_')}.xlsx`);
+                showNotification("Class Record exported successfully!");
+            } catch (e) {
+                showNotification("Export failed: " + e.message, "error");
             }
-
-            let csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
-            let downloadLink = document.createElement("a");
-
-            const sectionName = document.getElementById('dashSection').innerText || 'Section';
-            downloadLink.download = `Class_Record_${sectionName.replace(/\s+/g, '_')}.csv`;
-            downloadLink.href = window.URL.createObjectURL(csvFile);
-            downloadLink.style.display = "none";
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            showNotification("Class Record exported successfully!");
         }
 
 

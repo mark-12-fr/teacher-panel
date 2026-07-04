@@ -147,7 +147,7 @@
             var rows = [['AI Assistant Report'], ['Page: ' + getPageName() + '  |  Generated: ' + getTimestamp()], []];
             lines.forEach(function (l) { rows.push([l.replace(/^[-*•]\s+/, '• ')]); });
             var ws = XLSX.utils.aoa_to_sheet(rows);
-            ws['!cols'] = [{ wch: 100 }];
+            autoFitColumns(XLSX, ws);
             XLSX.utils.book_append_sheet(wb, ws, 'AI Report');
 
             XLSX.writeFile(wb, getFilename('xlsx'));
@@ -156,6 +156,30 @@
             showToast('Excel export failed: ' + e.message, 'error');
         }
     };
+
+    /* ── Shared helpers (used by inline exports on other pages) ────────── */
+    window.loadSheetJS = function () {
+        return loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    };
+
+    function autoFitColumns(XLSX, ws, minWidth) {
+        if (!ws['!ref']) return;
+        var range = XLSX.utils.decode_range(ws['!ref']);
+        var colWidths = [];
+        for (var C = range.s.c; C <= range.e.c; C++) {
+            var maxLen = 0;
+            for (var R = range.s.r; R <= range.e.r; R++) {
+                var cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+                if (cell && cell.v !== undefined) {
+                    var len = String(cell.v).length;
+                    if (len > maxLen) maxLen = len;
+                }
+            }
+            colWidths[C] = { wch: Math.max(minWidth || 10, maxLen + 3) };
+        }
+        ws['!cols'] = colWidths;
+    }
+    window.autoFitColumns = autoFitColumns;
 
     /* ── DOCX (Word-compatible HTML blob) ────────────────────────────────── */
     window.MJR_exportDOCS = function () {
