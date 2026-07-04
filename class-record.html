@@ -1283,7 +1283,7 @@
             // latest non-empty wins) so factual AI answers match the dashboard,
             // the performance page, and the facilitator panel.
             const passingFor = (sectionId) => { const subj = (sections.find(sec => sec.id === sectionId) || {}).subject; return window.MJR_passingFor ? window.MJR_passingFor(subj) : 75; };
-            const mergedRec = (studentId) => { const recs = records.filter(r => r.student_id === studentId).sort((a, b) => Number(a.quarter || 0) - Number(b.quarter || 0)); if (!recs.length) return null; return recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {}); };
+            const mergedRec = (studentId) => { const recs = records.filter(r => r.student_id === studentId).sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0)); if (!recs.length) return null; return recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {}); };
 
             if (query.includes('top') || query.includes('highest') || query.includes('best')) {
                 if (students.length === 0) return "You don't have any students registered yet.";
