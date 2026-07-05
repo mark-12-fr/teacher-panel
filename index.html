@@ -2085,7 +2085,29 @@
                 globalSectionsData = sections || [];
                 // Load each subject's grading weights so the dashboard reflects
                 // the teacher's Grading System config (default 30/50/20/0/75).
-                await window.MJR_loadSubjectConfigs(supabaseClient, teacherId);
+                // Capture the returned map locally so the passing grade below is
+                // read from THIS load, never a later/stale global overwrite.
+                let subjectCfg = (await window.MJR_loadSubjectConfigs(supabaseClient, teacherId)) || {};
+                // Resilience: if the live query came back empty (e.g. a flaky
+                // read right after switching accounts), fall back to the exact
+                // subjects the Grading System last saved/cached for THIS teacher,
+                // so the dashboard still reflects what the teacher set (e.g. 50%)
+                // instead of silently defaulting to 75%.
+                if (!Object.keys(subjectCfg).length) {
+                    try {
+                        const rawUid = localStorage.getItem('user_id');
+                        const cached = JSON.parse(localStorage.getItem('cached_subjects_' + rawUid) || '[]');
+                        const cmap = {};
+                        (cached || []).forEach(r => {
+                            cmap[String(r.name == null ? '' : r.name).trim().toLowerCase()] = {
+                                ww: Number(r.ww_percent) || 30, pt: Number(r.pt_percent) || 50,
+                                exam: Number(r.exam_percent) || 20, att: Number(r.attendance_percent) || 0,
+                                passing: isFinite(Number(r.passing_grade)) ? Number(r.passing_grade) : 75
+                            };
+                        });
+                        if (Object.keys(cmap).length) { subjectCfg = cmap; window.MJR_SUBJECT_CFG = cmap; }
+                    } catch (e) { /* keep whatever we had */ }
+                }
                 let totalSections = sections ? sections.length : 0;
                 let sectionTitles = []; let sectionMap = {}; let sectionSubjectMap = {}; let totalStudents = 0; let present = 0; let absentOrLate = 0;
                 if (totalSections > 0) {
@@ -2165,20 +2187,38 @@
                     const q3avg = q3_c > 0 ? Number((q3_t / q3_c).toFixed(2)) : null;
                     const q4avg = q4_c > 0 ? Number((q4_t / q4_c).toFixed(2)) : null;
                     const chartData = [q1avg, q2avg, q3avg, q4avg];
-                    // Passing grade for the whole dashboard, from the teacher's
-                    // Grading System. Map each section's subject to its passing
-                    // grade; if a section's subject isn't matched (so it would
-                    // fall back to the 75 default) but the teacher has a single
-                    // configured subject, use THAT subject's passing — so the
-                    // dashboard always reflects the Grading System even when a
-                    // section's subject name doesn't line up exactly.
-                    const _cfgPassings = [...new Set(Object.values(window.MJR_SUBJECT_CFG || {}).map(c => Number(c.passing)))];
-                    const _soleCfg = _cfgPassings.length === 1 ? _cfgPassings[0] : null;
-                    const passSet = [...new Set((sections || []).map(s => {
-                        const p = window.MJR_passingFor ? window.MJR_passingFor(s.subject) : 75;
-                        return (p === 75 && _soleCfg !== null) ? _soleCfg : p;
-                    }))];
-                    const dashPassing = passSet.length === 1 ? passSet[0] : (passSet.length ? Math.min(...passSet) : (_soleCfg !== null ? _soleCfg : 75));
+                    // Passing grade for the whole dashboard, taken straight from
+                    // the teacher's Grading System config captured above (so it
+                    // can't be defeated by a later/stale global overwrite). Use a
+                    // section's own subject passing when its name matches a
+                    // configured subject; otherwise, when the teacher has a single
+                    // configured passing, use that; else the lowest configured.
+                    // Only when NO subject is configured at all does it fall back
+                    // to the 75 DepEd default — so once you set 50% in the Grading
+                    // System, the dashboard reflects 50% even if the section's
+                    // subject name doesn't line up exactly.
+                    const _norm = v => String(v == null ? '' : v).trim().toLowerCase();
+                    const _cfgVals = Object.values(subjectCfg).map(c => Number(c.passing)).filter(n => isFinite(n));
+                    const _distinct = [...new Set(_cfgVals)];
+                    const _sole = _distinct.length === 1 ? _distinct[0] : null;
+                    let dashPassing;
+                    if (_distinct.length === 0) {
+                        dashPassing = 75; // no Grading System config yet → DepEd default
+                    } else {
+                        const _perSec = (sections || []).map(s => {
+                            const c = subjectCfg[_norm(s.subject)];
+                            const p = c ? Number(c.passing) : NaN;
+                            return isFinite(p) ? p : (_sole != null ? _sole : Math.min(..._distinct));
+                        });
+                        const _set = [...new Set(_perSec)];
+                        dashPassing = _set.length === 1 ? _set[0]
+                            : (_set.length ? Math.min(..._set)
+                                : (_sole != null ? _sole : Math.min(..._distinct)));
+                    }
+                    // Diagnostic (safe, invisible to users): if the passing looks
+                    // wrong, open the browser console to see exactly what the
+                    // Grading System returned vs. the sections' subject names.
+                    try { console.log('[AcadTrack] passing =', dashPassing, '| grading configs =', subjectCfg, '| section subjects =', (sections || []).map(s => s.subject)); } catch (e) {}
                     updateChartBadges(activeSem, chartData, dashPassing);
                     initDashboardChart(chartData, activeSem, dashPassing);
                     const topList = document.getElementById('topPerformersList');
