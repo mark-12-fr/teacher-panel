@@ -1167,8 +1167,8 @@
                     <h1>Class Performance</h1>
                 </div>
                 <div class="topbar-actions">
-                    <button class="export-btn" id="exportCsvBtn" title="Export to CSV"><i class="fa-solid fa-file-csv"></i> <span
-                            class="export-text">Export CSV</span></button>
+                    <button class="export-btn" id="exportCsvBtn" title="Export to Excel"><i class="fa-solid fa-file-excel"></i> <span
+                            class="export-text">Export Excel</span></button>
                     <button class="export-btn" onclick="window.print()" title="Print report"><i class="fa-solid fa-print"></i> <span
                             class="export-text">Print</span></button>
                 </div>
@@ -2255,55 +2255,62 @@
         /* ═══════════════════════════════════════════════════════════════
            EXPORT TO CSV
            ═══════════════════════════════════════════════════════════════ */
-        function exportToCSV() {
+        async function exportToCSV() {
             if (!lastStudentsData || lastStudentsData.length === 0) {
                 showNotification("No data to export.", "error");
                 return;
             }
-            const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Final Grade'];
-            // Use the same sort/filter as the visible table
-            let rows = lastStudentsData.slice();
-            if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= PAGE_PASSING);
-            else if (tableState.filter === 'fail') rows = rows.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < PAGE_PASSING);
-            else if (tableState.filter === 'top10') rows = rows.sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0)).slice(0, 10);
+            try {
+                showNotification("Generating Excel...");
+                await window.loadSheetJS();
+                let XLSX = window.XLSX;
+                if (!XLSX) throw new Error('SheetJS failed to load.');
 
-            const q = tableState.search.trim().toLowerCase();
-            if (q) rows = rows.filter(s => (s.full_name || '').toLowerCase().includes(q));
+                const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Final Grade'];
+                let rows = lastStudentsData.slice();
+                if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= PAGE_PASSING);
+                else if (tableState.filter === 'fail') rows = rows.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < PAGE_PASSING);
+                else if (tableState.filter === 'top10') rows = rows.sort((a, b) => (b.final_grade || 0) - (a.final_grade || 0)).slice(0, 10);
 
-            const dir = tableState.sortDir === 'asc' ? 1 : -1;
-            const key = tableState.sortKey;
-            rows.sort((a, b) => {
-                let av, bv;
-                if (key === 'name') { av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase(); return av.localeCompare(bv) * dir; }
-                if (key === 'ww')  { av = a.written_works || 0; bv = b.written_works || 0; return (av - bv) * dir; }
-                if (key === 'pt')  { av = a.perf_task || 0; bv = b.perf_task || 0; return (av - bv) * dir; }
-                if (key === 'qe')  { av = a.quarterly_exam || 0; bv = b.quarterly_exam || 0; return (av - bv) * dir; }
-                if (key === 'att') { av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir; }
-                av = a.final_grade || 0; bv = b.final_grade || 0;
-                return (av - bv) * dir;
-            });
+                const q = tableState.search.trim().toLowerCase();
+                if (q) rows = rows.filter(s => (s.full_name || '').toLowerCase().includes(q));
 
-            const csvRows = [headers.join(',')];
-            rows.forEach((s, i) => {
-                csvRows.push([
-                    i + 1,
-                    '"' + String(s.full_name || '').replace(/"/g, '""') + '"',
-                    s.written_works || 0,
-                    s.perf_task || 0,
-                    s.quarterly_exam || 0,
-                    s.final_grade || 0
-                ].join(','));
-            });
-            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `class-performance-${(currentSectionTitle || 'section').replace(/[^a-z0-9-_]/gi, '_')}-${new Date().toISOString().slice(0, 10)}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            showNotification("CSV exported successfully!");
+                const dir = tableState.sortDir === 'asc' ? 1 : -1;
+                const key = tableState.sortKey;
+                rows.sort((a, b) => {
+                    let av, bv;
+                    if (key === 'name') { av = (a.full_name || '').toLowerCase(); bv = (b.full_name || '').toLowerCase(); return av.localeCompare(bv) * dir; }
+                    if (key === 'ww')  { av = a.written_works || 0; bv = b.written_works || 0; return (av - bv) * dir; }
+                    if (key === 'pt')  { av = a.perf_task || 0; bv = b.perf_task || 0; return (av - bv) * dir; }
+                    if (key === 'qe')  { av = a.quarterly_exam || 0; bv = b.quarterly_exam || 0; return (av - bv) * dir; }
+                    if (key === 'att') { av = a.attendance_rate == null ? -1 : a.attendance_rate; bv = b.attendance_rate == null ? -1 : b.attendance_rate; return (av - bv) * dir; }
+                    av = a.final_grade || 0; bv = b.final_grade || 0;
+                    return (av - bv) * dir;
+                });
+
+                let dataRows = [headers];
+                rows.forEach((s, i) => {
+                    dataRows.push([
+                        i + 1,
+                        String(s.full_name || ''),
+                        s.written_works || 0,
+                        s.perf_task || 0,
+                        s.quarterly_exam || 0,
+                        s.final_grade || 0
+                    ]);
+                });
+
+                let ws = XLSX.utils.aoa_to_sheet(dataRows);
+                window.autoFitColumns(XLSX, ws);
+                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
+                let wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Performance');
+
+                XLSX.writeFile(wb, `class-performance-${(currentSectionTitle || 'section').replace(/[^a-z0-9-_]/gi, '_')}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+                showNotification("Excel exported successfully!");
+            } catch (e) {
+                showNotification("Export failed: " + e.message, "error");
+            }
         }
 
         /* ═══════════════════════════════════════════════════════════════
@@ -2488,7 +2495,7 @@
                 });
             }
 
-            // Export CSV
+            // Export Excel
             const exportBtn = document.getElementById('exportCsvBtn');
             if (exportBtn) exportBtn.addEventListener('click', exportToCSV);
         }

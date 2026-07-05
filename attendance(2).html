@@ -1512,8 +1512,8 @@
                     <button class="menu-toggle" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
                     <h1>Attendance</h1>
                 </div>
-                <button class="export-btn" onclick="exportAttendanceToCSV()"><i class="fa-solid fa-download"></i> <span
-                        class="export-text">Export CSV</span></button>
+                <button class="export-btn" onclick="exportAttendanceToCSV()"><i class="fa-solid fa-file-excel"></i> <span
+                        class="export-text">Export Excel</span></button>
             </div>
 
             <div class="dashboard-wrapper">
@@ -2310,32 +2310,52 @@
             });
         });
 
-        function exportAttendanceToCSV() {
-            let csv = [];
-            let rows = document.querySelectorAll("#attendanceRecordTable tr");
-
-            for (let i = 0; i < rows.length; i++) {
-                if (rows[i].style.display === 'none') continue;
-                let row = [], cols = rows[i].querySelectorAll("td, th");
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/"/g, '""');
-                    row.push('"' + text + '"');
-                }
-                csv.push(row.join(","));
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('customToast');
+            const textElement = document.getElementById('toastMessage');
+            const iconElement = toast?.querySelector('i');
+            if (!toast || !textElement || !iconElement) return;
+            textElement.textContent = message;
+            if (type === 'success') {
+                toast.style.backgroundColor = '#10b981'; iconElement.className = 'fa-solid fa-circle-check';
+            } else {
+                toast.style.backgroundColor = '#ef4444'; iconElement.className = 'fa-solid fa-circle-exclamation';
             }
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
 
-            let csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
-            let downloadLink = document.createElement("a");
+        async function exportAttendanceToCSV() {
+            try {
+                showNotification("Generating Excel...");
+                await window.loadSheetJS();
+                let XLSX = window.XLSX;
+                if (!XLSX) throw new Error('SheetJS failed to load.');
 
-            const sectionName = document.getElementById('dashSection').innerText || 'Section';
-            const monthYear = document.getElementById('currentMonthLabel').innerText.replace(/\s+/g, '_');
-            downloadLink.download = `Attendance_${sectionName}_${monthYear}.csv`;
-            downloadLink.href = window.URL.createObjectURL(csvFile);
-            downloadLink.style.display = "none";
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            showNotification("Attendance exported successfully!");
+                let rows = [];
+                let tableRows = document.querySelectorAll("#attendanceRecordTable tr");
+                for (let i = 0; i < tableRows.length; i++) {
+                    if (tableRows[i].style.display === 'none') continue;
+                    let row = [], cols = tableRows[i].querySelectorAll("td, th");
+                    for (let j = 0; j < cols.length; j++) {
+                        row.push(cols[j].innerText.trim());
+                    }
+                    rows.push(row);
+                }
+
+                let ws = XLSX.utils.aoa_to_sheet(rows);
+                window.autoFitColumns(XLSX, ws);
+                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
+                let wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+
+                const sectionName = document.getElementById('dashSection').innerText || 'Section';
+                const monthYear = document.getElementById('currentMonthLabel').innerText.replace(/\s+/g, '_');
+                XLSX.writeFile(wb, `Attendance_${sectionName}_${monthYear}.xlsx`);
+                showNotification("Attendance exported successfully!");
+            } catch (e) {
+                showNotification("Export failed: " + e.message, "error");
+            }
         }
 
         function recalculateSummaryUI() {

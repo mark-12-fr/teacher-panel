@@ -147,13 +147,103 @@
             var rows = [['AI Assistant Report'], ['Page: ' + getPageName() + '  |  Generated: ' + getTimestamp()], []];
             lines.forEach(function (l) { rows.push([l.replace(/^[-*•]\s+/, '• ')]); });
             var ws = XLSX.utils.aoa_to_sheet(rows);
-            ws['!cols'] = [{ wch: 100 }];
+            autoFitColumns(XLSX, ws);
             XLSX.utils.book_append_sheet(wb, ws, 'AI Report');
 
             XLSX.writeFile(wb, getFilename('xlsx'));
             showToast('Excel exported!');
         } catch (e) {
             showToast('Excel export failed: ' + e.message, 'error');
+        }
+    };
+
+    /* ── Shared helpers (used by inline exports on other pages) ────────── */
+    window.loadSheetJS = function () {
+        return loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    };
+
+    function autoFitColumns(XLSX, ws, minWidth) {
+        if (!ws['!ref']) return;
+        var range = XLSX.utils.decode_range(ws['!ref']);
+        var colWidths = [];
+        for (var C = range.s.c; C <= range.e.c; C++) {
+            var maxLen = 0;
+            for (var R = range.s.r; R <= range.e.r; R++) {
+                var cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+                if (cell && cell.v !== undefined) {
+                    var len = String(cell.v).length;
+                    if (len > maxLen) maxLen = len;
+                }
+            }
+            colWidths[C] = { wch: Math.max(minWidth || 10, maxLen + 3) };
+        }
+        ws['!cols'] = colWidths;
+    }
+    window.autoFitColumns = autoFitColumns;
+
+    /* ── Professional sheet formatting ──────────────────────────────────── */
+    window.formatExcelSheet = function (XLSX, ws, opts) {
+        if (!ws['!ref']) return;
+        opts = opts || {};
+        var freezeRow = opts.freezeRow !== undefined ? opts.freezeRow : 0;
+        var headerRow = opts.headerRow !== undefined ? opts.headerRow : 0;
+        var range = XLSX.utils.decode_range(ws['!ref']);
+
+        // Freeze panes (header row)
+        if (freezeRow >= 0) {
+            ws['!freeze'] = { xSplit: 0, ySplit: freezeRow + 1, activePane: 'bottomLeft' };
+        }
+
+        // Style header row
+        if (headerRow >= 0 && headerRow <= range.e.r) {
+            var fill = { fgColor: { rgb: '1E40AF' } };
+            var font = { bold: true, color: { rgb: 'FFFFFF' }, sz: 11, name: 'Calibri' };
+            var alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+            var border = {
+                top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                bottom: { style: 'medium', color: { rgb: '1E40AF' } },
+                left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+                right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+            };
+            for (var C = range.s.c; C <= range.e.c; C++) {
+                var addr = XLSX.utils.encode_cell({ r: headerRow, c: C });
+                if (!ws[addr]) ws[addr] = { v: '', t: 's' };
+                ws[addr].s = { fill: fill, font: font, alignment: alignment, border: border };
+            }
+        }
+
+        // Data row styling
+        var dataBorder = {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+        };
+        var dataFont = { sz: 10, name: 'Calibri', color: { rgb: '334155' } };
+        var dataAlignment = { vertical: 'center' };
+        for (var R = headerRow + 1; R <= range.e.r; R++) {
+            for (var C = range.s.c; C <= range.e.c; C++) {
+                var addr2 = XLSX.utils.encode_cell({ r: R, c: C });
+                if (ws[addr2]) {
+                    ws[addr2].s = {
+                        font: dataFont,
+                        alignment: dataAlignment,
+                        border: dataBorder
+                    };
+                }
+            }
+        }
+
+        // Alternate row shading
+        for (var R2 = headerRow + 2; R2 <= range.e.r; R2 += 2) {
+            for (var C2 = range.s.c; C2 <= range.e.c; C2++) {
+                var addr3 = XLSX.utils.encode_cell({ r: R2, c: C2 });
+                if (ws[addr3]) {
+                    if (!ws[addr3].s) ws[addr3].s = {};
+                    if (!ws[addr3].s.fill) ws[addr3].s.fill = {};
+                    ws[addr3].s.fill.fgColor = { rgb: 'F8FAFC' };
+                }
+            }
         }
     };
 
