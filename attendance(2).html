@@ -861,11 +861,11 @@
                 box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
             }
 
-            .main-content {
-                margin-left: 0;
-                padding: 20px 20px 100px 20px;
-                width: 100vw;
-            }
+    .main-content {
+        margin-left: 0;
+        padding: 20px 20px 100px 20px;
+        width: 100%;
+    }
 
             .menu-toggle {
                 display: flex;
@@ -1410,10 +1410,14 @@
         }
         .empty-state-msg { font-size: 0.82rem; }
 
-        /* ── Mobile: compact mode + sticky first column ── */
+        /* ── Mobile: compact mode, disable sticky for free scroll ── */
         @media (max-width: 768px) {
+            body { overflow-x: hidden; }
+            .layout { overflow-x: hidden; }
+            .main-content { width: 100%; overflow-x: hidden; }
             .editable-cell .mark-letter { min-width: 22px; height: 22px; font-size: 0.7rem; }
-            .sticky-col-1, .sticky-col-2 { z-index: 5; }
+            .sticky-col-1, .sticky-col-2 { position: static; }
+            thead .sticky-col-1, thead .sticky-col-2 { position: static; }
         }
 
         /* Centered summary box: icon on top, text centered below.
