@@ -508,11 +508,6 @@
             text-overflow: ellipsis;
         }
 
-        .category-row td {
-            background: var(--category-bg);
-            font-weight: 800;
-            color: var(--text-dark);
-        }
 
 
         /* ── Quarter selector + locked (past-quarter) history ── */
@@ -975,69 +970,21 @@
             border-bottom-right-radius: 10px;
             border-right: 1px solid var(--border-color);
         }
-        #recordTable tbody tr:nth-child(even):not(.category-row) td {
+        #recordTable tbody tr:nth-child(even) td {
             background-color: rgba(0,0,0,0.015);
         }
-        [data-theme="dark"] #recordTable tbody tr:nth-child(even):not(.category-row) td {
+        [data-theme="dark"] #recordTable tbody tr:nth-child(even) td {
             background-color: rgba(255,255,255,0.02);
         }
         /* Keep the frozen #/name columns FULLY OPAQUE even on striped (even)
            rows, so horizontally-scrolled scores hide behind them instead of
            bleeding through the name (the subtle stripe is dropped only on these
            two frozen cells). */
-        #recordTable tbody tr:nth-child(even):not(.category-row) td.sticky-col {
+        #recordTable tbody tr:nth-child(even) td.sticky-col {
             background-color: var(--card-bg);
         }
-        [data-theme="dark"] #recordTable tbody tr:nth-child(even):not(.category-row) td.sticky-col {
+        [data-theme="dark"] #recordTable tbody tr:nth-child(even) td.sticky-col {
             background-color: var(--card-bg);
-        }
-        /* MALE / FEMALE divider rows: each gender gets its own colored
-           band so the two groups read as visually distinct sections
-           even though they share a single table. */
-        .category-row td {
-            background: var(--input-bg) !important;
-            font-weight: 800 !important;
-            color: var(--text-dark) !important;
-            text-align: left !important;
-            padding: 12px 16px !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            border-top: none !important;
-            border-bottom: 2px solid var(--border-color) !important;
-            border-right: none !important;
-            font-size: 0.92rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-        /* The sticky label cell also carries .group-divider and matches
-           .sticky-col:nth-child(2) (a 2px right border) which is more specific
-           than .category-row td — override it here with higher specificity so
-           the gender band has no internal vertical "cut". */
-        .category-row .sticky-col,
-        .category-row .sticky-col:nth-child(2) {
-            border-right: none !important;
-        }
-        /* MALE / FEMALE label rows — opaque --card-bg base + flat tint overlay.
-           Keeps the color connected across horizontal scroll: the frozen sticky
-           columns fully cover the scrolling cell underneath (no stacking of two
-           semi-transparent layers into a seam), and the flat tint removes the
-           per-cell gradient step that showed at each column boundary. */
-        .category-row.category-male td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(59, 130, 246, 0.32), rgba(59, 130, 246, 0.32)) !important;
-        }
-        /* FEMALE = soft pink tint */
-        .category-row.category-female td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(236, 72, 153, 0.32), rgba(236, 72, 153, 0.32)) !important;
-        }
-        [data-theme="dark"] .category-row.category-male td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(59, 130, 246, 0.38), rgba(59, 130, 246, 0.38)) !important;
-        }
-        [data-theme="dark"] .category-row.category-female td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(236, 72, 153, 0.38), rgba(236, 72, 153, 0.38)) !important;
         }
 
         /* Final grade column removed per user request. */
@@ -1215,8 +1162,7 @@
                                 <th>50</th>
                             </tr>
                         </thead>
-                        <tbody id="maleBody"></tbody>
-                        <tbody id="femaleBody"></tbody>
+                        <tbody id="recordBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -1496,8 +1442,7 @@
         }
 
         async function loadClassRecordData() {
-            const maleBody = document.getElementById('maleBody');
-            const femaleBody = document.getElementById('femaleBody');
+            const recordBody = document.getElementById('recordBody');
             const quarter = getCurrentQuarter();
             try {
                 const { data: students, error: studErr } = await supabaseClient
@@ -1517,56 +1462,19 @@
                 if (recErr) throw recErr;
 
                 document.getElementById('dashTotalStudents').innerText = students ? students.length : 0;
-                // Reset both bodies before populating so re-renders are clean.
-                maleBody.innerHTML = '';
-                femaleBody.innerHTML = '';
+                recordBody.innerHTML = '';
 
                 if (!students || students.length === 0) {
-                    // No students: show the message in the male body so the
-                    // table doesn't appear empty without explanation.
-                    maleBody.innerHTML = '<tr><td colspan="41" style="text-align: center; padding: 30px;">No students assigned yet.</td></tr>';
+                    recordBody.innerHTML = '<tr><td colspan="41" style="text-align: center; padding: 30px;">No students assigned yet.</td></tr>';
                     return;
                 }
 
-                const males = students.filter(s => s.gender?.startsWith('M') || s.gender?.startsWith('m'));
-                const females = students.filter(s => s.gender?.startsWith('F') || s.gender?.startsWith('f'));
-
-                // Render MALE block. The category-row spans all data
-                // columns (25 modules + 10 activities + 4 = 39) and shows
-                // the gender label with a count.
-                if (males.length > 0) {
-                    maleBody.innerHTML = `<tr class="category-row category-male">
-                        <td class="sticky-col"></td>
-                        <td class="sticky-col text-left group-divider">
-                            <i class="fa-solid fa-mars" style="margin-right: 6px; color: #2563eb;"></i>MALE
-                            <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${males.length})</span>
-                        </td>
-                        <td colspan="39"></td>
-                    </tr>`;
-                    let mCount = 1;
-                    males.forEach(s => maleBody.appendChild(createRow(s, mCount++, records)));
-                }
-                // Render FEMALE block the same way, with its own icon + count.
-                if (females.length > 0) {
-                    femaleBody.innerHTML = `<tr class="category-row category-female">
-                        <td class="sticky-col"></td>
-                        <td class="sticky-col text-left group-divider">
-                            <i class="fa-solid fa-venus" style="margin-right: 6px; color: #db2777;"></i>FEMALE
-                            <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${females.length})</span>
-                        </td>
-                        <td colspan="39"></td>
-                    </tr>`;
-                    let fCount = males.length + 1;
-                    females.forEach(s => femaleBody.appendChild(createRow(s, fCount++, records)));
-                }
-                // Friendly notice if there are no females at all (and no males either already handled above).
-                if (females.length === 0 && males.length === 0) {
-                    maleBody.innerHTML = '<tr><td colspan="41" style="text-align: center; padding: 30px;">No students assigned yet.</td></tr>';
-                }
+                let count = 1;
+                students.forEach(s => recordBody.appendChild(createRow(s, count++, records)));
 
             } catch (e) {
                 console.error("Error loading records:", e);
-                maleBody.innerHTML = '<tr><td colspan="41" style="text-align: center; color: red;">Error loading data.</td></tr>';
+                recordBody.innerHTML = '<tr><td colspan="41" style="text-align: center; color: red;">Error loading data.</td></tr>';
             }
         }
 

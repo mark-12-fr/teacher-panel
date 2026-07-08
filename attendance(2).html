@@ -597,45 +597,7 @@
             z-index: 3;
         }
 
-        .gender-row td {
-            font-weight: 800;
-            font-size: 0.82rem;
-            color: var(--text-dark);
-            text-align: left;
-            padding: 10px 12px 10px 20px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            border-top: 2px solid var(--border-color) !important;
-            border-bottom: 2px solid var(--border-color) !important;
-            border-right: none !important;
-        }
 
-        /* MALE / FEMALE label rows.
-           Each cell is painted OPAQUE: a solid --card-bg base with the
-           color tint applied as a gradient overlay on top. This is what
-           fixes the color "cut" on horizontal scroll: the frozen sticky
-           columns (which paint above the row) now fully cover the
-           scrollable colspan cell that slides underneath them. Previously
-           both layers were semi-transparent, so where they overlapped the
-           two tints stacked into a darker seam right next to the label.
-           Tint stays identical to before — only the seam is removed. */
-        .gender-row.category-male td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(59, 130, 246, 0.32), rgba(59, 130, 246, 0.32)) !important;
-        }
-        /* FEMALE = soft pink, same opaque treatment */
-        .gender-row.category-female td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(236, 72, 153, 0.32), rgba(236, 72, 153, 0.32)) !important;
-        }
-        [data-theme="dark"] .gender-row.category-male td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(59, 130, 246, 0.38), rgba(59, 130, 246, 0.38)) !important;
-        }
-        [data-theme="dark"] .gender-row.category-female td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(236, 72, 153, 0.38), rgba(236, 72, 153, 0.38)) !important;
-        }
 
         .mark-p {
             color: #16a34a !important;
@@ -2191,36 +2153,11 @@
                 return;
             }
 
-            const males = globalStudents.filter(s => s.gender === 'Male' || s.gender === 'M' || s.gender?.toLowerCase().startsWith('m'));
-            const females = globalStudents.filter(s => s.gender === 'Female' || s.gender === 'F' || s.gender?.toLowerCase().startsWith('f'));
             let rowCount = 1;
-
-            if (males.length > 0) {
-                const genderHeader = document.createElement('tr');
-                genderHeader.className = 'gender-row category-row category-male';
-                genderHeader.innerHTML = `<td class="sticky-col-1"></td>
-                    <td class="sticky-col-2">
-                        <i class="fa-solid fa-mars" style="margin-right: 6px; color: #2563eb;"></i>MALE
-                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${males.length})</span>
-                    </td><td colspan="${daysInMonth}"></td>`;
-                tbody.appendChild(genderHeader);
-                males.forEach(stud => { tbody.appendChild(createStudentRow(stud, rowCount++, allAttendance, daysInMonth)); });
-            }
-
-            if (females.length > 0) {
-                const genderHeader = document.createElement('tr');
-                genderHeader.className = 'gender-row category-row category-female';
-                genderHeader.innerHTML = `<td class="sticky-col-1"></td>
-                    <td class="sticky-col-2">
-                        <i class="fa-solid fa-venus" style="margin-right: 6px; color: #db2777;"></i>FEMALE
-                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${females.length})</span>
-                    </td><td colspan="${daysInMonth}"></td>`;
-                tbody.appendChild(genderHeader);
-                females.forEach(stud => { tbody.appendChild(createStudentRow(stud, rowCount++, allAttendance, daysInMonth)); });
-            }
+            globalStudents.forEach(stud => { tbody.appendChild(createStudentRow(stud, rowCount++, allAttendance, daysInMonth)); });
 
             // UI #7: empty state if there are no students at all.
-            if (males.length === 0 && females.length === 0) {
+            if (globalStudents.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${daysInMonth + 2}" style="padding:0;">
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
