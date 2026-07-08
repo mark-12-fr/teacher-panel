@@ -2258,26 +2258,62 @@
                 let XLSX = window.XLSX;
                 if (!XLSX) throw new Error('SheetJS failed to load.');
 
+                const monthNames = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+                const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+                const sectionName = document.getElementById('dashSection').innerText || 'Section';
+                const subjectName = document.getElementById('dashSubject').innerText || '';
+                const monthLabel = `${monthNames[selectedMonth]} ${selectedYear}`;
+
                 let rows = [];
-                let tableRows = document.querySelectorAll("#attendanceRecordTable tr");
-                for (let i = 0; i < tableRows.length; i++) {
-                    if (tableRows[i].style.display === 'none') continue;
-                    let row = [], cols = tableRows[i].querySelectorAll("td, th");
-                    for (let j = 0; j < cols.length; j++) {
-                        row.push(cols[j].innerText.trim());
+                rows.push([`Attendance Report — ${sectionName}${subjectName ? ' — ' + subjectName : ''}`]);
+                rows.push([`Month: ${monthLabel}  |  Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`]);
+                rows.push([]);
+
+                let headers = ['#', 'Student Name'];
+                for (let d = 1; d <= daysInMonth; d++) headers.push(String(d));
+                headers.push('Present', 'Absent', 'Late');
+                rows.push(headers);
+
+                const rows_el = document.querySelectorAll("#attendanceRecordTable .student-data-row");
+                rows_el.forEach(tr => {
+                    const cells = tr.querySelectorAll('td');
+                    if (!cells.length) return;
+                    const num = cells[0]?.innerText.trim() || '';
+                    const name = cells[1]?.innerText.trim() || '';
+                    let row = [num, name];
+                    let p = 0, a = 0, l = 0;
+                    for (let d = 0; d < daysInMonth; d++) {
+                        const dayCell = cells[d + 2];
+                        const mark = dayCell ? dayCell.innerText.trim() : '-';
+                        row.push(mark === '-' ? '' : mark);
+                        if (mark === 'P') p++;
+                        else if (mark === 'A') a++;
+                        else if (mark === 'L') l++;
                     }
+                    row.push(p, a, l);
                     rows.push(row);
-                }
+                });
+
+                rows.push([]);
+                let totP = 0, totA = 0, totL = 0;
+                rows_el.forEach(tr => {
+                    const cells = tr.querySelectorAll('td');
+                    for (let d = 0; d < daysInMonth; d++) {
+                        const mark = cells[d + 2]?.innerText.trim() || '-';
+                        if (mark === 'P') totP++;
+                        else if (mark === 'A') totA++;
+                        else if (mark === 'L') totL++;
+                    }
+                });
+                rows.push(['', 'GRAND TOTAL', ...Array(daysInMonth).fill(''), totP, totA, totL]);
 
                 let ws = XLSX.utils.aoa_to_sheet(rows);
                 window.autoFitColumns(XLSX, ws);
-                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
+                window.formatExcelSheet(XLSX, ws, { headerRow: 3 });
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
 
-                const sectionName = document.getElementById('dashSection').innerText || 'Section';
-                const monthYear = document.getElementById('currentMonthLabel').innerText.replace(/\s+/g, '_');
-                XLSX.writeFile(wb, `Attendance_${sectionName}_${monthYear}.xlsx`);
+                XLSX.writeFile(wb, `Attendance_${sectionName}_${monthLabel.replace(/\s+/g, '_')}.xlsx`);
                 showNotification("Attendance exported successfully!");
             } catch (e) {
                 showNotification("Export failed: " + e.message, "error");
