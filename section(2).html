@@ -1274,7 +1274,6 @@
     <div id="modal2" class="modal">
         <div class="modal-content">
             <h3>Add New Student</h3>
-            <input type="text" id="addIdNo" placeholder="ID Number">
             <input type="text" id="addFullName" placeholder="Full Name">
             <div class="actionBtn">
                 <button id="cancelAdd" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
@@ -1288,7 +1287,6 @@
             <span id="closeEditModal"
                 style="position:absolute; right:15px; top:10px; cursor:pointer; font-size:24px; color: var(--text-muted);">&times;</span>
             <h3>Edit Student Info</h3>
-            <input type="text" id="editIdNo" placeholder="ID Number">
             <input type="text" id="editFullName" placeholder="Full Name">
             <div class="actionBtn">
                 <button id="cancelEdit" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
@@ -1973,10 +1971,9 @@
         };
 
         confirmAdd.onclick = async () => {
-            const idNo = document.getElementById("addIdNo").value.trim();
             const fullName = document.getElementById("addFullName").value.trim();
 
-            if (!idNo || !fullName) {
+            if (!fullName) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -1986,7 +1983,6 @@
                     .from('students')
                     .insert([{
                         section_id: currentSectionId,
-                        id_no: idNo,
                         full_name: fullName
                     }]);
 
@@ -2009,7 +2005,6 @@
             const stud = JSON.parse(decodeURIComponent(encodedData));
             currentEditId = stud.id;
 
-            document.getElementById("editIdNo").value = stud.id_no;
             document.getElementById("editFullName").value = stud.full_name;
 
             editModal.style.display = "flex";
@@ -2018,10 +2013,9 @@
         updateBtn.onclick = async () => {
             if (!currentEditId) return;
 
-            const idNo = document.getElementById("editIdNo").value.trim();
             const fullName = document.getElementById("editFullName").value.trim();
 
-            if (!idNo || !fullName) {
+            if (!fullName) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -2029,7 +2023,7 @@
             try {
                 const { error } = await supabaseClient
                     .from('students')
-                    .update({ id_no: idNo, full_name: fullName })
+                    .update({ full_name: fullName })
                     .eq('id', currentEditId);
 
                 if (error) throw error;
