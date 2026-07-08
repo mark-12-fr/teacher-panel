@@ -15,7 +15,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="grading.js"></script>
 
     <script>
 
@@ -360,71 +359,6 @@
             text-align: center;
         }
 
-        .quarter-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--card-bg);
-            padding: 14px 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px var(--shadow-color);
-            border: 1px solid var(--border-color);
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            transition: background 0.3s, border 0.3s;
-        }
-        .quarter-bar-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            margin-right: 8px;
-        }
-        .q-tab {
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            padding: 6px 16px;
-            border-radius: 6px;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--text-dark);
-            transition: all 0.2s;
-        }
-        .q-tab:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-        .q-tab.active-q { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-        .q-tab.viewing { outline: 3px solid var(--accent-blue); outline-offset: 2px; }
-        .s-tab { background: var(--input-bg); border: 1px solid var(--border-color); padding: 6px 16px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dark); transition: all 0.2s; }
-        .s-tab:hover { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
-        .s-tab.active-s { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
-        .s-tab.viewing-s { outline: 3px solid #8b5cf6; outline-offset: 2px; }
-        .lock-banner {
-            display: none;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-left: auto;
-            white-space: nowrap;
-        }
-        .q-activate-btn {
-            background: #10b981;
-            color: #fff;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            transition: background 0.2s;
-            white-space: nowrap;
-        }
-        .q-activate-btn:hover { background: #059669; }
-        @media (max-width: 640px) { .quarter-bar { flex-wrap: wrap; } }
-
         .badge {
             display: inline-block;
             background: var(--input-bg);
@@ -542,53 +476,12 @@
             border-bottom-right-radius: 10px;
             border-right: 1px solid var(--border-color);
         }
-        /* Alternating row tint for easier scanning (very subtle).
-           Skips the .category-row so the gender banner keeps its
-           gradient and isn't overridden by the even-row tint. */
-        tbody tr:nth-child(even):not(.category-row) td {
+        /* Alternating row tint for easier scanning (very subtle) */
+        tbody tr:nth-child(even) td {
             background-color: rgba(0, 0, 0, 0.015);
         }
-        [data-theme="dark"] tbody tr:nth-child(even):not(.category-row) td {
+        [data-theme="dark"] tbody tr:nth-child(even) td {
             background-color: rgba(255, 255, 255, 0.02);
-        }
-
-        /* MALE / FEMALE category header rows: gradient bands so the
-           two groups read as visually distinct sections, matching
-           the same pattern used in class-record(2).html. */
-        .category-row td {
-            background: var(--input-bg) !important;
-            font-weight: 800 !important;
-            color: var(--text-dark) !important;
-            text-align: left !important;
-            padding: 12px 16px !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            border-top: none !important;
-            border-bottom: 2px solid var(--border-color) !important;
-            border-right: none !important;
-            font-size: 0.92rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-        /* MALE / FEMALE label rows — opaque --card-bg base + flat tint overlay so
-           the color stays connected on horizontal scroll (frozen sticky columns
-           fully cover the scrolling cell; no semi-transparent seam, no per-cell
-           gradient step at the column boundary). */
-        .category-row.category-male td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(59, 130, 246, 0.32), rgba(59, 130, 246, 0.32)) !important;
-        }
-        .category-row.category-female td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(236, 72, 153, 0.32), rgba(236, 72, 153, 0.32)) !important;
-        }
-        [data-theme="dark"] .category-row.category-male td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(59, 130, 246, 0.38), rgba(59, 130, 246, 0.38)) !important;
-        }
-        [data-theme="dark"] .category-row.category-female td {
-            background-color: var(--card-bg) !important;
-            background-image: linear-gradient(rgba(236, 72, 153, 0.38), rgba(236, 72, 153, 0.38)) !important;
         }
 
         .action-btns {
@@ -1176,7 +1069,6 @@
                 <a href="performance.html" onclick="closeSidebar()"><i data-lucide="trending-up"></i>Class
                     Performance</a>
                 <a href="facilitators.html" onclick="closeSidebar()"><i data-lucide="users-round"></i> Facilitators</a>
-                <a href="grading-system.html" onclick="closeSidebar()"><i data-lucide="percent"></i> Grading System</a>
                 <a href="about.html" onclick="closeSidebar()"><i data-lucide="info"></i> About</a>
                 <a href="help.html" onclick="closeSidebar()"><i data-lucide="help-circle"></i> Help</a>
             </nav>
@@ -1227,24 +1119,6 @@
                 </div>
             </div>
 
-            <div id="quarterBar" class="quarter-bar">
-                <span class="quarter-bar-label">Quarter</span>
-                <button class="q-tab" data-q="1" onclick="setViewQuarter('1')">Q1</button>
-                <button class="q-tab" data-q="2" onclick="setViewQuarter('2')">Q2</button>
-                <button class="q-tab" data-q="3" onclick="setViewQuarter('3')">Q3</button>
-                <button class="q-tab" data-q="4" onclick="setViewQuarter('4')">Q4</button>
-                <span id="lockBanner" class="lock-banner"></span>
-                <button id="activateQuarterBtn" class="q-activate-btn" style="display:none;" onclick="activateViewedQuarter()">Activate</button>
-            </div>
-
-            <div id="semesterBar" class="quarter-bar" style="margin-bottom:10px;">
-                <span class="quarter-bar-label">Semester</span>
-                <button class="s-tab" data-sem="1st Sem" onclick="setViewSemester('1st Sem')">1st Sem</button>
-                <button class="s-tab" data-sem="2nd Sem" onclick="setViewSemester('2nd Sem')">2nd Sem</button>
-                <span id="semBanner" class="lock-banner"></span>
-                <button id="activateSemBtn" class="q-activate-btn" style="display:none;" onclick="activateViewedSemester()">Activate</button>
-            </div>
-
             <div class="class-list-box">
                 <div class="search-container">
                     <i class="fas fa-search"></i>
@@ -1255,13 +1129,14 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>ID no</th>
                                 <th>Student Name</th>
                                 <th>Gender</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="maleBody"></tbody>
-                        <tbody id="femaleBody"></tbody>
+                        <tbody id="studentTableBody">
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -1276,6 +1151,11 @@
             <h3>Add New Student</h3>
             <input type="text" id="addIdNo" placeholder="ID Number">
             <input type="text" id="addFullName" placeholder="Full Name">
+            <select id="addGender">
+                <option value="" disabled selected>Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
             <div class="actionBtn">
                 <button id="cancelAdd" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
                 <button id="confirmAdd" style="background: #3b82f6; color: white;">Add Student</button>
@@ -1290,6 +1170,10 @@
             <h3>Edit Student Info</h3>
             <input type="text" id="editIdNo" placeholder="ID Number">
             <input type="text" id="editFullName" placeholder="Full Name">
+            <select id="editGender">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
             <div class="actionBtn">
                 <button id="cancelEdit" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
                 <button id="updateBtn" style="background: #3b82f6; color: white;">Update</button>
@@ -1316,7 +1200,7 @@
             </button>
         </div>
         <div class="ai-chat-body" id="aiChatBody">
-            <div class="chat-msg ai" id="aiGreeting">Hi there! 👋 I'm your AcadTrack assistant — ask me about your students, grades, attendance, or class performance.</div>
+            <div class="chat-msg ai" id="aiGreeting">Hello there! How can I assist you with your classes today?</div>
         </div>
         <div class="ai-chat-input-area">
             <input type="text" id="aiChatInput" placeholder="Ask anything...">
@@ -1569,9 +1453,9 @@
             let teacherId = localStorage.getItem('user_id');
             if (!teacherId) return "I'm sorry, but I couldn't verify your account. Please log in again.";
 
-            // Friendly small talk → shared warm reply (greetings / thanks).
-            const _st = window.MJR_smallTalk && window.MJR_smallTalk(query);
-            if (_st) return _st;
+            if (query === 'hi' || query === 'hello' || query === 'hey' || query.includes('good morning') || query.includes('good afternoon')) {
+                return "Hello there! How can I assist you with your classes today?";
+            }
 
             const { data: secRes } = await supabaseClient.from('sections').select('*').eq('teacher_id', teacherId);
             const sections = secRes || [];
@@ -1582,9 +1466,9 @@
             const sectionTitles = sections.map(s => s.title);
 
             const [studRes, recRes, attRes, schedRes, facRes] = await Promise.all([
-                window.MJR_fetchAll(supabaseClient, 'students', q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true })).then(data => ({ data })).catch(() => ({ data: [] })),
-                window.MJR_fetchAll(supabaseClient, 'class_records', q => q.select('*').in('section_id', sectionIds).order('id', { ascending: true })).then(data => ({ data })).catch(() => ({ data: [] })),
-                window.MJR_fetchAll(supabaseClient, 'attendance', q => q.select('*').in('section', sectionTitles).eq('teacher_id', teacherId).order('id', { ascending: true })).then(data => ({ data })).catch(() => ({ data: [] })),
+                supabaseClient.from('students').select('*').in('section_id', sectionIds),
+                supabaseClient.from('class_records').select('*').in('section_id', sectionIds),
+                supabaseClient.from('attendance').select('*').in('section', sectionTitles),
                 supabaseClient.from('schedules').select('*').eq('user_id', teacherId),
                 supabaseClient.from('facilitators').select('*').eq('teacher_id', teacherId)
             ]);
@@ -1607,34 +1491,29 @@
                 let ww_score = Math.min((totalWW / 100) * 100, 100) || 0;
                 let pt_score = Math.min((totalPT / 100) * 100, 100) || 0;
                 let qe_score = Math.min((totalQE / 50) * 100, 100) || 0;
-                return window.MJR_finalGrade ? window.MJR_finalGrade(record, (sections.find(function (x) { return x.id === record.section_id; }) || {}).subject, 100) : Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
+                return Math.round((ww_score * 0.3) + (pt_score * 0.5) + (qe_score * 0.2));
             };
-            // Per-student passing grade + records MERGED across quarters (sorted,
-            // latest non-empty wins) so factual AI answers match the dashboard,
-            // the performance page, and the facilitator panel.
-            const passingFor = (sectionId) => { const subj = (sections.find(sec => sec.id === sectionId) || {}).subject; return window.MJR_passingFor ? window.MJR_passingFor(subj) : 75; };
-            const mergedRec = (studentId) => { const recs = records.filter(r => r.student_id === studentId).sort((a, b) => Number(String(a.quarter||0).replace(/[^1-4]/g,'')||0) - Number(String(b.quarter||0).replace(/[^1-4]/g,'')||0)); if (!recs.length) return null; return recs.reduce((acc, c) => { Object.keys(c).forEach(k => { if (c[k] !== null && c[k] !== undefined && c[k] !== '') acc[k] = c[k]; }); return acc; }, {}); };
 
             if (query.includes('top') || query.includes('highest') || query.includes('best')) {
                 if (students.length === 0) return "You don't have any students registered yet.";
                 let scoredStudents = students.map(s => {
-                    let rec = mergedRec(s.id);
+                    let rec = records.find(r => r.student_id === s.id);
                     return { name: s.full_name, grade: getFinalGrade(rec), section: sections.find(sec => sec.id === s.section_id)?.title };
                 }).sort((a, b) => b.grade - a.grade).slice(0, 5);
 
-                let res = "<strong>🌟 Here are your top performers:</strong><br><br>";
+                let res = "<strong>Here are your top performing students:</strong><br><br>";
                 scoredStudents.forEach((s, i) => { res += `<strong>#${i + 1} ${s.name}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${s.section})</span><br>`; });
                 return res;
             }
             else if (query.includes('fail') || query.includes('bagsak') || query.includes('below')) {
                 let failing = [];
                 students.forEach(s => {
-                    let rec = mergedRec(s.id);
+                    let rec = records.find(r => r.student_id === s.id);
                     let grade = getFinalGrade(rec);
-                    if (grade > 0 && grade < passingFor(s.section_id)) failing.push({ name: s.full_name, grade: grade });
+                    if (grade > 0 && grade < 75) failing.push({ name: s.full_name, grade: grade });
                 });
                 if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
-                let res = "<strong>📉 These students are currently below the passing grade:</strong><br><br>";
+                let res = "<strong>The following students are currently falling behind (Below 75%):</strong><br><br>";
                 failing.forEach(f => res += `- <strong>${f.name}</strong> (${f.grade}%)<br>`);
                 return res;
             }
@@ -1658,11 +1537,11 @@
                 let stud = students.find(s => s.full_name.toLowerCase().includes(nameExtracted));
                 if (!stud) return `I could not find a student named "<strong>${nameExtracted}</strong>" in your class lists.`;
 
-                let rec = mergedRec(stud.id);
+                let rec = records.find(r => r.student_id === stud.id);
                 if (!rec) return `There are no grade records entered for <strong>${stud.full_name}</strong> yet.`;
 
                 let grade = getFinalGrade(rec);
-                let status = grade >= passingFor(stud.section_id) ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
+                let status = grade >= 75 ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
                 return `The current calculated grade for <strong>${stud.full_name}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
             }
             else if (query.includes('absent') || query.includes('attendance')) {
@@ -1672,11 +1551,11 @@
                 let sortedAbsents = Object.keys(absentCounts).sort((a, b) => absentCounts[b] - absentCounts[a]);
                 if (sortedAbsents.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
 
-                let res = "<strong>📅 Here are the students with the most absences:</strong><br><br>";
+                let res = "<strong>Attendance Report (Frequently Absent):</strong><br><br>";
                 sortedAbsents.slice(0, 5).forEach(name => { res += `- <strong>${name}</strong> <span style="color:#ef4444;">(${absentCounts[name]} absences)</span><br>`; });
                 return res;
             }
-            else if (query.includes('schedule') || query.includes('klase') || query.includes('class sched')) {
+            else if (query.includes('schedule') || query.includes('klase') || query.includes('class')) {
                 if (schedules.length === 0) return "You do not have any schedules recorded. Would you like to add one via the Dashboard?";
                 let res = "<strong>Here is your current class schedule:</strong><br><br>";
                 schedules.forEach(s => { res += `📅 <strong>${s.subject}</strong><br><small>${s.time} | ${s.details}</small><br><br>`; });
@@ -1698,10 +1577,10 @@
             }
             else if (query.includes('summary') || query.includes('overview') || query.includes('performance') || query.includes('kamusta')) {
                 let totalStuds = students.length; let passCount = 0;
-                students.forEach(s => { if (getFinalGrade(mergedRec(s.id)) >= passingFor(s.section_id)) passCount++; });
+                records.forEach(r => { if (getFinalGrade(r) >= 75) passCount++; });
                 let passRate = totalStuds > 0 ? Math.round((passCount / totalStuds) * 100) : 0;
 
-                return `<strong>📊 Here's a quick snapshot of your class:</strong><br><br>` +
+                return `<strong>Class Performance Overview:</strong><br><br>` +
                     `• Total Active Sections: <strong>${sections.length}</strong><br>` +
                     `• Total Handled Students: <strong>${totalStuds}</strong><br>` +
                     `• Overall Passing Rate: <strong>${passRate}%</strong><br><br>` +
@@ -1714,112 +1593,6 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentSectionId = urlParams.get('id');
-
-        let currentQuarter = '1';
-        let viewQuarter = '1';
-        let currentSemester = '1st Sem';
-        let viewSemester = '1st Sem';
-        function isQuarterLocked() { return String(viewQuarter) !== String(currentQuarter); }
-        function isSemesterLocked() { return viewSemester !== currentSemester; }
-
-        function updateQuarterBar() {
-            document.querySelectorAll('.q-tab').forEach(function (t) {
-                var q = t.dataset.q;
-                t.classList.toggle('viewing', q === String(viewQuarter));
-                t.classList.toggle('active-q', q === String(currentQuarter));
-            });
-            var banner = document.getElementById('lockBanner');
-            if (!banner) return;
-            var activateBtn = document.getElementById('activateQuarterBtn');
-            if (isQuarterLocked()) {
-                banner.style.display = 'inline-flex';
-                banner.innerHTML = '<i class="fa-solid fa-lock"></i> Q' + viewQuarter + ' is not yet active.';
-                if (activateBtn) { activateBtn.style.display = 'inline-flex'; activateBtn.textContent = 'Activate Q' + viewQuarter; }
-            } else {
-                banner.style.display = 'none';
-                if (activateBtn) activateBtn.style.display = 'none';
-            }
-        }
-
-        function updateSemesterBar() {
-            document.querySelectorAll('.s-tab').forEach(function (t) {
-                var sem = t.dataset.sem;
-                t.classList.toggle('viewing-s', sem === viewSemester);
-                t.classList.toggle('active-s', sem === currentSemester);
-            });
-            var banner = document.getElementById('semBanner');
-            if (!banner) return;
-            var activateBtn = document.getElementById('activateSemBtn');
-            if (isSemesterLocked()) {
-                banner.style.display = 'inline-flex';
-                banner.innerHTML = '<i class="fa-solid fa-lock"></i> ' + viewSemester + ' is not yet active.';
-                if (activateBtn) { activateBtn.style.display = 'inline-flex'; activateBtn.textContent = 'Activate ' + viewSemester; }
-            } else {
-                banner.style.display = 'none';
-                if (activateBtn) activateBtn.style.display = 'none';
-            }
-        }
-
-        function setViewQuarter(q) {
-            viewQuarter = String(q);
-            updateQuarterBar();
-        }
-
-        function setViewSemester(sem) {
-            viewSemester = sem;
-            updateSemesterBar();
-        }
-
-        async function activateViewedQuarter() {
-            if (isQuarterLocked() && !confirm('Switch active quarter to Q' + viewQuarter + '? Past records stay saved.')) return;
-            var userId = localStorage.getItem('user_id');
-            if (!userId) return;
-            try {
-                var btn = document.getElementById('activateQuarterBtn');
-                if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-                var { error } = await supabaseClient.from('sections').update({ quarter: viewQuarter }).eq('id', currentSectionId).eq('teacher_id', userId);
-                if (error) throw error;
-                currentQuarter = viewQuarter;
-                var qEl = document.getElementById('dashQuarter');
-                if (qEl) qEl.innerText = 'Q' + currentQuarter;
-                updateQuarterBar();
-                showNotification('Section updated to Q' + viewQuarter + '!');
-            } catch (e) {
-                console.error(e);
-                showNotification('Failed to update quarter.', 'error');
-            } finally {
-                var btn = document.getElementById('activateQuarterBtn');
-                if (btn) { btn.disabled = false; btn.textContent = 'Activate Q' + viewQuarter; }
-            }
-        }
-
-        async function activateViewedSemester() {
-            if (isSemesterLocked() && !confirm('Switch to ' + viewSemester + '? Quarter will reset to Q' + (viewSemester === '1st Sem' ? '1' : '3') + '. Past records stay saved.')) return;
-            var userId = localStorage.getItem('user_id');
-            if (!userId) return;
-            try {
-                var btn = document.getElementById('activateSemBtn');
-                if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-                var newQuarter = viewSemester === '1st Sem' ? '1' : '3';
-                var { error } = await supabaseClient.from('sections').update({ semester: viewSemester, quarter: newQuarter }).eq('id', currentSectionId).eq('teacher_id', userId);
-                if (error) throw error;
-                currentSemester = viewSemester;
-                currentQuarter = newQuarter;
-                viewQuarter = newQuarter;
-                var qEl = document.getElementById('dashQuarter');
-                if (qEl) qEl.innerText = 'Q' + currentQuarter;
-                document.getElementById('dashSemester').innerText = currentSemester;
-                updateSemesterBar();
-                updateQuarterBar();
-                showNotification('Section updated to ' + viewSemester + '!');
-            } catch (e) {
-                console.error(e);
-                showNotification('Failed to update semester.', 'error');
-            } finally {
-                var btn = document.getElementById('activateSemBtn');
-                if (btn) { btn.disabled = false; btn.textContent = 'Activate ' + viewSemester; }
-            }
-        }
 
         async function loadSectionDetails() {
             const userId = localStorage.getItem('user_id');
@@ -1838,17 +1611,23 @@
 
             document.getElementById('dashSubject').innerText = secData.subject || '--';
             document.getElementById('dashSection').innerText = secData.title || '--';
-
-            currentSemester = secData.semester || '1st Sem';
-            viewSemester = currentSemester;
-            document.getElementById('dashSemester').innerText = currentSemester;
-
-            currentQuarter = secData.quarter ? String(secData.quarter).replace(/[^1-4]/g, '') || '1' : '1';
-            viewQuarter = currentQuarter;
-            var qEl = document.getElementById('dashQuarter');
-            if (qEl) qEl.innerText = 'Q' + currentQuarter;
-            updateSemesterBar();
-            updateQuarterBar();
+            document.getElementById('dashSemester').innerText = secData.semester || '1st Sem';
+            // Quarter may be stored as a number (1–4) or string ("Q1", "Q1 - First Quarter").
+            // Normalize to a short "Q1" style label so the card stays compact.
+            let qVal = secData.quarter;
+            let qLabel = '--';
+            if (qVal !== null && qVal !== undefined && qVal !== '') {
+                const qStr = String(qVal).trim();
+                // If it's already 'Q1'..'Q4', keep as-is; otherwise extract digits.
+                if (/^Q\s*\d/i.test(qStr)) {
+                    qLabel = qStr.replace(/\s.*$/, '').toUpperCase();
+                } else {
+                    const m = qStr.match(/[1-4]/);
+                    qLabel = m ? ('Q' + m[0]) : qStr;
+                }
+            }
+            const qEl = document.getElementById('dashQuarter');
+            if (qEl) qEl.innerText = qLabel;
 
             if (secData.school_year && typeof window.MJR_setSchoolYear === 'function') {
                 window.MJR_setSchoolYear(secData.school_year);
@@ -1869,13 +1648,11 @@
 
             document.getElementById('dashTotalStudents').innerText = students.length;
 
-            const maleBody = document.getElementById('maleBody');
-            const femaleBody = document.getElementById('femaleBody');
-            maleBody.innerHTML = '';
-            femaleBody.innerHTML = '';
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = '';
 
             if (students.length === 0) {
-                maleBody.innerHTML = `<tr><td colspan="4" style="padding:0;">
+                tbody.innerHTML = `<tr><td colspan="4" style="padding:0;">
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
                         <div class="empty-state-title">No students yet</div>
@@ -1885,24 +1662,18 @@
                 return;
             }
 
-            const males = students.filter(s => (s.gender || '').toString().trim().toLowerCase().startsWith('m'));
-            const females = students.filter(s => (s.gender || '').toString().trim().toLowerCase().startsWith('f'));
-
-            /**
-             * Build a single student row. Extracted so the MALE and
-             * FEMALE loops can share the same template. The encoded
-             * data attribute is used by openEditModal() so the edit
-             * modal gets the full student object without a second
-             * network round-trip.
-             */
-            function buildRow(stud) {
+            students.forEach(stud => {
                 const tr = document.createElement('tr');
                 const encodedData = encodeURIComponent(JSON.stringify(stud));
+                // Gender badge class varies by value; fall back to plain
+                // text if a third value ever appears.
                 const gLower = (stud.gender || '').toString().trim().toLowerCase();
                 const genderBadge = gLower === 'male' || gLower === 'female'
                     ? `<span class="gender-badge gender-badge-${gLower}">${gLower === 'male' ? 'Male' : 'Female'}</span>`
                     : (stud.gender || '');
+                // UI #4: icon-only action buttons with hover tooltips.
                 tr.innerHTML = `
+                <td>${stud.id_no}</td>
                 <td>${stud.full_name}</td>
                 <td>${genderBadge}</td>
                 <td>
@@ -1912,42 +1683,8 @@
                     </div>
                 </td>
             `;
-                return tr;
-            }
-
-            // MALE block: gradient category row with count, then the rows.
-            if (males.length > 0) {
-                maleBody.innerHTML = `<tr class="category-row category-male">
-                    <td colspan="4">
-                        <i class="fa-solid fa-mars" style="margin-right: 6px; color: #2563eb;"></i>MALE
-                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${males.length})</span>
-                    </td>
-                </tr>`;
-                males.forEach(s => maleBody.appendChild(buildRow(s)));
-            }
-            // FEMALE block: same pattern with the pink icon.
-            if (females.length > 0) {
-                femaleBody.innerHTML = `<tr class="category-row category-female">
-                    <td colspan="4">
-                        <i class="fa-solid fa-venus" style="margin-right: 6px; color: #db2777;"></i>FEMALE
-                        <span style="opacity: 0.7; font-weight: 600; margin-left: 6px;">(${females.length})</span>
-                    </td>
-                </tr>`;
-                females.forEach(s => femaleBody.appendChild(buildRow(s)));
-            }
-            // If a section has no students of one gender, the other
-            // gender's header still shows. If both are empty (e.g.
-            // the data only has unknown gender values), fall back to
-            // a single shared empty state.
-            if (males.length === 0 && females.length === 0) {
-                maleBody.innerHTML = `<tr><td colspan="4" style="padding:0;">
-                    <div class="empty-state">
-                        <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
-                        <div class="empty-state-title">No students yet</div>
-                        <div class="empty-state-msg">Click the + button to add your first student.</div>
-                    </div>
-                </td></tr>`;
-            }
+                tbody.appendChild(tr);
+            });
         }
 
 
@@ -1975,8 +1712,9 @@
         confirmAdd.onclick = async () => {
             const idNo = document.getElementById("addIdNo").value.trim();
             const fullName = document.getElementById("addFullName").value.trim();
+            const gender = document.getElementById("addGender").value;
 
-            if (!idNo || !fullName) {
+            if (!idNo || !fullName || !gender) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -1987,12 +1725,15 @@
                     .insert([{
                         section_id: currentSectionId,
                         id_no: idNo,
-                        full_name: fullName
+                        full_name: fullName,
+                        gender: gender
                     }]);
 
                 if (error) throw error;
 
+                document.getElementById("addIdNo").value = '';
                 document.getElementById("addFullName").value = '';
+                document.getElementById("addGender").value = '';
 
                 addModal.style.display = "none";
                 showNotification("Student added successfully!");
@@ -2011,6 +1752,7 @@
 
             document.getElementById("editIdNo").value = stud.id_no;
             document.getElementById("editFullName").value = stud.full_name;
+            document.getElementById("editGender").value = stud.gender;
 
             editModal.style.display = "flex";
         }
@@ -2020,8 +1762,9 @@
 
             const idNo = document.getElementById("editIdNo").value.trim();
             const fullName = document.getElementById("editFullName").value.trim();
+            const gender = document.getElementById("editGender").value;
 
-            if (!idNo || !fullName) {
+            if (!idNo || !fullName || !gender) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -2029,7 +1772,7 @@
             try {
                 const { error } = await supabaseClient
                     .from('students')
-                    .update({ id_no: idNo, full_name: fullName })
+                    .update({ id_no: idNo, full_name: fullName, gender: gender })
                     .eq('id', currentEditId);
 
                 if (error) throw error;
@@ -2068,12 +1811,9 @@
 
         document.getElementById('searchInput').addEventListener('input', function (e) {
             const term = e.target.value.toLowerCase();
-            // Search both male and female bodies. Skip the gender header
-            // rows so the MALE / FEMALE banners stay visible regardless
-            // of the search term.
-            const rows = document.querySelectorAll('#maleBody tr, #femaleBody tr');
+            const rows = document.querySelectorAll('#studentTableBody tr');
+
             rows.forEach(row => {
-                if (row.classList.contains('category-row')) return;
                 const text = row.innerText.toLowerCase();
                 if (text.includes(term)) row.style.display = '';
                 else row.style.display = 'none';
