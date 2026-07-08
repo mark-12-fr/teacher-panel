@@ -1187,6 +1187,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th style="width:40px; text-align:center;">#</th>
                                 <th>Student Name</th>
                                 <th>Actions</th>
                             </tr>
@@ -1801,7 +1802,7 @@
             studentBody.innerHTML = '';
 
             if (students.length === 0) {
-                studentBody.innerHTML = `<tr><td colspan="3" style="padding:0;">
+                studentBody.innerHTML = `<tr><td colspan="4" style="padding:0;">
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
                         <div class="empty-state-title">No students yet</div>
@@ -1811,12 +1812,13 @@
                 return;
             }
 
-            students.forEach(s => studentBody.appendChild(buildRow(s)));
+            students.forEach((s, i) => studentBody.appendChild(buildRow(s, i + 1)));
 
-            function buildRow(stud) {
+            function buildRow(stud, num) {
                 const tr = document.createElement('tr');
                 const encodedData = encodeURIComponent(JSON.stringify(stud));
                 tr.innerHTML = `
+                <td style="text-align:center; font-weight:700; color:var(--text-sub); font-size:0.85rem;">${num}</td>
                 <td>${stud.full_name}</td>
                 <td>
                     <div class="action-btns">
