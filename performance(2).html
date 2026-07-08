@@ -2266,15 +2266,7 @@
                 let XLSX = window.XLSX;
                 if (!XLSX) throw new Error('SheetJS failed to load.');
 
-                const sectionLabel = currentSectionTitle || 'Section';
-                const quarter = document.getElementById('dashQuarter')?.innerText || '';
-
-                let outRows = [];
-                outRows.push([`Class Performance — ${sectionLabel}`]);
-                outRows.push([`${quarter}  |  Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`]);
-                outRows.push([]);
-                outRows.push(['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Final Grade']);
-
+                const headers = ['Rank', 'Student Name', 'Written Works', 'Performance Task', 'Quarterly Exam', 'Final Grade'];
                 let rows = lastStudentsData.slice();
                 if (tableState.filter === 'pass') rows = rows.filter(s => (s.final_grade || 0) >= PAGE_PASSING);
                 else if (tableState.filter === 'fail') rows = rows.filter(s => (s.final_grade || 0) > 0 && (s.final_grade || 0) < PAGE_PASSING);
@@ -2296,8 +2288,9 @@
                     return (av - bv) * dir;
                 });
 
+                let dataRows = [headers];
                 rows.forEach((s, i) => {
-                    outRows.push([
+                    dataRows.push([
                         i + 1,
                         String(s.full_name || ''),
                         s.written_works || 0,
@@ -2307,13 +2300,13 @@
                     ]);
                 });
 
-                let ws = XLSX.utils.aoa_to_sheet(outRows);
+                let ws = XLSX.utils.aoa_to_sheet(dataRows);
                 window.autoFitColumns(XLSX, ws);
-                window.formatExcelSheet(XLSX, ws, { headerRow: 3 });
+                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Performance');
 
-                XLSX.writeFile(wb, `Class_Performance_${sectionLabel.replace(/[^a-z0-9-_]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                XLSX.writeFile(wb, `class-performance-${(currentSectionTitle || 'section').replace(/[^a-z0-9-_]/gi, '_')}-${new Date().toISOString().slice(0, 10)}.xlsx`);
                 showNotification("Excel exported successfully!");
             } catch (e) {
                 showNotification("Export failed: " + e.message, "error");

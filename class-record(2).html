@@ -1621,43 +1621,24 @@
                 let XLSX = window.XLSX;
                 if (!XLSX) throw new Error('SheetJS failed to load.');
 
-                const sectionName = document.getElementById('dashSection').innerText || 'Section';
-                const subjectName = document.getElementById('dashSubject').innerText || '';
-                const quarter = document.getElementById('dashQuarter')?.innerText || '';
-
                 let rows = [];
-                rows.push([`Class Record — ${sectionName}${subjectName ? ' — ' + subjectName : ''}`]);
-                rows.push([`${quarter}  |  Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`]);
-                rows.push([]);
-
-                let headers = ['#', 'Student Name'];
-                for (let m = 1; m <= 25; m++) headers.push('M' + m);
-                for (let a = 1; a <= 10; a++) headers.push('A' + a);
-                headers.push('AT', 'PT 1', 'PT 2', 'QE');
-                rows.push(headers);
-
-                const rows_el = document.querySelectorAll("#recordTable .student-data-row");
-                rows_el.forEach(tr => {
-                    const cells = tr.querySelectorAll('td');
-                    if (!cells.length) return;
-                    let row = [];
-                    cells.forEach((c, i) => {
-                        if (i === 0 || i === 1) {
-                            row.push(c.innerText.trim());
-                        } else {
-                            const v = c.innerText.trim();
-                            row.push(v === '-' ? '' : v);
-                        }
-                    });
+                let tableRows = document.querySelectorAll("#recordTable tr");
+                for (let i = 0; i < tableRows.length; i++) {
+                    if (tableRows[i].style.display === 'none') continue;
+                    let row = [], cols = tableRows[i].querySelectorAll("td, th");
+                    for (let j = 0; j < cols.length; j++) {
+                        row.push(cols[j].innerText.trim());
+                    }
                     rows.push(row);
-                });
+                }
 
                 let ws = XLSX.utils.aoa_to_sheet(rows);
                 window.autoFitColumns(XLSX, ws);
-                window.formatExcelSheet(XLSX, ws, { headerRow: 3 });
+                window.formatExcelSheet(XLSX, ws, { freezeRow: 0, headerRow: 0 });
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Class Record');
 
+                const sectionName = document.getElementById('dashSection').innerText || 'Section';
                 XLSX.writeFile(wb, `Class_Record_${sectionName.replace(/\s+/g, '_')}.xlsx`);
                 showNotification("Class Record exported successfully!");
             } catch (e) {
