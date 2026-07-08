@@ -614,11 +614,6 @@
             font-weight: bold !important;
         }
 
-        .mark-e {
-            color: #7e22ce !important;
-            font-weight: bold !important;
-        }
-
         .mark-none {
             color: var(--text-muted) !important;
             opacity: 0.5;
@@ -1035,7 +1030,6 @@
         .hist-p { color: #16a34a; font-weight: 700; }
         .hist-a { color: #dc2626; font-weight: 700; }
         .hist-l { color: #ca8a04; font-weight: 700; }
-        .hist-e { color: #7e22ce; font-weight: 700; }
         .history-empty {
             text-align: center;
             padding: 40px 20px;
@@ -1155,10 +1149,6 @@
             background: rgba(202, 138, 4, 0.16);
             color: #a16207;
         }
-        .editable-cell.mark-e .mark-letter {
-            background: rgba(126, 34, 206, 0.14);
-            color: #7e22ce;
-        }
         .editable-cell.mark-none .mark-letter {
             background: transparent;
             color: var(--text-muted);
@@ -1167,7 +1157,6 @@
         [data-theme="dark"] .editable-cell.mark-p .mark-letter { background: rgba(22, 163, 74, 0.22); color: #86efac; }
         [data-theme="dark"] .editable-cell.mark-a .mark-letter { background: rgba(220, 38, 38, 0.22); color: #fca5a5; }
         [data-theme="dark"] .editable-cell.mark-l .mark-letter { background: rgba(202, 138, 4, 0.28); color: #fde68a; }
-        [data-theme="dark"] .editable-cell.mark-e .mark-letter { background: rgba(126, 34, 206, 0.22); color: #d8b4fe; }
 
         /* Click feedback: quick scale pulse on the pill */
         @keyframes markPulse {
@@ -1325,7 +1314,6 @@
         .legend-pill-p { background: rgba(22, 163, 74, 0.14); color: #15803d; }
         .legend-pill-a { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
         .legend-pill-l { background: rgba(202, 138, 4, 0.16); color: #a16207; }
-        .legend-pill-e { background: rgba(126, 34, 206, 0.14); color: #7e22ce; }
 
         /* ── Skeleton loaders for table + summary ── */
         @keyframes shimmer {
@@ -1552,7 +1540,6 @@
                         <span class="legend-pill legend-pill-p">P = Present</span>
                         <span class="legend-pill legend-pill-a">A = Absent</span>
                         <span class="legend-pill legend-pill-l">L = Late</span>
-                        <span class="legend-pill legend-pill-e">E = Excused</span>
                     </div>
                 </div>
 
@@ -1724,7 +1711,6 @@
                 if (status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
                 else if (status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
                 else if (status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
-                else if (status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
             }
 
 
@@ -2202,7 +2188,6 @@
                     if (record.status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
                     else if (record.status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
                     else if (record.status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
-                    else if (record.status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
                 }
 
                 // Mark today's column with .today-col so the CSS can tint it.
@@ -2212,7 +2197,7 @@
                         data-student-id="${student.id_no || ''}"
                         data-student-name="${student.full_name}"
                         data-date="${targetDate}"
-                        title="Click to cycle or Type P, A, L, E"><span class="mark-letter">${mark}</span></td>`;
+                        title="Click to cycle or Type P, A, L"><span class="mark-letter">${mark}</span></td>`;
             }
             tr.innerHTML = html;
             return tr;
@@ -2330,8 +2315,6 @@
             if (status === 'Present') { mark = 'P'; markClass = 'mark-p'; }
             else if (status === 'Absent') { mark = 'A'; markClass = 'mark-a'; }
             else if (status === 'Late') { mark = 'L'; markClass = 'mark-l'; }
-            else if (status === 'Excused') { mark = 'E'; markClass = 'mark-e'; }
-
             cellElement.innerHTML = mark;
             cellElement.className = `editable-cell ${markClass}`;
             recalculateSummaryUI();
@@ -2400,7 +2383,6 @@
             if (key === 'P') status = 'Present';
             else if (key === 'A') status = 'Absent';
             else if (key === 'L') status = 'Late';
-            else if (key === 'E') status = 'Excused';
             else if (key === 'BACKSPACE' || key === 'DELETE' || key === '-' || key === ' ') status = 'None';
 
             if (status !== null) {
@@ -2426,8 +2408,7 @@
 
             if (currentMark === 'P') nextStatus = 'Absent';
             else if (currentMark === 'A') nextStatus = 'Late';
-            else if (currentMark === 'L') nextStatus = 'Excused';
-            else if (currentMark === 'E') nextStatus = 'None';
+            else if (currentMark === 'L') nextStatus = 'None';
 
             handleAttendanceUpdate(cell, nextStatus);
         });
@@ -2477,19 +2458,18 @@
                 const [dd, mm, yyyy] = parts;
                 const key = yyyy + '-' + mm;
                 const label = MONTH_NAMES[parseInt(mm, 10) - 1] + ' ' + yyyy;
-                if (!monthMap[key]) monthMap[key] = { label, p: 0, a: 0, l: 0, e: 0 };
+                if (!monthMap[key]) monthMap[key] = { label, p: 0, a: 0, l: 0 };
                 const s = (r.status || '').toLowerCase();
                 if (s === 'present') monthMap[key].p++;
                 else if (s === 'absent') monthMap[key].a++;
                 else if (s === 'late') monthMap[key].l++;
-                else if (s === 'excused') monthMap[key].e++;
             });
 
             const sorted = Object.entries(monthMap).sort((a, b) => b[0].localeCompare(a[0]));
 
-            let totalP = 0, totalA = 0, totalL = 0, totalE = 0;
-            sorted.forEach(([, m]) => { totalP += m.p; totalA += m.a; totalL += m.l; totalE += m.e; });
-            const totalDays = totalP + totalA + totalL + totalE;
+            let totalP = 0, totalA = 0, totalL = 0;
+            sorted.forEach(([, m]) => { totalP += m.p; totalA += m.a; totalL += m.l; });
+            const totalDays = totalP + totalA + totalL;
 
             let html = `
             <div class="history-summary-row">
@@ -2505,10 +2485,9 @@
                         <th>Present</th>
                         <th>Absent</th>
                         <th>Late</th>
-                        <th>Excused</th>
                     </tr>
                 </thead>
-                <tbody>`;
+                <tbody>
 
             sorted.forEach(([, m]) => {
                 html += `<tr>
@@ -2516,7 +2495,6 @@
                     <td class="${m.p ? 'hist-p' : ''}">${m.p || '—'}</td>
                     <td class="${m.a ? 'hist-a' : ''}">${m.a || '—'}</td>
                     <td class="${m.l ? 'hist-l' : ''}">${m.l || '—'}</td>
-                    <td class="${m.e ? 'hist-e' : ''}">${m.e || '—'}</td>
                 </tr>`;
             });
 
@@ -2527,7 +2505,6 @@
                         <td class="hist-p">${totalP}</td>
                         <td class="hist-a">${totalA}</td>
                         <td class="hist-l">${totalL}</td>
-                        <td class="hist-e">${totalE}</td>
                     </tr>
                 </tfoot>
             </table>`;
