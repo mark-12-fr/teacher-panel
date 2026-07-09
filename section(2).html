@@ -1206,11 +1206,6 @@
         <div class="modal-content">
             <h3>Add New Student</h3>
             <input type="text" id="addFullName" placeholder="Full Name">
-            <select id="addGender">
-                <option value="" disabled selected>Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-            </select>
             <div class="actionBtn">
                 <button id="cancelAdd" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
                 <button id="confirmAdd" style="background: #3b82f6; color: white;">Add Student</button>
@@ -1224,11 +1219,6 @@
                 style="position:absolute; right:15px; top:10px; cursor:pointer; font-size:24px; color: var(--text-muted);">&times;</span>
             <h3>Edit Student Info</h3>
             <input type="text" id="editFullName" placeholder="Full Name">
-            <select id="editGender">
-                <option value="" disabled>Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-            </select>
             <div class="actionBtn">
                 <button id="cancelEdit" style="background: var(--input-bg); color: var(--text-dark);">Cancel</button>
                 <button id="updateBtn" style="background: #3b82f6; color: white;">Update</button>
@@ -1865,9 +1855,8 @@
 
         confirmAdd.onclick = async () => {
             const fullName = document.getElementById("addFullName").value.trim();
-            const gender = document.getElementById("addGender").value;
 
-            if (!fullName || !gender) {
+            if (!fullName) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -1877,14 +1866,12 @@
                     .from('students')
                     .insert([{
                         section_id: currentSectionId,
-                        full_name: fullName,
-                        gender: gender
+                        full_name: fullName
                     }]);
 
                 if (error) throw error;
 
                 document.getElementById("addFullName").value = '';
-                document.getElementById("addGender").value = '';
 
                 addModal.style.display = "none";
                 showNotification("Student added successfully!");
@@ -1902,7 +1889,6 @@
             currentEditId = stud.id;
 
             document.getElementById("editFullName").value = stud.full_name;
-            document.getElementById("editGender").value = stud.gender || '';
 
             editModal.style.display = "flex";
         }
@@ -1911,9 +1897,8 @@
             if (!currentEditId) return;
 
             const fullName = document.getElementById("editFullName").value.trim();
-            const gender = document.getElementById("editGender").value;
 
-            if (!fullName || !gender) {
+            if (!fullName) {
                 showNotification("Please fill in all fields!", "error");
                 return;
             }
@@ -1921,7 +1906,7 @@
             try {
                 const { error } = await supabaseClient
                     .from('students')
-                    .update({ full_name: fullName, gender: gender })
+                    .update({ full_name: fullName })
                     .eq('id', currentEditId);
 
                 if (error) throw error;
