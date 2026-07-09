@@ -138,7 +138,7 @@
 
         try {
             showToast('Generating Excel…');
-            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+            await loadScript('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js');
 
             var XLSX = window.XLSX;
             if (!XLSX) throw new Error('SheetJS failed to load.');
@@ -159,7 +159,7 @@
 
     /* ── Shared helpers (used by inline exports on other pages) ────────── */
     window.loadSheetJS = function () {
-        return loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        return loadScript('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js');
     };
 
     function autoFitColumns(XLSX, ws, minWidth) {
