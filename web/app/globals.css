@@ -1,0 +1,17 @@
+/* Global reset + shared building blocks. Page-specific styles live in each
+   route's own CSS file (ported verbatim from the original pages, scoped). */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100%;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
