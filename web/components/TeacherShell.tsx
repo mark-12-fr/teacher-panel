@@ -35,11 +35,13 @@ export default function TeacherShell({
   active,
   title,
   subtitle,
+  action,
   children,
 }: {
   active: MenuKey;
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const { loading } = useRequireAuth();
@@ -173,6 +175,7 @@ export default function TeacherShell({
               {subtitle && <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>{subtitle}</p>}
             </div>
           </div>
+          {action}
         </div>
         {children}
       </main>
