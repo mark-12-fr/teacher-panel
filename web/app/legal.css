@@ -1,0 +1,114 @@
+/* Shared styling for the standalone legal pages (/privacy, /terms), ported from
+   privacy.html / terms.html. Scoped under .legal-page so its dark theme and
+   reset don't leak into the rest of the app. */
+.legal-page {
+  --bg: #0f172a;
+  --bg-soft: #111827;
+  --card: #1e293b;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --border: #334155;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.7;
+}
+.legal-page * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.legal-page a {
+  color: var(--accent);
+}
+.legal-page .container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.legal-page .nav {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.legal-page .nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+}
+.legal-page .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  color: var(--text);
+  text-decoration: none;
+}
+.legal-page .brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.legal-page .back-link {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.legal-page .back-link:hover {
+  color: var(--text);
+}
+
+.legal-page main {
+  padding: 56px 0 96px;
+}
+.legal-page h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.legal-page .updated {
+  color: var(--text-muted);
+  margin-bottom: 36px;
+  font-size: 0.95rem;
+}
+.legal-page h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 32px;
+  margin-bottom: 12px;
+}
+.legal-page p,
+.legal-page li {
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+.legal-page ul {
+  padding-left: 22px;
+  margin-bottom: 12px;
+}
+.legal-page li {
+  margin-bottom: 6px;
+}
+.legal-page .card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-top: 18px;
+}
+
+.legal-page footer {
+  background: var(--bg-soft);
+  border-top: 1px solid var(--border);
+  padding: 28px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
