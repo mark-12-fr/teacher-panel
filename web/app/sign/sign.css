@@ -1,0 +1,241 @@
+/* Ported from sign.html <style>, scoped under .login-page. */
+
+* {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        .login-page {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #eef2f7 0%, #dbeafe 40%, #c7d2fe 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .auth-header {
+            padding: 18px 40px
+        }
+
+        .auth-header-inner {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .auth-logo {
+            width: 42px
+        }
+
+        .auth-school-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #0f172a
+        }
+
+        .auth-main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 34px;
+            border-radius: 20px;
+            background: #ffffff;
+            border: 1px solid #eef2f7;
+            box-shadow:
+                0 14px 35px rgba(0, 0, 0, .08),
+                0 6px 14px rgba(0, 0, 0, .04);
+            text-align: center;
+        }
+
+        .login-card h2 {
+            margin-bottom: 6px;
+            font-size: 26px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .login-subtitle {
+            font-size: 13.5px;
+            color: #64748b;
+            margin-bottom: 18px;
+        }
+
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #111;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .google-btn:hover {
+            background: #f9fafb;
+        }
+
+        .divider {
+            margin: 18px 0;
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .form-group {
+            position: relative;
+            margin-top: 16px;
+            text-align: left
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            background: #f8fafc;
+            font-size: 14px;
+            outline: none;
+            transition: .2s;
+        }
+
+        .form-group label {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #fff;
+            padding: 0 6px;
+            font-size: 13px;
+            color: #64748b;
+            pointer-events: none;
+            transition: .2s;
+        }
+
+        .form-group input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+            background: #fff;
+        }
+
+        .form-group input:focus+label,
+        .form-group input:not(:placeholder-shown)+label {
+            top: -8px;
+            font-size: 11px;
+            color: #2563eb;
+        }
+
+        .field-msg {
+            font-size: 12px;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .field-msg.error {
+            color: #dc2626
+        }
+
+        .field-msg.success {
+            color: #059669
+        }
+
+        .strength-meter {
+            height: 6px;
+            border-radius: 6px;
+            background: #e5e7eb;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: .3s;
+        }
+
+        .btn-login {
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            transition: .25s;
+            font-family: 'Inter', sans-serif;
+            font-size: 14.5px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px rgba(37, 99, 235, .35);
+        }
+
+        .login-text {
+            margin-top: 16px;
+            font-size: 13.5px
+        }
+
+        .login-text a {
+            color: #2563eb;
+            font-weight: 600;
+            text-decoration: none
+        }
+
+        /* TOAST NOTIFICATION STYLES */
+        .toast-notification {
+            position: fixed;
+            top: 24px;
+            right: -350px;
+            background: #10b981;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+            font-size: 14.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: right 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 9999;
+        }
+
+        .toast-notification.show {
+            right: 24px;
+        }
+
+        .toast-notification.error {
+            background: #ef4444;
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+        }
+
+.login-page{min-height:100vh;}
