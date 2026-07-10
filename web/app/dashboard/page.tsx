@@ -5,7 +5,6 @@ import { Chart, registerables } from "chart.js";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
 import TeacherShell from "@/components/TeacherShell";
-import "./dashboard.css";
 
 Chart.register(...registerables);
 

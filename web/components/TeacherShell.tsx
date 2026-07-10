@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPatch } from "@/lib/api";
 import { useRequireAuth, signOut } from "@/hooks/useAuth";
 import { pullTheme, toggleTheme } from "@/lib/theme";
+import "@/app/teacher-shell.css";
 
 export type MenuKey =
   | "dashboard"
