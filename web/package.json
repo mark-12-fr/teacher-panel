@@ -16,7 +16,8 @@
     "next": "14.2.15",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "chart.js": "4.4.3"
+    "chart.js": "4.4.3",
+    "xlsx-js-style": "1.2.0"
   },
   "devDependencies": {
     "@types/node": "20.14.10",

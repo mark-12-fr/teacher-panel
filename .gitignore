@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ── Next.js frontend (web/) ──────────────────────────────────────────────────
+# The Python `lib/` rule above is unanchored, so it also matches web/lib/ — the
+# app's own source (api client, Supabase client, theme, export helpers). Keep
+# that directory tracked. Also ignore Next.js build output / deps under web/.
+!web/lib/
+!web/lib/**
+web/node_modules/
+web/.next/
+web/out/
