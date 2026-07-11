@@ -9,7 +9,10 @@ asyncpg==0.30.0
 greenlet==3.1.1
 
 # Config / validation
-pydantic==1.10.19
+# pydantic v2 — installs from prebuilt cp312 wheels on the pinned Python 3.12.9
+# (runtime.txt), so no Rust build is needed. The routers rely on v2's
+# BaseModel.model_dump(); v1 lacks it and 500s every write.
+pydantic==2.10.4
 python-dotenv==1.0.1
 
 # Auth — bcrypt password verification (compatible with the old Flask hashes)
