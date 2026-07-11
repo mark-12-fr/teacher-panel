@@ -16,7 +16,7 @@ backend/   →  FastAPI API        →  Render
 
 ## 1) Backend → Render
 
-The repo ships a `config/render.yaml` Blueprint that already points at `backend/`.
+The repo ships a `render.yaml` Blueprint (at repo root) that already points at `backend/`.
 
 **Option A — Blueprint (recommended):**
 1. Render Dashboard → **New +** → **Blueprint** → pick this repo.
