@@ -2,7 +2,7 @@
   "name": "AcadTrack",
   "short_name": "AcadTrack",
   "description": "Student management system for teachers and facilitators — attendance, class records, and performance tracking.",
-  "start_url": "/login.html",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
