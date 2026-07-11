@@ -60,7 +60,6 @@ export default function AttendanceGridPage() {
       setSection(r.section);
     } catch {
       showToast("Unauthorized or Section not found", true);
-      setTimeout(() => (window.location.href = "/section"), 1500);
     }
   }, [sectionId]);
 

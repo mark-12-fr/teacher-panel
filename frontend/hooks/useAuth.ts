@@ -63,10 +63,15 @@ export async function signOut() {
     await getSupabase().auth.signOut();
   } catch {}
   // Clear legacy keys the old app used, just in case.
-  ["access_token", "user_id", "remembered_email"].forEach((k) => {
+  ["access_token", "user_id", "remembered_email", "faci_id", "cached_user_name", "cached_user_avatar"].forEach((k) => {
     try {
       localStorage.removeItem(k);
     } catch {}
   });
+  // Clear any cached chat keys
+  try {
+    const keys = Object.keys(localStorage);
+    keys.filter((k) => k.startsWith("mjr_chat_")).forEach((k) => localStorage.removeItem(k));
+  } catch {}
   window.location.href = "/login";
 }

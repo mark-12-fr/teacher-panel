@@ -32,6 +32,7 @@ export default function DashboardPage() {
 
   const [clock, setClock] = useState({ time: "", date: "" });
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [schedModal, setSchedModal] = useState(false);
   const [noticeModal, setNoticeModal] = useState(false);
@@ -174,6 +175,7 @@ export default function DashboardPage() {
       setRates(totAtt > 0 ? { p: Math.round((present / totAtt) * 100), a: 100 - Math.round((present / totAtt) * 100) } : null);
     } catch (e) {
       console.error(e);
+      setLoadError("Failed to load dashboard data. Check your connection.");
     }
   }, []);
 
@@ -392,6 +394,11 @@ export default function DashboardPage() {
 
   return (
     <TeacherShell active="dashboard" title="Dashboard" subtitle="Teacher Overview">
+      {loadError && (
+        <div className="error-banner" style={{ background: "#fef2f2", color: "#dc2626", padding: "12px 16px", borderRadius: 8, marginBottom: 16, display: "flex", alignItems: "center", gap: 8, fontSize: "0.9rem" }}>
+          <i className="fa-solid fa-circle-exclamation" /> {loadError}
+        </div>
+      )}
       <div className="dashboard-grid">
         <div className="div-banner">
           <div className="banner-shine" />

@@ -77,7 +77,6 @@ export default function ClassRecordGridPage() {
       setViewQuarter(cq);
     } catch {
       showToast("Unauthorized or Section not found", true);
-      setTimeout(() => (window.location.href = "/class-record"), 1500);
     }
   }, [sectionId]);
 

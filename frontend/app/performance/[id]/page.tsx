@@ -75,7 +75,6 @@ export default function PerformanceDetailPage() {
       setReady(true);
     } catch {
       showToast("Unauthorized or Section not found", true);
-      setTimeout(() => (window.location.href = "/performance"), 1500);
     }
   }, [sectionId]);
 

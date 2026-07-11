@@ -47,7 +47,6 @@ export default function SectionDetailPage() {
       setViewQuarter(cq);
     } catch {
       showToast("Unauthorized or Section not found", true);
-      setTimeout(() => (window.location.href = "/section"), 1500);
     }
   }, [sectionId]);
 
