@@ -53,7 +53,12 @@ export async function api<T = any>(path: string, options: ApiOptions = {}): Prom
   }
   if (!res.ok) {
     if (res.status === 401 && typeof window !== "undefined") {
-      window.location.replace("/login");
+      const last = sessionStorage.getItem("redirect_to_login_at");
+      const now = Date.now();
+      if (!last || now - Number(last) > 5000) {
+        sessionStorage.setItem("redirect_to_login_at", String(now));
+        window.location.replace("/login");
+      }
     }
     const message = (payload && (payload.detail || payload.error)) || `Request failed (${res.status})`;
     throw new ApiError(String(message), res.status, payload);

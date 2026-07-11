@@ -22,7 +22,12 @@ export function useRequireAuth() {
       if (!active) return;
       const session = data.session;
       if (!session) {
-        window.location.replace("/login");
+        const last = sessionStorage.getItem("redirect_to_login_at");
+        const now = Date.now();
+        if (!last || now - Number(last) > 5000) {
+          sessionStorage.setItem("redirect_to_login_at", String(now));
+          window.location.replace("/login");
+        }
         return;
       }
       setUser({ id: session.user.id, email: session.user.email });
@@ -31,8 +36,17 @@ export function useRequireAuth() {
 
     const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
-      if (!session) window.location.replace("/login");
-      else setUser({ id: session.user.id, email: session.user.email });
+      if (!session) {
+        const last = sessionStorage.getItem("redirect_to_login_at");
+        const now = Date.now();
+        if (!last || now - Number(last) > 5000) {
+          sessionStorage.setItem("redirect_to_login_at", String(now));
+          window.location.replace("/login");
+        }
+      } else {
+        setUser({ id: session.user.id, email: session.user.email });
+        setLoading(false);
+      }
     });
 
     return () => {
