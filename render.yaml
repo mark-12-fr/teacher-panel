@@ -10,6 +10,14 @@ services:
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/ping
     envVars:
+      # Pin Python so pydantic-core (Rust) and greenlet (C++) install from
+      # prebuilt cp312 wheels instead of compiling. PYTHON_VERSION is the
+      # highest-precedence signal Render reads — a bare-version runtime.txt is
+      # NOT honored (that format is for .python-version), so Render was falling
+      # back to 3.14 and failing the build.
+      - key: PYTHON_VERSION
+        value: "3.12.9"
+
       - key: DATABASE_URL
         sync: false
 
