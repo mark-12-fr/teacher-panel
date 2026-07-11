@@ -1,4 +1,4 @@
-   # 🎓Teacher Management Portal
+   # 🎓 Teacher Management Portal
 **A Modern, AI-Powered Dashboard for Academic Excellence**
 
 The **Teacher Management Portal** is a high-performance web application designed specifically for educators at PHINMA University of Iloilo. It streamlines classroom management, attendance tracking, and student performance analytics through a clean, intuitive, and mobile-responsive interface.
@@ -17,22 +17,36 @@ The **Teacher Management Portal** is a high-performance web application designed
 
 ## 🛠️ Tech Stack
 
-*   **Frontend**: HTML5, CSS3 (Flexbox & Grid), JavaScript (ES6+).
-*   **Backend**: Flask (Python).
-*   **Database**: Supabase (PostgreSQL) with Real-time capabilities.
-*   **Hosting**: Vercel (Frontend) and Render (Backend).
-*   **UI/UX**: Custom CSS with a focus on glassmorphism and modern dashboard aesthetics.
+*   **Frontend**: React 18, Next.js 14 (TypeScript)
+*   **Backend**: FastAPI (Python, async)
+*   **Database**: Supabase (PostgreSQL) with Real-time capabilities
+*   **AI**: Groq (primary) + Gemini (fallback)
+*   **Hosting**: Vercel (Frontend), Render (Backend)
+
+---
+
+## 📁 Project Structure
+
+```
+teacher-panel/
+├── frontend/      # Next.js frontend (React + TypeScript)
+├── backend/       # FastAPI backend (Python)
+├── api/           # Vercel serverless functions
+├── config/        # Deployment configs (Render, DEPLOY.md)
+├── database/      # SQL schemas / migrations
+└── README.md
+```
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-*   Python 3.x
-*   Pip (Python Package Manager)
+*   Node.js 18+
+*   Python 3.11+
 *   Supabase Account & Project Keys
 
 ### Installation
 1. **Clone the repository**:
    ```bash
-   git clone [https://github.com/mark-12-fr/teacher-panel.git](https://github.com/mark-12-fr/teacher-panel.git)
+   git clone https://github.com/mark-12-fr/teacher-panel.git

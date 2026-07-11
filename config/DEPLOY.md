@@ -3,7 +3,7 @@
 The app is two deployables plus the existing database:
 
 ```
-web/       →  Next.js frontend   →  Vercel
+frontend/  →  Next.js frontend   →  Vercel
 backend/   →  FastAPI API        →  Render
               (both talk to the SAME Supabase Postgres — no data migration)
 ```
@@ -16,7 +16,7 @@ backend/   →  FastAPI API        →  Render
 
 ## 1) Backend → Render
 
-The repo ships a `render.yaml` Blueprint that already points at `backend/`.
+The repo ships a `config/render.yaml` Blueprint that already points at `backend/`.
 
 **Option A — Blueprint (recommended):**
 1. Render Dashboard → **New +** → **Blueprint** → pick this repo.
@@ -53,10 +53,10 @@ The repo ships a `render.yaml` Blueprint that already points at `backend/`.
 
 ## 2) Frontend → Vercel
 
-The Vercel project currently builds the repo root. Point it at `web/`:
+The Vercel project currently builds the repo root. Point it at `frontend/`:
 
 1. Vercel → project **teacher-panel** → **Settings → Build & Deployment**.
-2. Set **Root Directory** to **`web`** → **Save**. Vercel now auto-detects Next.js.
+2. Set **Root Directory** to **`frontend`** → **Save**. Vercel now auto-detects Next.js.
 3. **Settings → Environment Variables** → add:
    - `NEXT_PUBLIC_API_BASE` = your Render URL (e.g. `https://teacher-panel-api.onrender.com`)
    - *(optional)* `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
