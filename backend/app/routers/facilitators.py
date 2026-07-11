@@ -11,10 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models import Facilitator
+from ..models import Facilitator, FacilitatorLog
 from ..schemas import FacilitatorIn, FacilitatorUpdate
 from ..security import CurrentTeacher, get_current_teacher, hash_password
-from ..utils import orm_to_dict
+from ..utils import orm_list, orm_to_dict
 
 router = APIRouter(prefix="/api/facilitators", tags=["facilitators"])
 
@@ -100,6 +100,26 @@ async def update_facilitator(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That Account ID is already taken.")
     await db.refresh(row)
     return {"message": "Facilitator successfully updated!", "facilitator": _public(row)}
+
+
+@router.get("/{fac_id}/logs")
+async def facilitator_logs(
+    fac_id: str,
+    teacher: CurrentTeacher = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db),
+):
+    """Latest sign-in/out logs for one of the teacher's facilitators (newest
+    first). Used by the AI assistant's 'Who are my facilitators?' answer."""
+    fac = await _own_faci(db, teacher, fac_id)
+    rows = (
+        await db.execute(
+            select(FacilitatorLog)
+            .where(FacilitatorLog.facilitator_id == fac.id)
+            .order_by(FacilitatorLog.time_in.desc())
+            .limit(5)
+        )
+    ).scalars().all()
+    return {"logs": orm_list(rows)}
 
 
 @router.delete("/{fac_id}")
