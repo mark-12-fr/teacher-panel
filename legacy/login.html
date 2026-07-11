@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In · AcadTrack — Academic Management System</title>
+    <meta name="description" content="Sign in to AcadTrack, the web-based academic management system for teachers and facilitators. Track attendance, manage class records, monitor performance, and collaborate in real time — featuring an AI teacher assistant.">
+    <link rel="canonical" href="https://acadtrack.asia/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="AcadTrack">
+    <meta property="og:title" content="AcadTrack — Academic Management System">
+    <meta property="og:description" content="A dual-panel academic management system for teachers and facilitators — attendance, class records, performance analytics, and an AI teacher assistant.">
+    <meta property="og:url" content="https://acadtrack.asia/">
+    <meta property="og:image" content="https://acadtrack.asia/logo.jpg">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="AcadTrack — Academic Management System">
+    <meta name="twitter:description" content="Attendance, class records, performance analytics, and an AI teacher assistant for teachers and facilitators.">
+    <meta name="twitter:image" content="https://acadtrack.asia/logo.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="apple-touch-icon" href="logo.jpg">
+    <meta name="theme-color" content="#3b82f6">
+
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #eef2f7 0%, #dbeafe 40%, #c7d2fe 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s ease-in-out;
+        }
+
+        .splash-content {
+            text-align: center;
+            color: white;
+            animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .splash-logo-container {
+            width: 96px;
+            height: 96px;
+            background: white;
+            border-radius: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: pulseLogo 2s infinite ease-in-out;
+        }
+
+        .splash-logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .splash-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            letter-spacing: 1.5px;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .splash-subtitle {
+            font-size: 1rem;
+            opacity: 0.85;
+            margin-bottom: 36px;
+            letter-spacing: 0.5px;
+            font-weight: 400;
+        }
+
+
+        .splash-loader {
+            width: 44px;
+            height: 44px;
+            margin: 0 auto;
+            border: 4px solid rgba(255, 255, 255, 0.15);
+            /* Faded border */
+            border-top: 4px solid #ffffff;
+            /* Solid top border for spinning effect */
+            border-radius: 50%;
+            animation: spinLoader 1s linear infinite;
+        }
+
+
+        @keyframes spinLoader {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulseLogo {
+            0% {
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
+                transform: scale(1.03);
+            }
+
+            100% {
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        .auth-main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 32px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow:
+                0 25px 60px rgba(0, 0, 0, .15),
+                0 10px 25px rgba(0, 0, 0, .08);
+            text-align: center;
+        }
+
+        .login-card h2 {
+            margin: 0 0 6px;
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .login-subtitle {
+            font-size: 13.5px;
+            color: #64748b;
+            margin-bottom: 18px;
+        }
+
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #111;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .google-btn:hover {
+            background: #f9fafb;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+        }
+
+        .divider {
+            margin: 18px 0;
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .form-group {
+            position: relative;
+            margin-top: 16px;
+            text-align: left;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            background: #f8fafc;
+            font-size: 14px;
+            outline: none;
+            transition: .2s;
+        }
+
+        .form-group label {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #fff;
+            padding: 0 6px;
+            font-size: 13px;
+            color: #64748b;
+            pointer-events: none;
+            transition: .2s;
+        }
+
+        .form-group input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+            background: #fff;
+        }
+
+        .form-group input:focus+label,
+        .form-group input:not(:placeholder-shown)+label {
+            top: -8px;
+            font-size: 11px;
+            color: #2563eb;
+        }
+
+        .pw-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 6px;
+            font-size: 18px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+        .pw-toggle:hover { color: #2563eb; }
+
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-login {
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            transition: .25s;
+            font-family: 'Inter', sans-serif;
+            font-size: 14.5px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px rgba(37, 99, 235, .35);
+        }
+
+        .btn-login:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .login-text {
+            margin-top: 16px;
+            font-size: 13.5px
+        }
+
+        .login-text a {
+            color: #2563eb;
+            font-weight: 600;
+            text-decoration: none
+        }
+
+
+        .toast-notification {
+            position: fixed;
+            top: 24px;
+            right: -350px;
+            background: #10b981;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+            font-size: 14.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: right 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 9999;
+        }
+
+        .toast-notification.show {
+            right: 24px;
+        }
+
+        .toast-notification.error {
+            background: #ef4444;
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+        }
+
+        .toast-notification.info {
+            background: #3b82f6;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 18px;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+            text-align: center;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-logo-container">
+                <img src="logo.jpg" alt="Logo">
+            </div>
+            <h1 class="splash-title">AcadTrack</h1>
+            <p class="splash-subtitle" id="splashSubtitle">MJR Vertex</p>
+            <div class="splash-loader" id="splashLoaderEl"></div>
+        </div>
+    </div>
+
+    <main class="auth-main">
+        <div class="login-card">
+
+            <h2>Welcome Teacher</h2>
+            <p class="login-subtitle">Login to your account</p>
+
+            <button type="button" id="googleBtn" onclick="loginWithGoogle()" class="google-btn">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="18">
+                Continue with Google
+            </button>
+
+            <div class="divider">or continue with email</div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+
+                <div class="form-group">
+                    <input type="email" name="email" id="email" required placeholder=" ">
+                    <label>Email Address</label>
+                </div>
+
+                <div class="form-group">
+                    <input type="password" name="password" id="password" required placeholder=" ">
+                    <label>Password</label>
+                    <button type="button" class="pw-toggle" onclick="togglePassword('password', this)" tabindex="-1" aria-label="Show password">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <div class="login-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="rememberMe">
+                        Remember me
+                    </label>
+
+                    <a class="forgot-link" onclick="toggleForgotModal()">
+                        Forgot password?
+                    </a>
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">Login</button>
+            </form>
+
+            <div class="login-text">
+                Don't have an account?
+                <a href="sign.html">Sign up</a>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="toastMessage" class="toast-notification">
+        <svg id="toastIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span id="toastText">Logged in successfully!</span>
+    </div>
+
+    <div id="forgotModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div id="resetStepEmail">
+                <h3 style="margin-top:0; margin-bottom:10px; font-size: 1.3rem;">Reset Password</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px;">Enter your email and we'll send you a
+                    verification code.</p>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <input type="email" id="resetEmail" placeholder=" " required style="background: white;">
+                    <label>Email Address</label>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="toggleForgotModal()"
+                        style="flex:1; padding:12px; border-radius:10px; border:none; cursor:pointer; background: #f1f5f9; color: #333; font-weight: 600;">Cancel</button>
+                    <button type="button" id="resetBtn" onclick="sendResetOtp()"
+                        style="flex:2; background:#3b82f6; color:white; padding:12px; border-radius:10px; border:none; cursor:pointer; font-weight:600;">Send
+                        Code</button>
+                </div>
+            </div>
+
+            <div id="resetStepOtp" style="display:none;">
+                <h3 style="margin-top:0; margin-bottom:10px; font-size: 1.3rem;">Enter Verification Code</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">We sent a code to <strong
+                        id="resetEmailEcho"></strong>. Enter it below along with your new password.</p>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <input type="text" id="otpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="8"
+                        placeholder=" "
+                        style="background: white; letter-spacing: 6px; text-align: center; font-size: 1.2rem; font-weight: 700;">
+                    <label>Verification Code</label>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <input type="password" id="newPassword" placeholder=" " minlength="6" style="background: white;">
+                    <label>New Password</label>
+                    <button type="button" class="pw-toggle" onclick="togglePassword('newPassword', this)" tabindex="-1" aria-label="Show password">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <input type="password" id="confirmPassword" placeholder=" " minlength="6"
+                        style="background: white;">
+                    <label>Confirm New Password</label>
+                    <button type="button" class="pw-toggle" onclick="togglePassword('confirmPassword', this)" tabindex="-1" aria-label="Show password">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:#64748b; margin: 6px 0 16px;">
+                    <span id="otpTimer">Code expires in 60s</span>
+                    <button type="button" id="resendOtpBtn" onclick="resendResetOtp()" disabled
+                        style="background:none; border:none; color:#3b82f6; font-weight:600; cursor:pointer; padding:0; opacity:0.5;">Resend</button>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="backToResetEmail()"
+                        style="flex:1; padding:12px; border-radius:10px; border:none; cursor:pointer; background: #f1f5f9; color: #333; font-weight: 600;">Back</button>
+                    <button type="button" id="verifyOtpBtn" onclick="verifyOtpAndReset()"
+                        style="flex:2; background:#3b82f6; color:white; padding:12px; border-radius:10px; border:none; cursor:pointer; font-weight:600;">Reset
+                        Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        if (localStorage.getItem('access_token') && localStorage.getItem('user_id')) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const loader = document.getElementById('splashLoaderEl');
+                if (loader) loader.style.display = 'none';
+                const subtitle = document.getElementById('splashSubtitle');
+                if (subtitle) subtitle.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading your workspace...';
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 800);
+            });
+        }
+
+        const SUPABASE_URL = 'https://njzvuwkepaasnsvuujgx.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qenZ1d2tlcGFhc25zdnV1amd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTk5MTgsImV4cCI6MjA5MzE3NTkxOH0.tFh2d3ZIZYMWk-7HHckCbkwbTJ7uQ9onGeTaaUlkeH0';
+
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        window.addEventListener('DOMContentLoaded', () => {
+
+            const savedEmail = localStorage.getItem('remembered_email');
+            if (savedEmail) {
+                document.getElementById('email').value = savedEmail;
+                document.getElementById('rememberMe').checked = true;
+            }
+        });
+
+
+        window.addEventListener('load', function () {
+            if (!localStorage.getItem('access_token') || !localStorage.getItem('user_id')) {
+                const splashScreen = document.getElementById('splashScreen');
+                setTimeout(() => {
+                    splashScreen.style.opacity = '0';
+                    splashScreen.style.visibility = 'hidden';
+                }, 1800);
+            }
+        });
+
+
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toastMessage");
+            const text = document.getElementById("toastText");
+            const icon = document.getElementById("toastIcon");
+
+            text.textContent = message;
+            toast.className = "toast-notification";
+
+            if (type === "error") {
+                toast.classList.add("error");
+                icon.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+            } else if (type === "info") {
+                toast.classList.add("info");
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>';
+            } else {
+                icon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+            }
+
+            toast.classList.add("show");
+            setTimeout(() => { toast.classList.remove("show"); }, 3000);
+        }
+
+
+        async function loginWithGoogle() {
+            const btn = document.getElementById('googleBtn');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin + '/index.html',
+                        queryParams: {
+                            prompt: 'select_account'
+                        }
+                    }
+                });
+
+                if (error) throw error;
+            } catch (error) {
+                console.error("Google login error:", error);
+                showToast("Connection failed. Please check your internet.", "error");
+                btn.innerHTML = `<img src="https://www.svgrepo.com/show/475656/google-color.svg" width="18"> Continue with Google`;
+            }
+        }
+
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const emailInput = document.getElementById('email').value.trim();
+            const passInput = document.getElementById('password').value.trim();
+            const rememberChecked = document.getElementById('rememberMe').checked;
+            const btn = document.getElementById("loginBtn");
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
+
+            if (rememberChecked) {
+                localStorage.setItem('remembered_email', emailInput);
+            } else {
+                localStorage.removeItem('remembered_email');
+            }
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: emailInput,
+                password: passInput,
+            });
+
+            if (error) {
+                showToast("Incorrect email or password. Please try again.", "error");
+                btn.disabled = false;
+                btn.innerText = "Login";
+            } else {
+                localStorage.removeItem('faci_id');
+                localStorage.setItem('access_token', data.session.access_token);
+                localStorage.setItem('user_id', data.user.id);
+
+                showToast("Login successful. Redirecting...");
+
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Authentication Successful';
+                btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 1000);
+            }
+        }
+
+
+        function toggleForgotModal() {
+            const m = document.getElementById('forgotModal');
+            const opening = (m.style.display === 'none' || m.style.display === '');
+            m.style.display = opening ? 'flex' : 'none';
+            if (opening) {
+                document.getElementById('resetEmail').value = '';
+                showResetStep('email');
+            } else {
+                stopOtpTimer();
+                otpEmail = null;
+            }
+        }
+
+
+        let otpEmail = null;
+        let otpTimerInterval = null;
+        const OTP_TTL_SECONDS = 60;
+
+        function showResetStep(step) {
+            document.getElementById('resetStepEmail').style.display = step === 'email' ? 'block' : 'none';
+            document.getElementById('resetStepOtp').style.display = step === 'otp' ? 'block' : 'none';
+        }
+
+        function backToResetEmail() {
+            stopOtpTimer();
+            showResetStep('email');
+        }
+
+        function stopOtpTimer() {
+            if (otpTimerInterval) { clearInterval(otpTimerInterval); otpTimerInterval = null; }
+        }
+
+        function startOtpTimer() {
+            stopOtpTimer();
+            const timerEl = document.getElementById('otpTimer');
+            const resendBtn = document.getElementById('resendOtpBtn');
+            let remaining = OTP_TTL_SECONDS;
+            resendBtn.disabled = true;
+            resendBtn.style.opacity = '0.5';
+            timerEl.textContent = `Code expires in ${remaining}s`;
+
+            otpTimerInterval = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    stopOtpTimer();
+                    timerEl.textContent = 'Code expired. Tap Resend.';
+                    resendBtn.disabled = false;
+                    resendBtn.style.opacity = '1';
+                } else {
+                    timerEl.textContent = `Code expires in ${remaining}s`;
+                }
+            }, 1000);
+        }
+
+
+        async function sendResetOtp() {
+            const email = document.getElementById('resetEmail').value.trim();
+            if (!email) { showToast("Please enter an email address", "error"); return; }
+
+            const btn = document.getElementById('resetBtn');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
+            btn.disabled = true;
+
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+
+            btn.innerText = "Send Code";
+            btn.disabled = false;
+
+            if (error) {
+                console.error(error);
+                showToast("Could not send code. Check the email and try again.", "error");
+                return;
+            }
+
+            otpEmail = email;
+            document.getElementById('resetEmailEcho').textContent = email;
+            document.getElementById('otpInput').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            showResetStep('otp');
+            startOtpTimer();
+            setTimeout(() => document.getElementById('otpInput').focus(), 50);
+            showToast("Verification code sent! Check your email.", "info");
+        }
+
+
+        async function resendResetOtp() {
+            if (!otpEmail) { backToResetEmail(); return; }
+            const resendBtn = document.getElementById('resendOtpBtn');
+            resendBtn.disabled = true;
+            resendBtn.style.opacity = '0.5';
+
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(otpEmail);
+            if (error) {
+                console.error(error);
+                showToast("Could not resend code. Try again.", "error");
+                resendBtn.disabled = false;
+                resendBtn.style.opacity = '1';
+                return;
+            }
+            startOtpTimer();
+            showToast("New code sent!", "info");
+        }
+
+
+        async function verifyOtpAndReset() {
+            const otp = document.getElementById('otpInput').value.trim();
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+
+            if (!/^\d{6,8}$/.test(otp)) { showToast("Enter the code from your email", "error"); return; }
+            if (newPass.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+            if (newPass !== confirmPass) { showToast("Passwords do not match", "error"); return; }
+            if (!otpEmail) { showToast("Session expired, please request a new code", "error"); backToResetEmail(); return; }
+
+            const btn = document.getElementById('verifyOtpBtn');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
+            btn.disabled = true;
+
+            const { error: verifyErr } = await supabaseClient.auth.verifyOtp({
+                email: otpEmail,
+                token: otp,
+                type: 'recovery'
+            });
+
+            if (verifyErr) {
+                console.error(verifyErr);
+                showToast("Invalid or expired code", "error");
+                btn.innerText = "Reset Password";
+                btn.disabled = false;
+                return;
+            }
+
+            const { error: updateErr } = await supabaseClient.auth.updateUser({ password: newPass });
+
+            if (updateErr) {
+                console.error(updateErr);
+                showToast("Could not update password. Try again.", "error");
+                btn.innerText = "Reset Password";
+                btn.disabled = false;
+                return;
+            }
+
+
+            await supabaseClient.auth.signOut();
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+
+            stopOtpTimer();
+            otpEmail = null;
+            toggleForgotModal();
+            showResetStep('email');
+            showToast("Password updated! Please log in with your new password.", "info");
+        }
+    </script>
+
+</body>
+
+</html>
