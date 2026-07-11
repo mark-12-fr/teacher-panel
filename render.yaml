@@ -1,0 +1,49 @@
+# Render Blueprint for the AcadTrack Teacher API (FastAPI backend in /backend).
+# Create it on Render via:  New +  →  Blueprint  →  pick this repo.
+# Secrets (sync: false) are entered in the Render dashboard, not committed here.
+services:
+  - type: web
+    name: teacher-panel-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/ping
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+      # ── Database: the SAME Supabase Postgres (use the POOLER string, and note
+      #    the required "postgresql+asyncpg://" scheme). See DEPLOY.md. ──
+      - key: DATABASE_URL
+        sync: false
+
+      # ── Supabase Auth: verify the access tokens issued to the frontend ──
+      # Supabase → Project Settings → API → JWT Secret
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_URL
+        sync: false
+
+      # ── CORS: the frontend origins allowed to call this API. Adjust to match
+      #    your Vercel domains once the /web app is live. ──
+      - key: CORS_ORIGINS
+        value: "https://acadtrack.asia,https://www.acadtrack.asia,https://teacher-panel-phi.vercel.app,https://teacher-panel-mjrvertex-7104s-projects.vercel.app"
+
+      # ── AI assistant (Groq primary, Gemini fallback). Optional — without them
+      #    the factual answers still work; only advisory replies are disabled. ──
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+      # ── Web Push (VAPID). Optional. ──
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: "mailto:mjrvertex@gmail.com"
