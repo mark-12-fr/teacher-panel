@@ -1,2 +1,0 @@
-app.py
-requirements.txt
