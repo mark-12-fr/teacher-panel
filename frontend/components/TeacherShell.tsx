@@ -4,7 +4,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPatch } from "@/lib/api";
-import { useRequireAuth, signOut } from "@/hooks/useAuth";
+import { getSupabase } from "@/lib/supabase";
+import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
 import { pullTheme, toggleTheme } from "@/lib/theme";
 import AIAssistant from "@/components/AIAssistant";
 import "@/app/teacher-shell.css";
@@ -55,15 +56,35 @@ export default function TeacherShell({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const cachedName = localStorage.getItem("cached_user_name");
-    const cachedAvatar = localStorage.getItem("cached_user_avatar");
-    if (cachedName) setName(cachedName);
-    if (cachedAvatar) setAvatar(cachedAvatar);
-
+    let cancelled = false;
     (async () => {
+      // Identify the current user BEFORE trusting any cached identity, so a
+      // previous user's name/avatar is never shown after an account switch on
+      // a shared browser (covers password login, Google OAuth, and session
+      // restore alike).
+      let uid: string | null = null;
+      try {
+        const { data } = await getSupabase().auth.getSession();
+        uid = data.session?.user?.id ?? null;
+      } catch {}
+      if (cancelled) return;
+
+      if (uid && localStorage.getItem("cached_user_id") === uid) {
+        const cachedName = localStorage.getItem("cached_user_name");
+        const cachedAvatar = localStorage.getItem("cached_user_avatar");
+        if (cachedName) setName(cachedName);
+        if (cachedAvatar) setAvatar(cachedAvatar);
+      } else {
+        // Unknown or mismatched owner → drop the stale identity (and chat) so
+        // it can't be rendered for the wrong account while /api/me loads.
+        clearUserCache();
+      }
+
       try {
         const r = await apiGet("/api/me");
+        if (cancelled) return;
         const p = r?.profile || {};
+        if (uid) localStorage.setItem("cached_user_id", uid);
         if (p.full_name) {
           setName(p.full_name);
           localStorage.setItem("cached_user_name", p.full_name);
@@ -79,6 +100,9 @@ export default function TeacherShell({
       } catch {}
       pullTheme();
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {

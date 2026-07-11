@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { clearUserCache } from "@/hooks/useAuth";
 import "./sign.css";
 
 export default function SignUpPage() {
@@ -102,8 +103,12 @@ export default function SignUpPage() {
         } catch (pe) {
           console.error("Profile insert warning:", pe);
         }
+        // Fresh account — clear any previous user's cache on this browser,
+        // then stamp this account as the owner of the cached identity.
+        clearUserCache();
         if (authData.session) localStorage.setItem("access_token", authData.session.access_token);
         localStorage.setItem("user_id", authData.user.id);
+        localStorage.setItem("cached_user_id", authData.user.id);
         localStorage.setItem("cached_user_name", fullName);
         showToast("Account successfully created! Redirecting to Dashboard...");
         setTimeout(() => (window.location.href = "/dashboard"), 2000);

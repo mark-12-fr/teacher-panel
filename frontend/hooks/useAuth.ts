@@ -58,20 +58,35 @@ export function useRequireAuth() {
   return { user, loading };
 }
 
-export async function signOut() {
-  try {
-    await getSupabase().auth.signOut();
-  } catch {}
-  // Clear legacy keys the old app used, just in case.
-  ["access_token", "user_id", "remembered_email", "faci_id", "cached_user_name", "cached_user_avatar"].forEach((k) => {
+/**
+ * Remove per-user cached data that must never bleed across accounts on a
+ * shared browser: the sidebar identity (name/avatar), the id that owns it, and
+ * the AI chat history (keyed by user). Call this whenever the active user
+ * changes (login as a different account, signup, logout).
+ */
+export function clearUserCache() {
+  ["cached_user_name", "cached_user_avatar", "cached_user_id"].forEach((k) => {
     try {
       localStorage.removeItem(k);
     } catch {}
   });
-  // Clear any cached chat keys
   try {
-    const keys = Object.keys(localStorage);
-    keys.filter((k) => k.startsWith("mjr_chat_")).forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("mjr_chat_"))
+      .forEach((k) => localStorage.removeItem(k));
   } catch {}
+}
+
+export async function signOut() {
+  try {
+    await getSupabase().auth.signOut();
+  } catch {}
+  // Clear legacy session keys the old app used, just in case.
+  ["access_token", "user_id", "remembered_email", "faci_id"].forEach((k) => {
+    try {
+      localStorage.removeItem(k);
+    } catch {}
+  });
+  clearUserCache();
   window.location.href = "/login";
 }

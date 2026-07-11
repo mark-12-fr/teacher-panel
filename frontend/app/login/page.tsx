@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { clearUserCache } from "@/hooks/useAuth";
 import "./login.css";
 
 type ToastType = "success" | "error" | "info";
@@ -102,6 +103,11 @@ export default function LoginPage() {
       showToast("Incorrect email or password. Please try again.", "error");
       setLoginBtn("idle");
     } else {
+      // Switching to a different account? Drop the previous user's cached
+      // identity and chat so it can't be shown for this one.
+      if (data.user && localStorage.getItem("cached_user_id") !== data.user.id) {
+        clearUserCache();
+      }
       // Keep the legacy keys the old app used (some shared scripts read them).
       localStorage.removeItem("faci_id");
       if (data.session) localStorage.setItem("access_token", data.session.access_token);
