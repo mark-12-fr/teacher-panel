@@ -1,7 +1,7 @@
 """schemas.py — request/response models for the Teacher API."""
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 # ── Profile ─────────────────────────────────────────────────────────────────
@@ -23,13 +23,15 @@ class SectionIn(BaseModel):
 
 
 class SectionUpdate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
     title: Optional[str] = None
     subject: Optional[str] = None
     room: Optional[str] = None
     semester: Optional[str] = None
     school_year: Optional[str] = None
     quarter: Optional[str] = None
+
+    class Config:
+        extra = "ignore"
 
 
 # ── Students ────────────────────────────────────────────────────────────────
@@ -77,7 +79,6 @@ class FacilitatorIn(BaseModel):
 
 
 class FacilitatorUpdate(BaseModel):
-    model_config = ConfigDict(extra="ignore")
     full_name: Optional[str] = None
     section: Optional[str] = None
     subject: Optional[str] = None
@@ -85,6 +86,9 @@ class FacilitatorUpdate(BaseModel):
     password: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
+
+    class Config:
+        extra = "ignore"
 
 
 # ── Schedules / notices / notes ─────────────────────────────────────────────
@@ -122,8 +126,10 @@ class AttendanceSaveIn(BaseModel):
 
 
 class ClassRecordUpsert(BaseModel):
-    model_config = ConfigDict(extra="allow")
     id: Optional[str] = None
+
+    class Config:
+        extra = "allow"
     student_id: str
     quarter: Optional[str] = None
     date: Optional[str] = None

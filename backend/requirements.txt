@@ -9,8 +9,7 @@ asyncpg==0.30.0
 greenlet==3.1.1
 
 # Config / validation
-pydantic==2.10.4
-pydantic-settings==2.7.0
+pydantic==1.10.19
 python-dotenv==1.0.1
 
 # Auth — bcrypt password verification (compatible with the old Flask hashes)
