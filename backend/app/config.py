@@ -9,7 +9,8 @@ from functools import lru_cache
 from typing import List
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from typing_extensions import Annotated
 
 
 class Settings(BaseSettings):
@@ -28,7 +29,10 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = Field(default="")
 
     # ── CORS ────────────────────────────────────────────────────────────────
-    CORS_ORIGINS: List[str] = Field(
+    # NoDecode stops pydantic-settings from trying to JSON-parse the env value,
+    # so a plain comma-separated list (e.g. "https://a.com,https://b.com") is
+    # accepted and split by the validator below instead of raising.
+    CORS_ORIGINS: Annotated[List[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
     )
 
