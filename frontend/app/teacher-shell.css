@@ -222,8 +222,15 @@
             display: flex;
             flex-direction: column;
             transition: margin-left 0.3s ease-in-out;
-            opacity: 0;
-            animation: fadeInContent 0.25s ease-out forwards;
+            /* NOTE: must NOT retain a transform after the entrance animation.
+               A persisted `transform: translateY(0)` (from animation-fill-mode:
+               forwards) turns .main-content into the containing block for its
+               position:fixed descendants (modals, FAB, toasts), so they anchor
+               to this area instead of the viewport and render off to the side.
+               `backwards` gives the same fade+slide-in but reverts to
+               transform:none afterwards, keeping fixed overlays viewport-fixed. */
+            opacity: 1;
+            animation: fadeInContent 0.25s ease-out backwards;
         }
 
         @keyframes fadeInContent {
