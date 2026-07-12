@@ -123,35 +123,39 @@ export default function SectionDetailPage() {
 
   async function addStudent() {
     if (!addName.trim()) return showToast("Please fill in all fields!", true);
+    const entry = { id: "_opt_" + Date.now().toString(36), full_name: addName.trim() };
+    setStudents((prev) => [entry, ...prev]);
+    setAddName("");
+    setAddOpen(false);
     try {
-      await apiPost(`/api/sections/${sectionId}/students`, { full_name: addName.trim() });
-      setAddName("");
-      setAddOpen(false);
-      showToast("Student added successfully!");
+      await apiPost(`/api/sections/${sectionId}/students`, { full_name: entry.full_name });
       loadStudents();
     } catch {
+      setStudents((prev) => prev.filter((s) => s.id !== entry.id));
       showToast("Failed to add student", true);
     }
   }
   async function updateStudent() {
     if (!editId) return;
     if (!editName.trim()) return showToast("Please fill in all fields!", true);
+    const oldName = students.find((s) => s.id === editId)?.full_name || "";
+    setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: editName.trim() } : s));
+    setEditId(null);
     try {
       await apiPatch(`/api/students/${editId}`, { full_name: editName.trim() });
-      setEditId(null);
-      showToast("Student updated successfully!");
-      loadStudents();
     } catch {
+      setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: oldName } : s));
       showToast("Failed to update student", true);
     }
   }
   async function deleteStudent(id: string) {
     if (!window.confirm("Are you sure you want to remove this student?")) return;
+    const removed = students.find((s) => s.id === id);
+    setStudents((prev) => prev.filter((s) => s.id !== id));
     try {
       await apiDelete(`/api/students/${id}`);
-      showToast("Student removed.");
-      loadStudents();
     } catch {
+      if (removed) setStudents((prev) => [removed, ...prev]);
       showToast("Failed to delete student", true);
     }
   }
