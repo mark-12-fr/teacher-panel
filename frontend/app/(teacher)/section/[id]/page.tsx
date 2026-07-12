@@ -130,9 +130,9 @@ export default function SectionDetailPage() {
     try {
       await apiPost(`/api/sections/${sectionId}/students`, { full_name: entry.full_name });
       loadStudents();
-    } catch {
+    } catch (e: any) {
       setStudents((prev) => prev.filter((s) => s.id !== entry.id));
-      showToast("Failed to add student", true);
+      showToast(e?.message || "Failed to add student", true);
     }
   }
   async function updateStudent() {
