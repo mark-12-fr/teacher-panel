@@ -74,9 +74,9 @@ export default function DashboardPage() {
   const [passing, setPassing] = useState(cached.current?.passing ?? 75);
   const [top, setTop] = useState<TopStudent[]>(cached.current?.top ?? []);
 
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [notices, setNotices] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>(() => { try { const r = localStorage.getItem("dash_cache_sched"); return r ? JSON.parse(r).data || [] : [] } catch { return [] } });
+  const [notices, setNotices] = useState<any[]>(() => { try { const r = localStorage.getItem("dash_cache_notice"); return r ? JSON.parse(r).data || [] : [] } catch { return [] } });
+  const [notes, setNotes] = useState<any[]>(() => { try { const r = localStorage.getItem("dash_cache_note"); return r ? JSON.parse(r).data || [] : [] } catch { return [] } });
   const [noteInput, setNoteInput] = useState("");
 
   const [clock, setClock] = useState({ time: "", date: "" });
