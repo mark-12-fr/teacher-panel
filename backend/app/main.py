@@ -31,11 +31,13 @@ for r in (dashboard, sections, grading, facilitators, records, ai, push):
     app.include_router(r.router)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {"status": "ok", "service": "AcadTrack Teacher API"}
 
 
-@app.get("/api/ping")
+@app.api_route("/api/ping", methods=["GET", "HEAD"])
 async def ping():
+    # HEAD too: uptime monitors commonly probe with HEAD (lighter than GET),
+    # and Render's own health check may as well — a GET-only route 405s those.
     return {"ok": True}
