@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 
 Chart.register(...registerables);
 
@@ -18,6 +18,7 @@ interface TopStudent {
 }
 
 export default function DashboardPage() {
+  usePageMeta("Dashboard", "Teacher Overview");
   const [cards, setCards] = useState({ sections: 0, students: 0, present: 0, absent: 0 });
   const [rates, setRates] = useState<{ p: number; a: number } | null>(null);
   const [chartData, setChartData] = useState<(number | null)[]>([null, null, null, null]);
@@ -393,7 +394,7 @@ export default function DashboardPage() {
   const overallAvg = validChart.length ? Math.round(validChart.reduce((a, b) => a + b, 0) / validChart.length) : null;
 
   return (
-    <TeacherShell active="dashboard" title="Dashboard" subtitle="Teacher Overview">
+    <>
       {loadError && (
         <div className="error-banner" style={{ background: "#fef2f2", color: "#dc2626", padding: "12px 16px", borderRadius: 8, marginBottom: 16, display: "flex", alignItems: "center", gap: 8, fontSize: "0.9rem" }}>
           <i className="fa-solid fa-circle-exclamation" /> {loadError}
@@ -678,6 +679,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </TeacherShell>
+    </>
   );
 }

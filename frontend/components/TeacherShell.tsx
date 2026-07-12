@@ -3,10 +3,12 @@
 // topbar with the mobile menu button + page title. Wraps every teacher page.
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { apiGet, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
 import { pullTheme, toggleTheme } from "@/lib/theme";
+import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
 import "@/app/teacher-shell.css";
 
@@ -33,19 +35,28 @@ const MENU: { key: MenuKey; href: string; icon: string; label: string }[] = [
   { key: "help", href: "/help", icon: "fa-circle-question", label: "Help" },
 ];
 
+function activeFromPath(path: string): MenuKey {
+  const seg = path.split("/")[1] || "dashboard";
+  if (seg === "dashboard") return "dashboard";
+  if (seg === "section") return "section";
+  if (seg === "class-record") return "class-record";
+  if (seg === "attendance") return "attendance";
+  if (seg === "performance") return "performance";
+  if (seg === "facilitators") return "facilitators";
+  if (seg === "grading-system") return "grading-system";
+  if (seg === "about") return "about";
+  if (seg === "help") return "help";
+  return "dashboard";
+}
+
 export default function TeacherShell({
-  active,
-  title,
-  subtitle,
-  action,
   children,
 }: {
-  active: MenuKey;
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const active = activeFromPath(pathname);
+  const { title, subtitle, action } = usePageMetaValue();
   const { loading } = useRequireAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState<string>("");

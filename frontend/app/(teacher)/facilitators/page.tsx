@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch, ApiError } from "@/lib/api";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "./facilitators.css";
 
 function getLastSeenText(lastLogin?: string | null): { text: string; isActive: boolean } {
@@ -134,7 +134,7 @@ export default function FacilitatorsPage() {
   });
 
   return (
-    <TeacherShell active="facilitators" title="Assign Facilitators">
+    <>
       <div className="top-info-card">
         <div className="info-col">
           <h3>TOTAL FACILITATORS</h3>
@@ -301,6 +301,6 @@ export default function FacilitatorsPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-xmark" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

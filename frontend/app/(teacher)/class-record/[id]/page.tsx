@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import "./detail.css";
 
@@ -35,6 +35,7 @@ export default function ClassRecordGridPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
+  usePageMeta("Class Record", undefined, exportBtn);
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
   const [search, setSearch] = useState("");
@@ -297,7 +298,7 @@ export default function ClassRecordGridPage() {
   }
 
   return (
-    <TeacherShell active="class-record" title="Class Record" action={exportBtn}>
+    <>
       <div className="dashboard-wrapper">
         <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
         <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
@@ -414,6 +415,6 @@ export default function ClassRecordGridPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-exclamation" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import "./detail.css";
 
@@ -30,6 +30,7 @@ export default function AttendanceGridPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
+  usePageMeta("Attendance", undefined, exportBtn);
   const [attendance, setAttendance] = useState<Att[]>([]);
   const attRef = useRef<Att[]>([]);
   // Dates with a save in flight — our own realtime echoes for these are ignored
@@ -274,7 +275,7 @@ export default function AttendanceGridPage() {
   const quarter = normQ(section?.quarter);
 
   return (
-    <TeacherShell active="attendance" title="Attendance" action={exportBtn}>
+    <>
       <div className="dashboard-wrapper">
         <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
         <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{quarter}</h4></div>
@@ -448,7 +449,7 @@ export default function AttendanceGridPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-exclamation" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 
   function changeMonth(delta: number) {

@@ -1,13 +1,17 @@
 "use client";
 
+// Class Record section-picker (ported from class-record.html). Same section
+// cards as the Section page — search, add/edit/delete — but "View" opens the
+// per-section grade grid at /class-record/[id].
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
-import TeacherShell from "@/components/TeacherShell";
-import "./section.css";
+import { usePageMeta } from "@/lib/page-meta";
+import "../section/section.css";
 
 const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "" };
 
-export default function SectionListPage() {
+export default function ClassRecordPickerPage() {
+  usePageMeta("Class Record");
   const [sections, setSections] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -30,7 +34,6 @@ export default function SectionListPage() {
       const secs = secResp.sections || [];
       setSections(secs);
       setSubjects((subjResp.subjects || []).map((s: any) => s.name).sort((a: string, b: string) => a.localeCompare(b)));
-      // Student counts per section (the list endpoint doesn't include them).
       const pairs = await Promise.all(
         secs.map(async (s: any) => {
           try {
@@ -98,7 +101,7 @@ export default function SectionListPage() {
   async function del(id: string) {
     if (!window.confirm("Delete this section and ALL of its data? This permanently removes its students, class records, and attendance too — this cannot be undone.")) return;
     try {
-      await apiDelete(`/api/sections/${id}`); // backend cascades records/students/attendance
+      await apiDelete(`/api/sections/${id}`);
       showToast("Section and all its data deleted.");
       setSearch("");
       await load();
@@ -115,7 +118,7 @@ export default function SectionListPage() {
   const subjectSelect = subjects.includes(form.subject) || !form.subject ? subjects : [form.subject, ...subjects];
 
   return (
-    <TeacherShell active="section" title="Sections">
+    <>
       <div className="search-container">
         <i className="fa-solid fa-magnifying-glass search-icon" />
         <input type="text" placeholder="Search sections..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -156,7 +159,7 @@ export default function SectionListPage() {
                     <button className="dropdown-item delete" onClick={() => del(sec.id)}><i className="fa-solid fa-trash" /> Delete</button>
                   </div>
                 </div>
-                <button className="view-btn" onClick={() => (window.location.href = `/section/${sec.id}`)}>View</button>
+                <button className="view-btn" onClick={() => (window.location.href = `/class-record/${sec.id}`)}>View</button>
               </div>
             </div>
           ))
@@ -218,6 +221,6 @@ export default function SectionListPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-xmark" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

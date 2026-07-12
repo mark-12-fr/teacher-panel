@@ -5,12 +5,13 @@
 // per-section analytics at /performance/[id].
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "../section/section.css";
 
 const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "" };
 
 export default function PerformancePickerPage() {
+  usePageMeta("Class Performance");
   const [sections, setSections] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -117,7 +118,7 @@ export default function PerformancePickerPage() {
   const subjectSelect = subjects.includes(form.subject) || !form.subject ? subjects : [form.subject, ...subjects];
 
   return (
-    <TeacherShell active="performance" title="Class Performance">
+    <>
       <div className="search-container">
         <i className="fa-solid fa-magnifying-glass search-icon" />
         <input type="text" placeholder="Search sections..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -220,6 +221,6 @@ export default function PerformancePickerPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-xmark" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

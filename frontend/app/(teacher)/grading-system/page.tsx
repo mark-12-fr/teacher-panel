@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "./grading.css";
 
 const num = (v: any) => Number(v) || 0;
@@ -28,6 +28,7 @@ function PctBadge({ v, color }: { v: any; color: string }) {
 const EMPTY = { name: "", ww: 30, pt: 50, exam: 20, att: 0, passing: 75 };
 
 export default function GradingSystemPage() {
+  usePageMeta("Grading System");
   const [subjects, setSubjects] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -132,7 +133,7 @@ export default function GradingSystemPage() {
   const filtered = subjects.filter((s) => String(s.name || "").toUpperCase().includes(search.toUpperCase()));
 
   return (
-    <TeacherShell active="grading-system" title="Grading System">
+    <>
       <div className="top-info-card">
         <div className="info-col">
           <h3>TOTAL SUBJECTS</h3>
@@ -282,6 +283,6 @@ export default function GradingSystemPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-xmark" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

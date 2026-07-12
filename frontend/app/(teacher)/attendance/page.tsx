@@ -1,16 +1,17 @@
 "use client";
 
-// Class Record section-picker (ported from class-record.html). Same section
-// cards as the Section page — search, add/edit/delete — but "View" opens the
-// per-section grade grid at /class-record/[id].
+// Attendance section-picker (ported from attendance.html). Same section cards
+// as the Section page — search, add/edit/delete — but "View" opens the
+// per-section attendance grid at /attendance/[id].
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "../section/section.css";
 
 const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "" };
 
-export default function ClassRecordPickerPage() {
+export default function AttendancePickerPage() {
+  usePageMeta("Attendance");
   const [sections, setSections] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -117,7 +118,7 @@ export default function ClassRecordPickerPage() {
   const subjectSelect = subjects.includes(form.subject) || !form.subject ? subjects : [form.subject, ...subjects];
 
   return (
-    <TeacherShell active="class-record" title="Class Record">
+    <>
       <div className="search-container">
         <i className="fa-solid fa-magnifying-glass search-icon" />
         <input type="text" placeholder="Search sections..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -158,7 +159,7 @@ export default function ClassRecordPickerPage() {
                     <button className="dropdown-item delete" onClick={() => del(sec.id)}><i className="fa-solid fa-trash" /> Delete</button>
                   </div>
                 </div>
-                <button className="view-btn" onClick={() => (window.location.href = `/class-record/${sec.id}`)}>View</button>
+                <button className="view-btn" onClick={() => (window.location.href = `/attendance/${sec.id}`)}>View</button>
               </div>
             </div>
           ))
@@ -220,6 +221,6 @@ export default function ClassRecordPickerPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-xmark" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

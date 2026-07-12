@@ -3,7 +3,7 @@
 // About the System (ported from about.html) — an authenticated shell page with
 // static informational sections. Lucide icons in the original are mapped to the
 // Font Awesome set used across the rest of the ported app.
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "./about.css";
 
 const SECTIONS: { icon: string; title: string; text: React.ReactNode }[] = [
@@ -61,8 +61,9 @@ const SECTIONS: { icon: string; title: string; text: React.ReactNode }[] = [
 ];
 
 export default function AboutPage() {
+  usePageMeta("About the System");
   return (
-    <TeacherShell active="about" title="About the System">
+    <>
       <div className="about-card">
         {SECTIONS.map((s) => (
           <div className="about-section" key={s.title}>
@@ -74,6 +75,6 @@ export default function AboutPage() {
           </div>
         ))}
       </div>
-    </TeacherShell>
+    </>
   );
 }

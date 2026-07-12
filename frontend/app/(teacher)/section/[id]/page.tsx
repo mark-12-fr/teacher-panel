@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "./detail.css";
 
 const normQ = (q: any) => (q ? String(q).replace(/[^1-4]/g, "") || "1" : "1");
@@ -15,6 +15,7 @@ export default function SectionDetailPage() {
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  usePageMeta("Class List");
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
 
   const [currentQuarter, setCurrentQuarter] = useState("1");
@@ -134,7 +135,7 @@ export default function SectionDetailPage() {
   const filtered = students.filter((s) => String(s.full_name || "").toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <TeacherShell active="section" title="Class List">
+    <>
       <div className="dashboard-wrapper">
         <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
         <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
@@ -270,6 +271,6 @@ export default function SectionDetailPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-xmark" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }

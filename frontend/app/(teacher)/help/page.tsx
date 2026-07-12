@@ -2,7 +2,7 @@
 
 // Help & Support (ported from help.html) — an authenticated shell page with an
 // FAQ list and a support-contact box. Lucide icons mapped to Font Awesome.
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import "./help.css";
 
 const FAQS: { icon: string; title: string; text: React.ReactNode }[] = [
@@ -83,8 +83,9 @@ const FAQS: { icon: string; title: string; text: React.ReactNode }[] = [
 ];
 
 export default function HelpPage() {
+  usePageMeta("Help & Support");
   return (
-    <TeacherShell active="help" title="Help & Support">
+    <>
       <div className="help-card">
         <div className="help-intro">
           <h2>Need Assistance?</h2>
@@ -109,6 +110,6 @@ export default function HelpPage() {
           <p><strong>Email:</strong> mjrvertex@gmail.com</p>
         </div>
       </div>
-    </TeacherShell>
+    </>
   );
 }

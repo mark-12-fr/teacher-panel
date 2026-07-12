@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
 import { apiGet } from "@/lib/api";
 import { setSubjectConfigs, passingFor, finalGrade } from "@/lib/grading";
-import TeacherShell from "@/components/TeacherShell";
+import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import "./detail.css";
 
@@ -34,6 +34,7 @@ export default function PerformanceDetailPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
+  usePageMeta("Class Performance", undefined, actions);
   const [records, setRecords] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [ready, setReady] = useState(false);
@@ -357,7 +358,7 @@ export default function PerformanceDetailPage() {
   const arrow = (k: SortKey) => (tableState.sortKey === k ? (tableState.sortDir === "asc" ? "▴" : "▾") : "▾");
 
   return (
-    <TeacherShell active="performance" title="Class Performance" action={actions}>
+    <>
       <div className="dashboard-wrapper">
         <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
         <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
@@ -457,6 +458,6 @@ export default function PerformanceDetailPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-exclamation" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
-    </TeacherShell>
+    </>
   );
 }
