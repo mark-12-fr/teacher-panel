@@ -29,11 +29,12 @@ _bearer = HTTPBearer(auto_error=False)
 
 _JWKS_CLIENT: PyJWKClient | None = None
 
-def _get_jwks_client() -> PyJWKClient:
+
+def _get_jwks_client() -> PyJWKClient | None:
     global _JWKS_CLIENT
-    if _JWKS_CLIENT is None:
-        url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
-        _JWKS_CLIENT = PyJWKClient(url, cache_keys=True)
+    if _JWKS_CLIENT is None and settings.SUPABASE_URL:
+        base = settings.SUPABASE_URL.rstrip("/")
+        _JWKS_CLIENT = PyJWKClient(f"{base}/auth/v1/.well-known/jwks.json", cache_keys=True)
     return _JWKS_CLIENT
 
 
@@ -63,57 +64,19 @@ class CurrentTeacher:
         self.profile = profile
 
 
-_jwks_client: Optional["jwt.PyJWKClient"] = None
-
-
-def _jwks() -> Optional["jwt.PyJWKClient"]:
-    """Cached JWKS client for verifying asymmetric (ES256/RS256) Supabase tokens.
-
-    Newer Supabase projects sign user access tokens with rotating asymmetric
-    keys published at /auth/v1/.well-known/jwks.json, rather than the legacy
-    HS256 shared secret. We support both."""
-    global _jwks_client
-    if _jwks_client is None and settings.SUPABASE_URL:
-        base = settings.SUPABASE_URL.rstrip("/")
-        _jwks_client = jwt.PyJWKClient(f"{base}/auth/v1/.well-known/jwks.json")
-    return _jwks_client
-
-
 def _decode_supabase_token(token: str) -> dict:
     try:
-<<<<<<< HEAD
-        alg = (jwt.get_unverified_header(token) or {}).get("alg", "HS256")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token.")
-
-    try:
-        if alg == "HS256":
-            if not settings.SUPABASE_JWT_SECRET:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Server auth is not configured (SUPABASE_JWT_SECRET missing).",
-                )
-            key = settings.SUPABASE_JWT_SECRET
-        else:
-            client = _jwks()
-            if client is None:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Server auth is not configured (SUPABASE_URL missing for JWKS).",
-                )
-            key = client.get_signing_key_from_jwt(token).key
-        return jwt.decode(
-            token,
-            key,
-            algorithms=[alg],
-=======
         client = _get_jwks_client()
+        if client is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Server auth is not configured (SUPABASE_URL missing for JWKS).",
+            )
         signing_key = client.get_signing_key_from_jwt(token)
         return jwt.decode(
             token,
             signing_key.key,
             algorithms=["ES256"],
->>>>>>> a8423ea (fix: use JWKS for Supabase JWT verification (ES256))
             audience=settings.SUPABASE_JWT_AUDIENCE,
         )
     except jwt.ExpiredSignatureError:
