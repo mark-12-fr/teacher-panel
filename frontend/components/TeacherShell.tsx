@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { apiGet, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
-import { pullTheme, toggleTheme } from "@/lib/theme";
+import { applyTheme, pullTheme, toggleTheme } from "@/lib/theme";
 import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
 import "@/app/teacher-shell.css";
@@ -69,6 +69,11 @@ export default function TeacherShell({
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Re-apply theme immediately (React hydration may have stripped data-theme)
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("dashboard_theme") } catch {}
+    if (saved === "dark" || saved === "light") applyTheme(saved);
+
     let cancelled = false;
     (async () => {
       // Identify the current user BEFORE trusting any cached identity, so a
