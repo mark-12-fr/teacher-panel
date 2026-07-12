@@ -18,14 +18,22 @@ interface TopStudent {
   grade: number;
 }
 
+interface DashCache { cards: typeof cardsInit; rates: { p: number; a: number } | null; chartData: (number|null)[]; activeSem: string; passing: number; top: TopStudent[]; sections: any[]; todayAtt: any[] }
+const cardsInit = { sections: 0, students: 0, present: 0, absent: 0 };
+function readDashCache(): DashCache | null {
+  try { const r = localStorage.getItem("dash_cache_stats"); return r ? JSON.parse(r).data : null } catch { return null }
+}
+
 export default function DashboardPage() {
   usePageMeta("Dashboard", "Teacher Overview");
-  const [cards, setCards] = useState({ sections: 0, students: 0, present: 0, absent: 0 });
-  const [rates, setRates] = useState<{ p: number; a: number } | null>(null);
-  const [chartData, setChartData] = useState<(number | null)[]>([null, null, null, null]);
-  const [activeSem, setActiveSem] = useState("both");
-  const [passing, setPassing] = useState(75);
-  const [top, setTop] = useState<TopStudent[]>([]);
+  const cached = useRef(readDashCache());
+
+  const [cards, setCards] = useState(cached.current?.cards ?? cardsInit);
+  const [rates, setRates] = useState<{ p: number; a: number } | null>(cached.current?.rates ?? null);
+  const [chartData, setChartData] = useState<(number | null)[]>(cached.current?.chartData ?? [null, null, null, null]);
+  const [activeSem, setActiveSem] = useState(cached.current?.activeSem ?? "both");
+  const [passing, setPassing] = useState(cached.current?.passing ?? 75);
+  const [top, setTop] = useState<TopStudent[]>(cached.current?.top ?? []);
 
   const [schedules, setSchedules] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
@@ -44,8 +52,8 @@ export default function DashboardPage() {
   const [attModal, setAttModal] = useState<{ open: boolean; title: string; list: any[] }>({ open: false, title: "", list: [] });
   const [secModal, setSecModal] = useState(false);
 
-  const sectionsRef = useRef<any[]>([]);
-  const todayAttRef = useRef<any[]>([]);
+  const sectionsRef = useRef<any[]>(cached.current?.sections ?? []);
+  const todayAttRef = useRef<any[]>(cached.current?.todayAtt ?? []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
