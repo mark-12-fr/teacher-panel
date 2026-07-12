@@ -232,7 +232,7 @@
             min-width: 0;
             width: 100%;
             transition: margin-left 0.3s ease-in-out;
-            opacity: 0;
+            opacity: 1;
             animation: fadeInContent 0.25s ease-out backwards;
         }
 
