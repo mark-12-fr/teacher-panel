@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
+import { Skel, SkeletonStatCard } from "@/components/Skeleton";
 
 Chart.register(...registerables);
 
@@ -116,16 +118,24 @@ export default function DashboardPage() {
   const fetchStats = useCallback(async () => {
     let sections: any[] = [];
     let subjects: any[] = [];
+    let bulkStudents: any[] = [];
+    let bulkRecords: any[] = [];
+    let bulkAttToday: any[] = [];
+    const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
     try {
-      const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
-      sections = secResp.sections || [];
-      subjects = subjResp.subjects || [];
+      // One request instead of the old 1 (sections) + 1 (subjects) + 3 PER
+      // SECTION (students/attendance/records) fan-out — the backend already
+      // scopes everything to this teacher in a handful of bulk queries.
+      const bulk = await apiGet(`/api/dashboard-bulk?today=${encodeURIComponent(today)}`);
+      sections = bulk.sections || [];
+      subjects = bulk.subjects || [];
+      bulkStudents = bulk.students || [];
+      bulkRecords = bulk.class_records || [];
+      bulkAttToday = bulk.attendance_today || [];
       setSubjectConfigs(subjects);
     } catch {
-      throw new Error("Failed to fetch sections/subjects");
+      throw new Error("Failed to fetch dashboard data");
     }
-
-    const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
 
     let totalStudents = 0;
     let present = 0;
@@ -135,20 +145,15 @@ export default function DashboardPage() {
     const allScores: TopStudent[] = [];
 
     try {
-      const perSection = await Promise.all(
-        sections.map(async (s: any) => {
-          try {
-            const [st, att, rec] = await Promise.all([
-              apiGet(`/api/sections/${s.id}/students`),
-              apiGet(`/api/sections/${s.id}/attendance?date=${encodeURIComponent(today)}`),
-              apiGet(`/api/sections/${s.id}/class-records`),
-            ]);
-            return { s, students: st.students || [], attendance: att.attendance || [], records: rec.records || [] };
-          } catch {
-            return { s, students: [], attendance: [], records: [] };
-          }
-        })
-      );
+      // Regroup the bulk (all-sections) arrays back into the same per-section
+      // shape the aggregation below was written against — the math itself is
+      // untouched, only where the rows come from changed.
+      const perSection = sections.map((s: any) => ({
+        s,
+        students: bulkStudents.filter((st: any) => String(st.section_id) === String(s.id)),
+        attendance: bulkAttToday.filter((a: any) => a.section === s.title),
+        records: bulkRecords.filter((r: any) => String(r.section_id) === String(s.id)),
+      }));
 
       perSection.forEach(({ s, students, attendance, records }) => {
         totalStudents += students.length;
@@ -277,6 +282,43 @@ export default function DashboardPage() {
       setLoadError("Failed to load dashboard data. Check your connection.");
     }
   }, [statsCache.error, statsCache.data]);
+
+  // Live updates: a section/roster/attendance/record change anywhere (this
+  // tab, another tab, or a facilitator) refreshes the stat cards + chart
+  // without waiting for the 5-minute cache TTL or a manual reload.
+  useEffect(() => {
+    let channel: any;
+    let cancelled = false;
+    (async () => {
+      let uid: string | null = null;
+      try {
+        const { data } = await getSupabase().auth.getSession();
+        uid = data.session?.user?.id ?? null;
+      } catch {}
+      if (cancelled || !uid) return;
+      const refresh = () => statsCache.refresh();
+      try {
+        channel = getSupabase()
+          .channel("teacher-dashboard-live")
+          .on("postgres_changes", { event: "*", schema: "public", table: "sections" }, (p: any) => {
+            if (String((p.new || p.old)?.teacher_id) === String(uid)) refresh();
+          })
+          .on("postgres_changes", { event: "*", schema: "public", table: "students" }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "class_records" }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, (p: any) => {
+            if (String((p.new || p.old)?.teacher_id) === String(uid)) refresh();
+          })
+          .subscribe();
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+      try {
+        if (channel) getSupabase().removeChannel(channel);
+      } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Chart ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -505,6 +547,7 @@ export default function DashboardPage() {
   const semLabel = activeSem === "1st Sem" ? "1st Semester" : activeSem === "2nd Sem" ? "2nd Semester" : "1st-2nd Semester";
   const validChart = chartData.filter((v) => v != null && (v as number) > 0) as number[];
   const overallAvg = validChart.length ? Math.round(validChart.reduce((a, b) => a + b, 0) / validChart.length) : null;
+  const firstLoad = statsCache.loading && !statsCache.data;
 
   return (
     <>
@@ -528,39 +571,50 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="dash-card stat-card stat-card-blue">
-          <div className="stat-icon-wrapper stat-icon-blue"><i className="fa-solid fa-users" /></div>
-          <div>
-            <span className="stat-title">TOTAL STUDENTS</span>
-            <div className="stat-value">{cards.students}</div>
-          </div>
-        </div>
+        {firstLoad ? (
+          <>
+            <SkeletonStatCard variant="blue" />
+            <SkeletonStatCard variant="green" />
+            <SkeletonStatCard variant="yellow" />
+            <SkeletonStatCard variant="purple" />
+          </>
+        ) : (
+          <>
+            <div className="dash-card stat-card stat-card-blue">
+              <div className="stat-icon-wrapper stat-icon-blue"><i className="fa-solid fa-users" /></div>
+              <div>
+                <span className="stat-title">TOTAL STUDENTS</span>
+                <div className="stat-value">{cards.students}</div>
+              </div>
+            </div>
 
-        <div className="dash-card stat-card stat-card-green" onClick={() => setSecModal(true)} style={{ cursor: "pointer" }} title="Click to view sections">
-          <div className="stat-icon-wrapper stat-icon-green"><i className="fa-solid fa-layer-group" /></div>
-          <div>
-            <span className="stat-title">TOTAL SECTIONS</span>
-            <div className="stat-value">{cards.sections}</div>
-          </div>
-        </div>
+            <div className="dash-card stat-card stat-card-green" onClick={() => setSecModal(true)} style={{ cursor: "pointer" }} title="Click to view sections">
+              <div className="stat-icon-wrapper stat-icon-green"><i className="fa-solid fa-layer-group" /></div>
+              <div>
+                <span className="stat-title">TOTAL SECTIONS</span>
+                <div className="stat-value">{cards.sections}</div>
+              </div>
+            </div>
 
-        <div className="dash-card stat-card stat-card-yellow" onClick={() => showAttendanceDetails("absent")} style={{ cursor: "pointer" }}>
-          <div className="stat-icon-wrapper stat-icon-yellow"><i className="fa-solid fa-user-xmark" /></div>
-          <div>
-            <span className="stat-title">TODAY&apos;S ABSENT &amp; LATE</span>
-            <div className="stat-value">{cards.absent}</div>
-            {rates && <div className={`attend-rate ${rates.a <= 20 ? "rate-good" : rates.a <= 40 ? "rate-warn" : "rate-bad"}`}>{rates.a}% absent/late</div>}
-          </div>
-        </div>
+            <div className="dash-card stat-card stat-card-yellow" onClick={() => showAttendanceDetails("absent")} style={{ cursor: "pointer" }}>
+              <div className="stat-icon-wrapper stat-icon-yellow"><i className="fa-solid fa-user-xmark" /></div>
+              <div>
+                <span className="stat-title">TODAY&apos;S ABSENT &amp; LATE</span>
+                <div className="stat-value">{cards.absent}</div>
+                {rates && <div className={`attend-rate ${rates.a <= 20 ? "rate-good" : rates.a <= 40 ? "rate-warn" : "rate-bad"}`}>{rates.a}% absent/late</div>}
+              </div>
+            </div>
 
-        <div className="dash-card stat-card stat-card-purple" onClick={() => showAttendanceDetails("present")} style={{ cursor: "pointer" }}>
-          <div className="stat-icon-wrapper stat-icon-purple"><i className="fa-solid fa-user-check" /></div>
-          <div>
-            <span className="stat-title">TODAY&apos;S PRESENT</span>
-            <div className="stat-value">{cards.present}</div>
-            {rates && <div className={`attend-rate ${rates.p >= 80 ? "rate-good" : rates.p >= 60 ? "rate-warn" : "rate-bad"}`}>{rates.p}% present today</div>}
-          </div>
-        </div>
+            <div className="dash-card stat-card stat-card-purple" onClick={() => showAttendanceDetails("present")} style={{ cursor: "pointer" }}>
+              <div className="stat-icon-wrapper stat-icon-purple"><i className="fa-solid fa-user-check" /></div>
+              <div>
+                <span className="stat-title">TODAY&apos;S PRESENT</span>
+                <div className="stat-value">{cards.present}</div>
+                {rates && <div className={`attend-rate ${rates.p >= 80 ? "rate-good" : rates.p >= 60 ? "rate-warn" : "rate-bad"}`}>{rates.p}% present today</div>}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="dash-card main-chart">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, gap: 12 }}>
@@ -580,7 +634,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div style={{ position: "relative", height: 230, width: "100%" }}>
-            <canvas ref={canvasRef} />
+            {firstLoad ? <Skel width="100%" height="100%" radius={10} /> : <canvas ref={canvasRef} />}
           </div>
         </div>
 

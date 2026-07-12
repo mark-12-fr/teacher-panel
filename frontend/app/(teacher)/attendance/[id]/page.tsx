@@ -12,6 +12,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
+import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import "./detail.css";
 
 type Att = { student_name: string; date: string; status: string };
@@ -30,6 +31,7 @@ export default function AttendanceGridPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [attendance, setAttendance] = useState<Att[]>([]);
   const attRef = useRef<Att[]>([]);
   // Dates with a save in flight — our own realtime echoes for these are ignored
@@ -79,10 +81,29 @@ export default function AttendanceGridPage() {
   }, [sectionId, setAtt]);
 
   useEffect(() => {
-    loadDetails();
-    loadStudents();
-    loadAttendance();
+    Promise.allSettled([loadDetails(), loadStudents(), loadAttendance()]).then(() => setLoading(false));
   }, [loadDetails, loadStudents, loadAttendance]);
+
+  // Live roster updates: a student added/edited/removed elsewhere reflects
+  // here. No-op if realtime isn't enabled.
+  useEffect(() => {
+    let channel: any;
+    try {
+      channel = getSupabase()
+        .channel("teacher-att-roster-" + sectionId)
+        .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
+          const row = payload.new || payload.old;
+          if (String(row?.section_id) !== String(sectionId)) return;
+          loadStudents();
+        })
+        .subscribe();
+    } catch {}
+    return () => {
+      try {
+        if (channel) getSupabase().removeChannel(channel);
+      } catch {}
+    };
+  }, [sectionId, loadStudents]);
 
   // Live cross-panel updates: a facilitator (or another tab) writing attendance
   // for this section reflects here. No-op if realtime isn't enabled on the DB.
@@ -277,13 +298,17 @@ export default function AttendanceGridPage() {
 
   return (
     <>
-      <div className="dashboard-wrapper">
-        <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
-        <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{quarter}</h4></div>
-        <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
-        <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
-        <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
-      </div>
+      {loading ? (
+        <SkeletonDashWrap />
+      ) : (
+        <div className="dashboard-wrapper">
+          <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
+          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{quarter}</h4></div>
+          <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
+          <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
+          <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
+        </div>
+      )}
 
       <div className="inf-summary">
         <div className="dat-box dat-box-centered">
@@ -349,7 +374,9 @@ export default function AttendanceGridPage() {
               </tr>
             </thead>
             <tbody>
-              {students.length === 0 ? (
+              {loading ? (
+                <SkeletonTableRows rows={6} cols={daysInMonth + 2} />
+              ) : students.length === 0 ? (
                 <tr>
                   <td colSpan={daysInMonth + 2} style={{ padding: 0 }}>
                     <div className="empty-state">

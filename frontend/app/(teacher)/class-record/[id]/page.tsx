@@ -14,6 +14,7 @@ import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
+import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import "./detail.css";
 
 type Rec = any;
@@ -35,6 +36,7 @@ export default function ClassRecordGridPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
   const [search, setSearch] = useState("");
@@ -96,10 +98,29 @@ export default function ClassRecordGridPage() {
   }, [sectionId, commitRecords]);
 
   useEffect(() => {
-    loadDetails();
-    loadStudents();
-    loadRecords();
+    Promise.allSettled([loadDetails(), loadStudents(), loadRecords()]).then(() => setLoading(false));
   }, [loadDetails, loadStudents, loadRecords]);
+
+  // Live roster updates: a student added/edited/removed elsewhere reflects
+  // here (columns are per-student rows). No-op if realtime isn't enabled.
+  useEffect(() => {
+    let channel: any;
+    try {
+      channel = getSupabase()
+        .channel("teacher-cr-roster-" + sectionId)
+        .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
+          const row = payload.new || payload.old;
+          if (String(row?.section_id) !== String(sectionId)) return;
+          loadStudents();
+        })
+        .subscribe();
+    } catch {}
+    return () => {
+      try {
+        if (channel) getSupabase().removeChannel(channel);
+      } catch {}
+    };
+  }, [sectionId, loadStudents]);
 
   // Live facilitator updates: reload when this section's records change
   // elsewhere. Skipped briefly after our own writes to avoid a self-triggered
@@ -300,13 +321,17 @@ export default function ClassRecordGridPage() {
 
   return (
     <>
-      <div className="dashboard-wrapper">
-        <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
-        <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
-        <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
-        <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
-        <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
-      </div>
+      {loading ? (
+        <SkeletonDashWrap />
+      ) : (
+        <div className="dashboard-wrapper">
+          <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
+          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
+          <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
+          <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
+          <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
+        </div>
+      )}
 
       <div className="class-record-container">
         <div className="search-container">
@@ -387,7 +412,9 @@ export default function ClassRecordGridPage() {
               </tr>
             </thead>
             <tbody>
-              {students.length === 0 ? (
+              {loading ? (
+                <SkeletonTableRows rows={6} cols={41} />
+              ) : students.length === 0 ? (
                 <tr>
                   <td colSpan={41} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>

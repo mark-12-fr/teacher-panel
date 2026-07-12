@@ -5,7 +5,7 @@ sections.py — sections CRUD (+ cascade delete) and their students.
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -29,14 +29,25 @@ async def list_sections(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    # One query with a LEFT JOIN + COUNT instead of a follow-up
+    # /sections/{id}/students request per section — the list pages (Section,
+    # Class Record, Attendance, Class Performance) used to fire N extra HTTP
+    # round-trips just to show a student count.
     rows = (
         await db.execute(
-            select(Section)
+            select(Section, func.count(Student.id).label("student_count"))
+            .outerjoin(Student, Student.section_id == Section.id)
             .where(Section.teacher_id == UUID(teacher.id))
+            .group_by(Section.id)
             .order_by(Section.created_at.desc())
         )
-    ).scalars().all()
-    return {"sections": orm_list(rows)}
+    ).all()
+    sections = []
+    for section, student_count in rows:
+        d = orm_to_dict(section)
+        d["student_count"] = student_count
+        sections.append(d)
+    return {"sections": sections}
 
 
 @router.get("/active-school-year")

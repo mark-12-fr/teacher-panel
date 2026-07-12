@@ -1,0 +1,28 @@
+/* Shimmering placeholder "bones" shown while a page's first data load is in
+   flight. Colors ride the existing --card-bg/--border-color/--hover-bg theme
+   variables (teacher-shell.css) so it matches light/dark automatically. */
+
+.skel-bone {
+  position: relative;
+  overflow: hidden;
+  background: var(--border-color);
+  border-radius: 6px;
+  isolation: isolate;
+}
+
+.skel-bone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--hover-bg) 50%, transparent);
+  transform: translateX(-100%);
+  animation: skel-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skel-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel-bone::after { animation: none; }
+}
