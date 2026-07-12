@@ -8,7 +8,8 @@ Run locally:
     uvicorn app.main:app --reload --port 5001
 """
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse, Response
 
 from .config import settings
 from .routers import ai, dashboard, facilitators, grading, push, records, sections
@@ -19,18 +20,32 @@ app = FastAPI(
     description="Backend for the AcadTrack Teacher panel (Next.js frontend).",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://teacher-panel-phi.vercel.app",
-        "https://acadtrack.asia", "https://www.acadtrack.asia",
-        "https://teacher-panel-mjrvertex-7104s-projects.vercel.app",
-    ],
-    allow_origin_regex=r"https?://([a-z0-9-]+\.)*(vercel\.app|acadtrack\.asia)",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Force CORS headers on every response (bypass any middleware issues)
+ALLOWED_ORIGINS = [
+    "https://teacher-panel-phi.vercel.app",
+    "https://acadtrack.asia",
+    "https://www.acadtrack.asia",
+    "https://teacher-panel-mjrvertex-7104s-projects.vercel.app",
+]
+
+class ForceCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        origin = request.headers.get("origin", "")
+        if origin not in ALLOWED_ORIGINS:
+            return await call_next(request) if request.method != "OPTIONS" else Response()
+        # Add CORS headers after the inner handler (even if it errors out)
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            from starlette.responses import JSONResponse
+            response = JSONResponse({"detail": str(e)}, status_code=500)
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+app.add_middleware(ForceCORSMiddleware)
 
 for r in (dashboard, sections, grading, facilitators, records, ai, push):
     app.include_router(r.router)
