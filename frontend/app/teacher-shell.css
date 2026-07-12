@@ -231,6 +231,16 @@
 
         .main-content {
             margin-left: 260px;
+            /* Cap the content area to (viewport − sidebar). The per-page
+               detail.css sets .main-content { width: 100% }, which — together
+               with margin-left:260px — pushes it 260px past the right edge on
+               desktop, clipping the last meta-bar/table column. max-width wins
+               over that width and keeps a wide child (e.g. the 2400px scores
+               table) scrolling inside its own .table-responsive wrapper instead
+               of stretching the page. Reset below where the sidebar is
+               off-canvas (≤1024px). box-sizing is border-box, so 1660 + 260
+               margin = viewport exactly. */
+            max-width: calc(100% - 260px);
             flex-grow: 1;
             padding: 30px 30px 100px 30px;
             display: flex;
@@ -933,6 +943,7 @@
 
             .main-content {
                 margin-left: 0;
+                max-width: 100%;
                 padding: 20px 20px 100px 20px;
             }
 
