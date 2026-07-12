@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -27,11 +26,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />
+      </head>
       <body>
-        {/* Apply the saved theme before paint to avoid a flash of the wrong mode. */}
-        <Script id="theme-noflash" strategy="beforeInteractive">
-          {NO_FLASH_THEME}
-        </Script>
         {children}
       </body>
     </html>
