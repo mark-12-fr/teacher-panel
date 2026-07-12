@@ -381,7 +381,7 @@ export default function PerformanceDetailPage() {
     </div>
   );
 
-  usePageMeta("Class Performance", undefined, actions);
+  usePageMeta("Class Performance", section?.title ? `Section: ${section.title}` : undefined, actions);
 
   const arrow = (k: SortKey) => (tableState.sortKey === k ? (tableState.sortDir === "asc" ? "▴" : "▾") : "▾");
 

@@ -18,7 +18,7 @@ export default function SectionDetailPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  usePageMeta("Class List");
+  usePageMeta("Class List", section?.title ? `Section: ${section.title}` : undefined);
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
 
   const [currentQuarter, setCurrentQuarter] = useState("1");

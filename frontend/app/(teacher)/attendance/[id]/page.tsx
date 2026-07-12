@@ -292,7 +292,7 @@ export default function AttendanceGridPage() {
     </button>
   );
 
-  usePageMeta("Attendance", undefined, exportBtn);
+  usePageMeta("Attendance", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
 
   const quarter = normQ(section?.quarter);
 

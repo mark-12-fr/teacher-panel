@@ -538,23 +538,20 @@
             font-weight: 500;
         }
 
-        .sticky-col-1 {
+        .sticky-col-1, .sticky-col-2 {
             position: sticky;
-            left: 0;
             background: var(--card-bg);
             z-index: 2;
+        }
+        .sticky-col-1 {
+            left: 0;
             width: 40px;
         }
-
         .sticky-col-2 {
-            position: sticky;
             left: 40px;
-            background: var(--card-bg);
-            z-index: 2;
             width: 220px;
             text-align: left !important;
         }
-
         thead .sticky-col-1,
         thead .sticky-col-2 {
             background: var(--table-header);
@@ -1015,16 +1012,46 @@
 
         @media (max-width: 640px) {
             .main-content {
-                padding: 15px 5px 100px 5px;
+                padding: 10px 0 100px 0;
+            }
+
+            .attendance-table-container {
+                padding: 12px 4px;
+                border-radius: 0;
+                box-shadow: none;
+                background: transparent;
             }
 
             .dashboard-wrapper {
-                padding: 15px;
-                gap: 15px;
+                display: flex;
+                gap: 8px;
+                padding: 12px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scroll-snap-type: x mandatory;
+                margin: 0;
+                border-radius: 0;
+            }
+
+            .dash-wrap {
+                flex: 0 0 auto;
+                min-width: 100px;
+                padding: 10px 14px;
+                background: var(--card-bg);
+                border-radius: 10px;
+                box-shadow: 0 1px 3px var(--shadow-color);
+                scroll-snap-align: start;
+                text-align: center;
+                margin-bottom: 0;
+            }
+
+            .dash-wrap h3 {
+                font-size: 10px;
+                letter-spacing: 0.5px;
             }
 
             .dash-wrap h4 {
-                font-size: 1rem;
+                font-size: 0.85rem;
             }
 
             .inf-summary {
@@ -1200,13 +1227,6 @@
             border-top-right-radius: 8px;
             border-bottom-right-radius: 8px;
         }
-        .sticky-col-1, .sticky-col-2 {
-            position: sticky;
-            background: var(--card-bg);
-            z-index: 2;
-        }
-        .sticky-col-1 { left: 0; }
-        .sticky-col-2 { left: 50px; }  /* approx width of sticky-col-1 */
         .student-data-row:hover .sticky-col-1,
         .student-data-row:hover .sticky-col-2 {
             background: var(--hover-bg) !important;
