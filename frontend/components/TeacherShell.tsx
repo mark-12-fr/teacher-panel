@@ -82,10 +82,8 @@ export default function TeacherShell({
     setReady(true);
   }, []);
 
-  // Don't paint anything until cache is restored (avoids SSR default flash)
-  if (!ready) return <div className="teacher-page" />
-
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     (async () => {
       let uid: string | null = null;
@@ -148,7 +146,9 @@ export default function TeacherShell({
       pullTheme();
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [ready]);
+
+  if (!ready) return <div className="teacher-page" />;
 
   function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
