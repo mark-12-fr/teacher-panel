@@ -21,6 +21,7 @@ interface TopStudent {
 interface DashCache { cards: typeof cardsInit; rates: { p: number; a: number } | null; chartData: (number|null)[]; activeSem: string; passing: number; top: TopStudent[]; sections: any[]; todayAtt: any[] }
 const cardsInit = { sections: 0, students: 0, present: 0, absent: 0 };
 function readDashCache(): DashCache | null {
+  if (typeof window === "undefined") return null;
   try { const r = localStorage.getItem("dash_cache_stats"); return r ? JSON.parse(r).data : null } catch { return null }
 }
 

@@ -12,7 +12,6 @@ export interface AuthUser {
 /** Redirect to /login when there is no Supabase session; returns the user. */
 export function useRequireAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -31,7 +30,6 @@ export function useRequireAuth() {
         return;
       }
       setUser({ id: session.user.id, email: session.user.email });
-      setLoading(false);
     });
 
     const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
@@ -45,7 +43,6 @@ export function useRequireAuth() {
         }
       } else {
         setUser({ id: session.user.id, email: session.user.email });
-        setLoading(false);
       }
     });
 
@@ -55,7 +52,7 @@ export function useRequireAuth() {
     };
   }, []);
 
-  return { user, loading };
+  return { user };
 }
 
 /**
