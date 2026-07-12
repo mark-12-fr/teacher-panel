@@ -127,16 +127,19 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
       return;
     }
     const payload = { title: title.trim(), subject, room: room.trim(), semester, quarter, school_year };
+    setModal(false);
+    setSearch("");
     try {
       if (editingId) {
         await apiPatch(`/api/sections/${editingId}`, payload);
+        setSections((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...payload } : s)));
         showToast("Record updated successfully!");
       } else {
-        await apiPost("/api/sections", payload);
+        const resp = await apiPost("/api/sections", payload);
+        const created = resp.section;
+        setSections((prev) => [created, ...prev]);
         showToast("Record saved successfully!");
       }
-      setModal(false);
-      setSearch("");
       sectionCache.refresh();
     } catch {
       showToast("Error saving record.", true);
@@ -145,6 +148,7 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
 
   async function del(id: string) {
     if (!window.confirm("Delete this section and ALL of its data? This permanently removes its students, class records, and attendance too — this cannot be undone.")) return;
+    setSections((prev) => prev.filter((s) => s.id !== id));
     try {
       await apiDelete(`/api/sections/${id}`); // backend cascades records/students/attendance
       showToast("Section and all its data deleted.");
@@ -152,6 +156,7 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
       sectionCache.refresh();
     } catch {
       showToast("Error deleting the section.", true);
+      sectionCache.refresh();
     }
   }
 
