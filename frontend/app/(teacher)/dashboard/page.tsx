@@ -224,6 +224,14 @@ export default function DashboardPage() {
     allScores.sort((a, b) => b.grade - a.grade);
     const totAtt = present + absent;
 
+    // If per-section APIs all failed (sections exist but zero students), preserve existing cache
+    if (sections.length > 0 && totalStudents === 0) {
+      try {
+        const raw = localStorage.getItem("dash_cache_stats");
+        if (raw) { const old = JSON.parse(raw).data; if (old?.cards?.students > 0) return old }
+      } catch {}
+    }
+
     return {
       sections,
       todayAtt,
