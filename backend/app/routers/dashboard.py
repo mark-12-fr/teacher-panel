@@ -4,20 +4,99 @@ dashboard.py — profile, schedules, notices, notes (the dashboard board).
 All rows are keyed to the authenticated teacher (profiles.id / user_id).
 """
 from datetime import date as date_cls, datetime, time as time_cls, timezone
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, insert, select, update
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models import Note, Notice, Profile, Schedule
+from ..models import Attendance, ClassRecord, Note, Notice, Profile, Schedule, Section, Student, Subject
 from ..schemas import NoteIn, NoticeIn, ProfileUpdate, ScheduleIn
 from ..security import CurrentTeacher, get_current_teacher
 from ..utils import orm_list, orm_to_dict
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
+
+
+# ── Dashboard bulk fetch ────────────────────────────────────────────────────
+@router.get("/dashboard-bulk")
+async def dashboard_bulk(
+    today: Optional[str] = Query(default=None, description="dd/mm/yyyy, matches Attendance.date"),
+    teacher: CurrentTeacher = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db),
+):
+    """Single-request bulk fetch that powers the dashboard.
+
+    The dashboard previously fanned out to 3 endpoints (students, today's
+    attendance, class-records) PER SECTION — up to 3N+2 sequential HTTP
+    round-trips to Render for a teacher with N sections. This collapses that
+    into a handful of queries scoped across all of the teacher's sections at
+    once. All grade/attendance-rate math still happens on the frontend
+    (lib/grading.ts), unchanged — this endpoint only removes the network
+    overhead of fetching the raw rows.
+    """
+    tid = UUID(teacher.id)
+
+    section_rows = (
+        await db.execute(
+            select(Section, func.count(Student.id).label("student_count"))
+            .outerjoin(Student, Student.section_id == Section.id)
+            .where(Section.teacher_id == tid)
+            .group_by(Section.id)
+            .order_by(Section.created_at.desc())
+        )
+    ).all()
+    sections = []
+    section_ids = []
+    section_titles = []
+    for section, student_count in section_rows:
+        d = orm_to_dict(section)
+        d["student_count"] = student_count
+        sections.append(d)
+        section_ids.append(section.id)
+        section_titles.append(section.title)
+
+    subjects = orm_list(
+        (await db.execute(select(Subject).where(Subject.teacher_id == tid))).scalars().all()
+    )
+
+    students: list = []
+    records: list = []
+    attendance_today: list = []
+    if section_ids:
+        students = orm_list(
+            (
+                await db.execute(select(Student).where(Student.section_id.in_(section_ids)))
+            ).scalars().all()
+        )
+        records = orm_list(
+            (
+                await db.execute(select(ClassRecord).where(ClassRecord.section_id.in_(section_ids)))
+            ).scalars().all()
+        )
+        if today:
+            attendance_today = orm_list(
+                (
+                    await db.execute(
+                        select(Attendance).where(
+                            Attendance.section.in_(section_titles),
+                            Attendance.teacher_id == tid,
+                            Attendance.date == today,
+                        )
+                    )
+                ).scalars().all()
+            )
+
+    return {
+        "sections": sections,
+        "subjects": subjects,
+        "students": students,
+        "class_records": records,
+        "attendance_today": attendance_today,
+    }
 
 
 # ── Profile ─────────────────────────────────────────────────────────────────

@@ -9,9 +9,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
 import { apiGet } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 import { setSubjectConfigs, passingFor, finalGrade } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
+import { Skel, SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import "./detail.css";
 
 Chart.register(...registerables);
@@ -81,6 +83,31 @@ export default function PerformanceDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Live updates: a facilitator editing scores/attendance/roster elsewhere
+  // refreshes these analytics with no manual reload. No-op if realtime isn't
+  // enabled on the DB.
+  useEffect(() => {
+    let channel: any;
+    try {
+      channel = getSupabase()
+        .channel("teacher-perf-" + sectionId)
+        .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
+          const row = payload.new || payload.old;
+          if (String(row?.section_id) === String(sectionId)) load();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "class_records" }, (payload: any) => {
+          const row = payload.new || payload.old;
+          if (String(row?.section_id) === String(sectionId)) load();
+        })
+        .subscribe();
+    } catch {}
+    return () => {
+      try {
+        if (channel) getSupabase().removeChannel(channel);
+      } catch {}
+    };
+  }, [sectionId, load]);
 
   const subject = section?.subject || "";
   const semester = section?.semester || "1st Sem";
@@ -360,23 +387,40 @@ export default function PerformanceDetailPage() {
 
   return (
     <>
-      <div className="dashboard-wrapper">
-        <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
-        <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
-        <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
-        <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
-      </div>
+      {!ready ? (
+        <SkeletonDashWrap count={4} />
+      ) : (
+        <div className="dashboard-wrapper">
+          <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
+          <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
+          <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
+          <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
+        </div>
+      )}
 
-      <div className="failing-alert" id="failingAlert" style={{ display: failingCount > 0 ? "flex" : "none" }}>
-        <i className="fa-solid fa-triangle-exclamation" />
-        <span>{failingCount} student{failingCount === 1 ? "" : "s"} currently falling below {passing}%. Consider intervention.</span>
-      </div>
+      {ready && (
+        <div className="failing-alert" id="failingAlert" style={{ display: failingCount > 0 ? "flex" : "none" }}>
+          <i className="fa-solid fa-triangle-exclamation" />
+          <span>{failingCount} student{failingCount === 1 ? "" : "s"} currently falling below {passing}%. Consider intervention.</span>
+        </div>
+      )}
 
       <div className="stats-grid">
-        <div className="stat-card stat-card-blue"><h5>Class Average</h5><h2 className="text-blue">{classAvg}</h2></div>
-        <div className="stat-card stat-card-green"><h5>Pass Rate</h5><h2 className="text-green">{passRate}</h2></div>
-        <div className="stat-card stat-card-yellow"><h5>Highest Grade</h5><h2>{stats.highest === -Infinity ? "—" : stats.highest}</h2></div>
-        <div className="stat-card stat-card-red"><h5>Lowest Grade</h5><h2 className="text-red">{stats.lowest === Infinity ? "—" : stats.lowest}</h2></div>
+        {!ready ? (
+          ["blue", "green", "yellow", "red"].map((v) => (
+            <div className={`stat-card stat-card-${v}`} key={v} aria-hidden>
+              <Skel width="55%" height={12} style={{ marginBottom: 10 }} />
+              <Skel width="35%" height={24} />
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="stat-card stat-card-blue"><h5>Class Average</h5><h2 className="text-blue">{classAvg}</h2></div>
+            <div className="stat-card stat-card-green"><h5>Pass Rate</h5><h2 className="text-green">{passRate}</h2></div>
+            <div className="stat-card stat-card-yellow"><h5>Highest Grade</h5><h2>{stats.highest === -Infinity ? "—" : stats.highest}</h2></div>
+            <div className="stat-card stat-card-red"><h5>Lowest Grade</h5><h2 className="text-red">{stats.lowest === Infinity ? "—" : stats.lowest}</h2></div>
+          </>
+        )}
       </div>
 
       <div className="charts-grid">
@@ -429,7 +473,7 @@ export default function PerformanceDetailPage() {
             </thead>
             <tbody>
               {!ready ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)", padding: 20 }}>Loading...</td></tr>
+                <SkeletonTableRows rows={6} cols={6} />
               ) : perf.rows.length === 0 ? (
                 <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
               ) : tableRows.length === 0 ? (

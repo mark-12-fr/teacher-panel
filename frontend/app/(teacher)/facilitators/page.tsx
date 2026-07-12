@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch, ApiError } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
+import { SkeletonTableRows } from "@/components/Skeleton";
 import "./facilitators.css";
 
 function getLastSeenText(lastLogin?: string | null): { text: string; isActive: boolean } {
@@ -27,6 +29,7 @@ const avatarFor = (f: any) =>
   f.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.full_name)}&background=3b82f6&color=fff&size=128`;
 
 export default function FacilitatorsPage() {
+  usePageMeta("Facilitators");
   const [facis, setFacis] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -61,6 +64,24 @@ export default function FacilitatorsPage() {
   useEffect(() => {
     if (faciCache.error) showToast("Failed to load facilitators.", true);
   }, [faciCache.error]);
+
+  // Live updates: a facilitator signing in/out or being added elsewhere
+  // (e.g. Status/last-seen) refreshes this table with no manual reload.
+  useEffect(() => {
+    let channel: any;
+    try {
+      channel = getSupabase()
+        .channel("teacher-facilitators")
+        .on("postgres_changes", { event: "*", schema: "public", table: "facilitators" }, () => faciCache.refresh())
+        .subscribe();
+    } catch {}
+    return () => {
+      try {
+        if (channel) getSupabase().removeChannel(channel);
+      } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stats = useMemo(
     () => ({ total: facis.length, activeSections: new Set(facis.map((f) => f.section)).size }),
@@ -172,7 +193,9 @@ export default function FacilitatorsPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {faciCache.loading && !faciCache.data ? (
+              <SkeletonTableRows rows={5} cols={5} />
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ textAlign: "center", padding: 30, color: "var(--text-muted)" }}>
                   No assigned facilitators found. Click the + button to assign one.

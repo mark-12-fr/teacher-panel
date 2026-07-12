@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
+import { useCachedData } from "@/hooks/use-cached-data";
+import { Skel, SkeletonTableRows } from "@/components/Skeleton";
 import "./grading.css";
 
 const num = (v: any) => Number(v) || 0;
@@ -45,19 +48,41 @@ export default function GradingSystemPage() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 3000);
   }
 
-  const load = useCallback(async () => {
-    try {
-      const [s, sec] = await Promise.all([apiGet("/api/subjects"), apiGet("/api/sections")]);
-      setSubjects(s.subjects || []);
-      setSections(sec.sections || []);
-    } catch {
-      showToast("Failed to load subjects.", true);
-    }
+  const fetchSubjects = useCallback(async () => {
+    const [s, sec] = await Promise.all([apiGet("/api/subjects"), apiGet("/api/sections")]);
+    return { subjects: s.subjects || [], sections: sec.sections || [] };
   }, []);
 
+  const subjCache = useCachedData("list_cache_subjects", fetchSubjects, { ttl: 60000 });
+
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!subjCache.data) return;
+    setSubjects(subjCache.data.subjects);
+    setSections(subjCache.data.sections);
+  }, [subjCache.data]);
+
+  useEffect(() => {
+    if (subjCache.error) showToast("Failed to load subjects.", true);
+  }, [subjCache.error]);
+
+  // Live updates: subjects/sections changed elsewhere (another tab) refresh
+  // this table with no manual reload.
+  useEffect(() => {
+    let channel: any;
+    try {
+      channel = getSupabase()
+        .channel("teacher-subjects")
+        .on("postgres_changes", { event: "*", schema: "public", table: "subjects" }, () => subjCache.refresh())
+        .on("postgres_changes", { event: "*", schema: "public", table: "sections" }, () => subjCache.refresh())
+        .subscribe();
+    } catch {}
+    return () => {
+      try {
+        if (channel) getSupabase().removeChannel(channel);
+      } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const linkedCount = useMemo(() => {
     const names = new Set(subjects.map((x) => String(x.name || "").trim().toLowerCase()));
@@ -108,7 +133,7 @@ export default function GradingSystemPage() {
       if (editingId) await apiPatch(`/api/subjects/${editingId}`, payload);
       else await apiPost("/api/subjects", payload);
       setModal(false);
-      await load();
+      subjCache.refresh();
       showToast(editingId ? "Subject updated!" : "Subject added!");
     } catch {
       showToast("Error saving subject.", true);
@@ -123,7 +148,7 @@ export default function GradingSystemPage() {
     setDeleteTarget(null);
     try {
       await apiDelete(`/api/subjects/${id}`);
-      await load();
+      subjCache.refresh();
       showToast("Subject deleted.");
     } catch {
       showToast("Failed to delete subject.", true);
@@ -135,14 +160,23 @@ export default function GradingSystemPage() {
   return (
     <>
       <div className="top-info-card">
-        <div className="info-col">
-          <h3>TOTAL SUBJECTS</h3>
-          <h4>{subjects.length}</h4>
-        </div>
-        <div className="info-col">
-          <h3>LINKED SECTIONS</h3>
-          <h4>{linkedCount}</h4>
-        </div>
+        {subjCache.loading && !subjCache.data ? (
+          <>
+            <div className="info-col"><Skel width={90} height={11} style={{ marginBottom: 8 }} /><Skel width={40} height={20} /></div>
+            <div className="info-col"><Skel width={100} height={11} style={{ marginBottom: 8 }} /><Skel width={40} height={20} /></div>
+          </>
+        ) : (
+          <>
+            <div className="info-col">
+              <h3>TOTAL SUBJECTS</h3>
+              <h4>{subjects.length}</h4>
+            </div>
+            <div className="info-col">
+              <h3>LINKED SECTIONS</h3>
+              <h4>{linkedCount}</h4>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="search-container">
@@ -164,7 +198,9 @@ export default function GradingSystemPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {subjCache.loading && !subjCache.data ? (
+              <SkeletonTableRows rows={5} cols={7} />
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: 34, color: "var(--text-muted)" }}>
                   No subjects yet. Click the + button to add a subject and set its grading percentages.
