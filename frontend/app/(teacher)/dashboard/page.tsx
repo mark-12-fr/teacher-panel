@@ -70,10 +70,16 @@ export default function DashboardPage() {
 
   // ── Cache helpers ──────────────────────────────────────────────────────
   const fetchStats = useCallback(async () => {
-    const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
-    const sections = secResp.sections || [];
-    const subjects = subjResp.subjects || [];
-    setSubjectConfigs(subjects);
+    let sections: any[] = [];
+    let subjects: any[] = [];
+    try {
+      const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
+      sections = secResp.sections || [];
+      subjects = subjResp.subjects || [];
+      setSubjectConfigs(subjects);
+    } catch {
+      throw new Error("Failed to fetch sections/subjects");
+    }
 
     const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
 
@@ -84,57 +90,65 @@ export default function DashboardPage() {
     const qTotals = { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } } as Record<string, { t: number; c: number }>;
     const allScores: TopStudent[] = [];
 
-    const perSection = await Promise.all(
-      sections.map(async (s: any) => {
-        const [st, att, rec] = await Promise.all([
-          apiGet(`/api/sections/${s.id}/students`),
-          apiGet(`/api/sections/${s.id}/attendance?date=${encodeURIComponent(today)}`),
-          apiGet(`/api/sections/${s.id}/class-records`),
-        ]);
-        return { s, students: st.students || [], attendance: att.attendance || [], records: rec.records || [] };
-      })
-    );
-
-    perSection.forEach(({ s, students, attendance, records }) => {
-      totalStudents += students.length;
-      attendance.forEach((r: any) => {
-        if (r.status === "Present") present++;
-        else absent++;
-        todayAtt.push({ status: r.status, student_name: r.student_name, section: s.title });
-      });
-
-      students.forEach((student: any) => {
-        const studentRecords = records
-          .filter((r: any) => r.student_id === student.id)
-          .sort((a: any, b: any) => Number(normalizeQtr(a.quarter)) - Number(normalizeQtr(b.quarter)));
-        if (!studentRecords.length) return;
-
-        studentRecords.forEach((row: any) => {
-          let hasScore = false;
-          for (const key in row) {
-            if ((key.startsWith("module_") || key.startsWith("activity_") || key.startsWith("pt_") || key === "at" || key === "qe") && Number(row[key]) > 0) {
-              hasScore = true;
-              break;
-            }
+    try {
+      const perSection = await Promise.all(
+        sections.map(async (s: any) => {
+          try {
+            const [st, att, rec] = await Promise.all([
+              apiGet(`/api/sections/${s.id}/students`),
+              apiGet(`/api/sections/${s.id}/attendance?date=${encodeURIComponent(today)}`),
+              apiGet(`/api/sections/${s.id}/class-records`),
+            ]);
+            return { s, students: st.students || [], attendance: att.attendance || [], records: rec.records || [] };
+          } catch {
+            return { s, students: [], attendance: [], records: [] };
           }
-          if (!hasScore) return;
-          const qtr = normalizeQtr(row.quarter);
-          const grade = finalGrade(row, s.subject, 100);
-          if (qTotals[qtr]) {
-            qTotals[qtr].t += grade;
-            qTotals[qtr].c++;
-          }
+        })
+      );
+
+      perSection.forEach(({ s, students, attendance, records }) => {
+        totalStudents += students.length;
+        attendance.forEach((r: any) => {
+          if (r.status === "Present") present++;
+          else absent++;
+          todayAtt.push({ status: r.status, student_name: r.student_name, section: s.title });
         });
 
-        const merged = studentRecords.reduce((acc: any, curr: any) => {
-          Object.keys(curr).forEach((k) => {
-            if (filled(curr[k])) acc[k] = curr[k];
+        students.forEach((student: any) => {
+          const studentRecords = records
+            .filter((r: any) => r.student_id === student.id)
+            .sort((a: any, b: any) => Number(normalizeQtr(a.quarter)) - Number(normalizeQtr(b.quarter)));
+          if (!studentRecords.length) return;
+
+          studentRecords.forEach((row: any) => {
+            let hasScore = false;
+            for (const key in row) {
+              if ((key.startsWith("module_") || key.startsWith("activity_") || key.startsWith("pt_") || key === "at" || key === "qe") && Number(row[key]) > 0) {
+                hasScore = true;
+                break;
+              }
+            }
+            if (!hasScore) return;
+            const qtr = normalizeQtr(row.quarter);
+            const grade = finalGrade(row, s.subject, 100);
+            if (qTotals[qtr]) {
+              qTotals[qtr].t += grade;
+              qTotals[qtr].c++;
+            }
           });
-          return acc;
-        }, {});
-        allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject, 100) });
+
+          const merged = studentRecords.reduce((acc: any, curr: any) => {
+            Object.keys(curr).forEach((k) => {
+              if (filled(curr[k])) acc[k] = curr[k];
+            });
+            return acc;
+          }, {});
+          allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject, 100) });
+        });
       });
-    });
+    } catch {
+      // Per-section data failures are non-fatal
+    }
 
     const semCounts: Record<string, number> = {};
     sections.forEach((s: any) => {
@@ -175,9 +189,9 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const fetchSchedules = useCallback(async () => (await apiGet("/api/schedules")).schedules || [], []);
-  const fetchNotices = useCallback(async () => (await apiGet("/api/notices")).notices || [], []);
-  const fetchNotes = useCallback(async () => (await apiGet("/api/notes")).notes || [], []);
+  const fetchSchedules = useCallback(async () => { try { return (await apiGet("/api/schedules")).schedules || []; } catch { return []; } }, []);
+  const fetchNotices = useCallback(async () => { try { return (await apiGet("/api/notices")).notices || []; } catch { return []; } }, []);
+  const fetchNotes = useCallback(async () => { try { return (await apiGet("/api/notes")).notes || []; } catch { return []; } }, []);
 
   const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 60000 });
   const schedCache = useCachedData("dash_cache_sched", fetchSchedules);
