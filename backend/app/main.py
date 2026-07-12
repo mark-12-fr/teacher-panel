@@ -22,12 +22,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000", "http://127.0.0.1:3000",
         "https://teacher-panel-phi.vercel.app",
         "https://acadtrack.asia", "https://www.acadtrack.asia",
         "https://teacher-panel-mjrvertex-7104s-projects.vercel.app",
     ],
-    allow_origin_regex=r"https?://([a-z0-9-]+\.)*(vercel\.app|acadtrack\.asia|localhost)",
+    allow_origin_regex=r"https?://([a-z0-9-]+\.)*(vercel\.app|acadtrack\.asia)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
