@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Wake the backend (/api/ping)
         run: |
-          URL="https://teacher-panel-d1kw.onrender.com/api/ping"
+          URL="https://teacher-panel-hej2.onrender.com/api/ping"
           for i in 1 2 3; do
             if curl -fsS --max-time 90 "$URL"; then
               echo ""
