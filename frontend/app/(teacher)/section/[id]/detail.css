@@ -874,26 +874,6 @@
 
         }
 
-            .ai-chat-widget {
-                width: calc(100% - 40px);
-                right: 20px;
-                bottom: 160px;
-            }
-
-            .toast-notification {
-                right: 20px;
-                left: 20px;
-                min-width: auto;
-                top: 20px;
-            }
-
-            th,
-            td {
-                padding: 12px 10px;
-                font-size: 0.85rem;
-            }
-        }
-
         /* ── Icon-only action buttons with tooltips (UI only) ── */
         .action-btns {
             display: flex;
