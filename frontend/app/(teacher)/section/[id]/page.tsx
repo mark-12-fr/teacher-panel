@@ -130,11 +130,10 @@ export default function SectionDetailPage() {
     try {
       await apiPost(`/api/sections/${sectionId}/students`, { full_name: entry.full_name });
       loadStudents();
+      showToast("Student added successfully!");
     } catch (e: any) {
       setStudents((prev) => prev.filter((s) => s.id !== entry.id));
-      const msg = e?.message || "Failed to add student";
-      showToast(`${msg} (API_BASE check console)`, true);
-      console.error("Add student error:", e, "API_BASE:", (await import("@/lib/config")).API_BASE);
+      showToast(e?.message || "Failed to add student", true);
     }
   }
   async function updateStudent() {
@@ -145,6 +144,7 @@ export default function SectionDetailPage() {
     setEditId(null);
     try {
       await apiPatch(`/api/students/${editId}`, { full_name: editName.trim() });
+      showToast("Student updated successfully!");
     } catch {
       setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: oldName } : s));
       showToast("Failed to update student", true);
@@ -156,6 +156,7 @@ export default function SectionDetailPage() {
     setStudents((prev) => prev.filter((s) => s.id !== id));
     try {
       await apiDelete(`/api/students/${id}`);
+      showToast("Student removed.");
     } catch {
       if (removed) setStudents((prev) => [removed, ...prev]);
       showToast("Failed to delete student", true);
