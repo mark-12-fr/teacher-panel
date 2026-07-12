@@ -68,11 +68,18 @@ export default function TeacherShell({
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Re-apply theme before paint (React hydration strips data-theme from <html>)
+  // Restore theme + name/avatar from cache before paint (hydration may strip them)
   useLayoutEffect(() => {
-    let saved: string | null = null;
-    try { saved = localStorage.getItem("dashboard_theme") } catch {}
-    if (saved === "dark" || saved === "light") applyTheme(saved);
+    try {
+      const t = localStorage.getItem("dashboard_theme");
+      if (t === "dark" || t === "light") applyTheme(t);
+    } catch {}
+    try {
+      const n = localStorage.getItem("cached_user_name");
+      if (n) setName(n);
+      const a = localStorage.getItem("cached_user_avatar");
+      if (a) setAvatar(a);
+    } catch {}
   }, []);
 
   useEffect(() => {
