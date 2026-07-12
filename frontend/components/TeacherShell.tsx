@@ -164,7 +164,7 @@ export default function TeacherShell({
     warmup();
     const hb = setInterval(() => {
       fetch(`${API_BASE}/api/ping`).catch(() => {});
-    }, 240_000); // every 4 minutes keeps Render free tier awake
+    }, 60_000); // every minute keeps Render free tier awake
     return () => clearInterval(hb);
   }, [ready]);
 
