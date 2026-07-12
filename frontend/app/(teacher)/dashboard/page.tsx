@@ -22,16 +22,19 @@ const cardsInit = { sections: 0, students: 0, present: 0, absent: 0 };
 
 function useGreeting() {
   const [greeting, setGreeting] = useState("Welcome");
+  const [icon, setIcon] = useState("fa-solid fa-sun");
   useEffect(() => {
     const update = () => {
       const h = new Date().getHours();
-      setGreeting(h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
+      if (h < 12) { setGreeting("Good Morning"); setIcon("fa-solid fa-sun"); }
+      else if (h < 18) { setGreeting("Good Afternoon"); setIcon("fa-solid fa-cloud-sun"); }
+      else { setGreeting("Good Evening"); setIcon("fa-solid fa-moon"); }
     };
     update();
     const id = setInterval(update, 60000);
     return () => clearInterval(id);
   }, []);
-  return greeting;
+  return { greeting, icon };
 }
 
 function useTeacherInfo() {
@@ -58,7 +61,7 @@ function useTeacherInfo() {
 
 export default function DashboardPage() {
   usePageMeta("Dashboard", "Teacher Overview");
-  const greeting = useGreeting();
+  const { greeting, icon } = useGreeting();
   const { title: teacherTitle, firstName: teacherFirstName } = useTeacherInfo();
 
   const [cards, setCards] = useState<typeof cardsInit>(cardsInit);
@@ -515,7 +518,7 @@ export default function DashboardPage() {
           <div className="banner-shine" />
           <div className="welcome-text">
             <h2>
-              <i className="fa-solid fa-sun" style={{ color: "#fbbf24" }} /> {greeting}, {teacherTitle} {teacherFirstName}!
+              <i className={icon} style={{ color: "#fbbf24" }} /> {greeting}, {teacherTitle} {teacherFirstName}!
             </h2>
             <p style={{ fontSize: "0.95rem", opacity: 0.9 }}>Here&apos;s a quick overview of your classes today.</p>
           </div>
