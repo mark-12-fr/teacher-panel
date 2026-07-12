@@ -1,11 +1,11 @@
 """
-security.py — Teacher auth (verify Supabase access tokens) + bcrypt helpers.
-==========================================================================
+security.py — Teacher auth (verify Supabase access tokens via JWKS) + bcrypt helpers.
+======================================================================================
 The teacher panel keeps using Supabase Auth on the frontend (email/password,
 Google OAuth, password reset) exactly as before. The frontend sends the
 resulting Supabase access token as `Authorization: Bearer <token>`; here we
-verify that token's signature with the project's JWT secret (HS256, matching
-this project's tokens) and resolve the authenticated teacher.
+verify that token's signature against the project's JWKS endpoint (ES256 /
+ECC P-256, matching this project's tokens) and resolve the authenticated teacher.
 
 bcrypt helpers are used when the teacher creates/updates facilitator accounts
 (whose passwords are bcrypt-hashed, compatible with the old Flask backend).
@@ -17,6 +17,7 @@ import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +26,15 @@ from .database import get_db
 from .models import Profile
 
 _bearer = HTTPBearer(auto_error=False)
+
+_JWKS_CLIENT: PyJWKClient | None = None
+
+def _get_jwks_client() -> PyJWKClient:
+    global _JWKS_CLIENT
+    if _JWKS_CLIENT is None:
+        url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        _JWKS_CLIENT = PyJWKClient(url, cache_keys=True)
+    return _JWKS_CLIENT
 
 
 # ── bcrypt (facilitator passwords) ──────────────────────────────────────────
@@ -71,6 +81,7 @@ def _jwks() -> Optional["jwt.PyJWKClient"]:
 
 def _decode_supabase_token(token: str) -> dict:
     try:
+<<<<<<< HEAD
         alg = (jwt.get_unverified_header(token) or {}).get("alg", "HS256")
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token.")
@@ -95,6 +106,14 @@ def _decode_supabase_token(token: str) -> dict:
             token,
             key,
             algorithms=[alg],
+=======
+        client = _get_jwks_client()
+        signing_key = client.get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["ES256"],
+>>>>>>> a8423ea (fix: use JWKS for Supabase JWT verification (ES256))
             audience=settings.SUPABASE_JWT_AUDIENCE,
         )
     except jwt.ExpiredSignatureError:

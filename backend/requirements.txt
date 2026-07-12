@@ -22,6 +22,7 @@ PyJWT==2.10.1
 
 # Outbound HTTP for the Groq / Gemini vision + AI providers
 httpx==0.28.1
+cryptography==44.0.0
 
 # Web Push (VAPID) notifications
 pywebpush==2.0.1
