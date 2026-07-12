@@ -192,7 +192,7 @@ export default function SectionDetailPage() {
 
       <div className="class-list-box">
         <div className="search-container">
-          <i className="fa-solid fa-magnifying-glass" />
+          <i className="fa-solid fa-magnifying-glass search-icon" />
           <input type="text" placeholder="Search student..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="table-responsive">

@@ -230,7 +230,7 @@
             width: 100%;
             transition: margin-left 0.3s, opacity 0.15s, transform 0.15s;
             opacity: 0;
-            animation: fadeInContent 0.25s ease-out forwards;
+            animation: fadeInContent 0.25s ease-out backwards;
         }
 
         @keyframes fadeInContent {
@@ -1348,17 +1348,5 @@
         .dat-box-centered h4 { margin: 0 !important; }
         .dat-box-centered p { margin: 0; }
 
-        /* ── Toast: bottom-right (less obstructive) ── */
-        .toast-notification {
-            top: auto !important;
-            bottom: 30px !important;
-            right: 30px !important;
-        }
-        @media (max-width: 640px) {
-            .toast-notification {
-                right: 20px !important;
-                left: 20px !important;
-                bottom: 20px !important;
-            }
-        }
+
     

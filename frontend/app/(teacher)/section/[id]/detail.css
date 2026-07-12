@@ -228,7 +228,7 @@
             flex-direction: column;
             transition: margin-left 0.3s ease-in-out;
             opacity: 0;
-            animation: fadeInMain 0.25s ease-out forwards;
+            animation: fadeInMain 0.25s ease-out backwards;
         }
 
         @keyframes fadeInMain {
@@ -432,7 +432,7 @@
             transition: background 0.3s, color 0.3s, border 0.3s;
         }
 
-        .search-container .fa-search {
+        .search-container .search-icon {
             position: absolute;
             left: 15px;
             top: 50%;
@@ -669,29 +669,6 @@
         }
 
 
-        .ai-floating-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: var(--accent-blue);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-            cursor: pointer;
-            z-index: 9998;
-            transition: transform 0.3s;
-            border: none;
-        }
-
-        .ai-floating-btn:hover {
-            transform: scale(1.1);
-        }
-
         .ai-chat-widget {
             position: fixed;
             bottom: 190px;
@@ -895,10 +872,7 @@
                 height: 55px;
             }
 
-            .ai-floating-btn {
-                bottom: 18px;
-                right: 16px;
-            }
+        }
 
             .ai-chat-widget {
                 width: calc(100% - 40px);

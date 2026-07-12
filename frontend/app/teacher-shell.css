@@ -656,6 +656,9 @@
             transform: translateY(0);
         }
 
+        .toast-notification.error {
+            background-color: #ef4444;
+        }
 
         .ai-floating-btn {
             position: fixed;

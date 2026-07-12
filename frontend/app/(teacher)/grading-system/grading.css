@@ -246,7 +246,7 @@
             width: 100%;
             transition: margin-left 0.3s, opacity 0.15s, transform 0.15s;
             opacity: 0;
-            animation: fadeInContent 0.25s ease-out forwards;
+            animation: fadeInContent 0.25s ease-out backwards;
         }
 
         @keyframes fadeInContent {
@@ -507,7 +507,7 @@
             justify-content: center;
             box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
             cursor: pointer;
-            z-index: 9999;
+            z-index: 9998;
             transition: transform 0.3s;
             border: none;
         }
@@ -516,7 +516,7 @@
             transform: scale(1.1);
         }
 
-
+        
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -584,29 +584,6 @@
             visibility: visible;
             opacity: 1;
             transform: translateY(0);
-        }
-
-        .ai-floating-btn {
-            position: fixed;
-            bottom: 120px;
-            right: 40px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: var(--accent-blue);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-            cursor: pointer;
-            z-index: 9998;
-            transition: transform 0.3s;
-            border: none;
-        }
-
-        .ai-floating-btn:hover {
-            transform: scale(1.1);
         }
 
         .ai-chat-widget {
@@ -894,11 +871,6 @@
             .fab-add-btn {
                 bottom: 160px !important;
                 right: 20px !important;
-            }
-
-            .ai-floating-btn {
-                bottom: 90px;
-                right: 20px;
             }
 
             .ai-chat-widget {

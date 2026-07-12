@@ -245,7 +245,7 @@
             width: 100%;
             transition: margin-left 0.3s ease-in-out;
             opacity: 0;
-            animation: fadeInContent 0.25s ease-out forwards;
+            animation: fadeInContent 0.25s ease-out backwards;
         }
 
         @keyframes fadeInContent {
