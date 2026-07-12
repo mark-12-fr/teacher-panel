@@ -125,6 +125,20 @@
             color: #9ca3af;
         }
 
+        .sidebar-school-year {
+            margin-top: 8px;
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.18);
+            color: #93c5fd;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            min-height: 18px;
+        }
+        .sidebar-school-year:empty { background: transparent; padding: 0; }
+
         .sidebar-menu {
             list-style: none;
             flex-grow: 1;
@@ -190,7 +204,7 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .logout-btn svg,
+        .logout-btn i,
         .theme-btn i {
             width: 20px;
             margin-right: 15px;

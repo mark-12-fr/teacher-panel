@@ -232,7 +232,7 @@ export default function TeacherShell({
           </div>
           <h2>Teacher Panel</h2>
           <div className="sidebar-username">{name || " "}</div>
-          <div className="sidebar-school-year">{schoolYear || ""}</div>
+          <div className="sidebar-school-year">{schoolYear ? `SY ${schoolYear}` : ""}</div>
         </div>
 
         <nav className="sidebar-menu">
