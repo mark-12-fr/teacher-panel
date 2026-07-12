@@ -108,7 +108,15 @@ async def upsert_records(
                 values[k] = v
         stmt = pg_insert(ClassRecord).values(**values)
         update_cols = {k: stmt.excluded[k] for k in values if k != "id"}
-        stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=update_cols)
+        # Guard against cross-teacher overwrite: the conflict target is the PK
+        # `id`, so a body carrying another section's record id would otherwise
+        # hijack that row. Only update rows that already belong to THIS
+        # teacher's section; an out-of-section id becomes a no-op instead.
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_=update_cols,
+            where=(ClassRecord.section_id == str(section.id)),
+        )
         await db.execute(stmt)
         written += 1
     await db.commit()
