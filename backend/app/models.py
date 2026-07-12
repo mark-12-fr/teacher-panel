@@ -16,6 +16,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     Date,
+    func,
     Integer,
     Numeric,
     String,
@@ -77,7 +78,7 @@ class Student(Base):
     section_id = Column(PGUUID(as_uuid=True))
     full_name = Column(Text)
     gender = Column(Text, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
 class Attendance(Base):
