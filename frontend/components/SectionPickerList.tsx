@@ -131,35 +131,49 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
       return;
     }
     const payload = { title: title.trim(), subject, room: room.trim(), semester, quarter, school_year };
+    const prevSections = sections;
     setModal(false);
     setSearch("");
-    try {
-      if (editingId) {
+    if (editingId) {
+      setSections((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...payload } : s)));
+      showToast("Record updated successfully!");
+      try {
         await apiPatch(`/api/sections/${editingId}`, payload);
-        setSections((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...payload } : s)));
-        showToast("Record updated successfully!");
-      } else {
+        sectionCache.refresh();
+      } catch {
+        showToast("Error saving record.", true);
+        setSections(prevSections);
+      }
+    } else {
+      // Optimistic: add a temp section, replace on API success
+      const tempId = "temp_" + Date.now();
+      const tempSection = { id: tempId, student_count: 0, ...payload };
+      setSections((prev) => [tempSection, ...prev]);
+      showToast("Record saved successfully!");
+      try {
         const resp = await apiPost("/api/sections", payload);
         const created = resp.section;
-        setSections((prev) => [created, ...prev]);
-        showToast("Record saved successfully!");
+        setSections((prev) => prev.map((s) => (s.id === tempId ? created : s)));
+        sectionCache.refresh();
+      } catch {
+        showToast("Error saving record.", true);
+        setSections((prev) => prev.filter((s) => s.id !== tempId));
       }
-      sectionCache.refresh();
-    } catch {
-      showToast("Error saving record.", true);
     }
   }
 
   async function del(id: string) {
     if (!window.confirm("Delete this section and ALL of its data? This permanently removes its students, class records, and attendance too — this cannot be undone.")) return;
+    const deleted = sections.find((s) => s.id === id);
     setSections((prev) => prev.filter((s) => s.id !== id));
+    showToast("Section and all its data deleted.");
+    setSearch("");
     try {
       await apiDelete(`/api/sections/${id}`); // backend cascades records/students/attendance
-      showToast("Section and all its data deleted.");
-      setSearch("");
       sectionCache.refresh();
     } catch {
       showToast("Error deleting the section.", true);
+      if (deleted) setSections((prev) => [deleted, ...prev]);
       sectionCache.refresh();
     }
   }
