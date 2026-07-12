@@ -10,7 +10,7 @@ name: Keep backend warm
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes (just under Render's ~15 min sleep)
+    - cron: '*/5 * * * *'   # every 5 minutes (Render sleeps at ~15 min idle)
   workflow_dispatch: {}        # also lets you run it manually from the Actions tab
 
 permissions:
