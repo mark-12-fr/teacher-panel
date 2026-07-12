@@ -126,23 +126,26 @@ export default function TeacherShell({
         }
       }
 
-      // Best-effort: enrich from our API profile
-      try {
-        const r = await apiGet("/api/me");
-        if (cancelled) return;
-        const p = r?.profile || {};
-        if (uid) localStorage.setItem("cached_user_id", uid);
-        if (p.full_name) {
-          setName(p.full_name);
-          localStorage.setItem("cached_user_name", p.full_name);
-        }
-        if (p.avatar_url) {
-          setAvatar(p.avatar_url);
-          localStorage.setItem("cached_user_avatar", p.avatar_url);
-        } else if (p.full_name) {
-          setAvatar(`https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name)}&background=3b82f6&color=fff&size=128`);
-        }
-      } catch {}
+      // Only fetch profile from server if cache is empty (keep cached data stable)
+      const hasCachedName = !!localStorage.getItem("cached_user_name");
+      if (!hasCachedName) {
+        try {
+          const r = await apiGet("/api/me");
+          if (cancelled) return;
+          const p = r?.profile || {};
+          if (uid) localStorage.setItem("cached_user_id", uid);
+          if (p.full_name) {
+            setName(p.full_name);
+            localStorage.setItem("cached_user_name", p.full_name);
+          }
+          if (p.avatar_url) {
+            setAvatar(p.avatar_url);
+            localStorage.setItem("cached_user_avatar", p.avatar_url);
+          } else if (p.full_name) {
+            setAvatar(`https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name)}&background=3b82f6&color=fff&size=128`);
+          }
+        } catch {}
+      }
       pullTheme();
     })();
     return () => { cancelled = true; };
