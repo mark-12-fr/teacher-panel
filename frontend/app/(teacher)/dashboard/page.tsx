@@ -256,10 +256,10 @@ export default function DashboardPage() {
     return [];
   }, []);
 
-  const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 60000 });
-  const schedCache = useCachedData("dash_cache_sched", fetchSchedules);
-  const noticeCache = useCachedData("dash_cache_notice", fetchNotices);
-  const noteCache = useCachedData("dash_cache_note", fetchNotes);
+  const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 300000 });
+  const schedCache = useCachedData("dash_cache_sched", fetchSchedules, { ttl: 300000 });
+  const noticeCache = useCachedData("dash_cache_notice", fetchNotices, { ttl: 300000 });
+  const noteCache = useCachedData("dash_cache_note", fetchNotes, { ttl: 300000 });
 
   // Apply cached data to state
   useEffect(() => {
@@ -290,12 +290,12 @@ export default function DashboardPage() {
     setNotes(noteCache.data);
   }, [noteCache.data]);
 
-  // Error handling
+  // Only show error on full failure (no cached data at all)
   useEffect(() => {
-    if (statsCache.error) {
+    if (statsCache.error && !statsCache.data) {
       setLoadError("Failed to load dashboard data. Check your connection.");
     }
-  }, [statsCache.error]);
+  }, [statsCache.error, statsCache.data]);
 
   // ── Chart ─────────────────────────────────────────────────────────────────
   useEffect(() => {
