@@ -382,51 +382,90 @@ export default function DashboardPage() {
     };
   }, [chartData, passing]);
 
-  // ── CRUD handlers ─────────────────────────────────────────────────────────
+  // ── Optimistic CRUD handlers ──────────────────────────────────────────────
+  const tempId = () => "_opt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
   async function saveSchedule() {
     if (!sched.subject.trim() || !sched.time || !sched.details.trim()) return showToast("Please fill in all fields.", true);
     const [h, m] = sched.time.split(":");
     const hour = parseInt(h);
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
-    await apiPost("/api/schedules", { subject: sched.subject.trim(), time: `${hour12}:${m} ${ampm}`, details: sched.details.trim() });
+    const entry = { id: tempId(), subject: sched.subject.trim(), time: `${hour12}:${m} ${ampm}`, details: sched.details.trim() };
+    setSchedules((prev) => [entry, ...prev]);
     setSched({ subject: "", time: "", details: "" });
     setSchedModal(false);
-    schedCache.refresh();
-    showToast("Schedule added!");
+    showToast("Adding schedule...");
+    try {
+      await apiPost("/api/schedules", { subject: entry.subject, time: entry.time, details: entry.details });
+      schedCache.refresh();
+    } catch {
+      setSchedules((prev) => prev.filter((x) => x.id !== entry.id));
+      showToast("Failed to add schedule.", true);
+    }
   }
   async function deleteSchedule(id: string) {
-    await apiDelete(`/api/schedules/${id}`);
-    schedCache.refresh();
+    const removed = schedules.find((x) => x.id === id);
+    setSchedules((prev) => prev.filter((x) => x.id !== id));
+    try {
+      await apiDelete(`/api/schedules/${id}`);
+      schedCache.refresh();
+    } catch {
+      if (removed) setSchedules((prev) => [removed, ...prev]);
+      showToast("Failed to delete schedule.", true);
+    }
   }
   async function saveNotice() {
     if (!notice.text.trim() || !notice.date) return showToast("Please fill in the notice and date.", true);
     const colors = ["blue", "orange", "green"];
-    await apiPost("/api/notices", {
-      text: notice.text.trim(),
-      date: notice.date,
-      time: notice.time || null,
-      color: colors[Math.floor(Math.random() * colors.length)],
-    });
+    const entry = { id: tempId(), text: notice.text.trim(), date: notice.date, time: notice.time || null, color: colors[Math.floor(Math.random() * colors.length)] };
+    setNotices((prev) => [entry, ...prev]);
     setNotice({ text: "", date: "", time: "" });
     setNoticeModal(false);
-    noticeCache.refresh();
-    showToast("Notice added!");
+    showToast("Adding notice...");
+    try {
+      await apiPost("/api/notices", { text: entry.text, date: entry.date, time: entry.time, color: entry.color });
+      noticeCache.refresh();
+    } catch {
+      setNotices((prev) => prev.filter((x) => x.id !== entry.id));
+      showToast("Failed to add notice.", true);
+    }
   }
   async function deleteNotice(id: string) {
-    await apiDelete(`/api/notices/${id}`);
-    noticeCache.refresh();
+    const removed = notices.find((x) => x.id === id);
+    setNotices((prev) => prev.filter((x) => x.id !== id));
+    try {
+      await apiDelete(`/api/notices/${id}`);
+      noticeCache.refresh();
+    } catch {
+      if (removed) setNotices((prev) => [removed, ...prev]);
+      showToast("Failed to delete notice.", true);
+    }
   }
   async function addNote() {
     const t = noteInput.trim();
     if (!t) return;
-    await apiPost("/api/notes", { content: t });
+    const entry = { id: tempId(), content: t };
+    setNotes((prev) => [entry, ...prev]);
     setNoteInput("");
-    noteCache.refresh();
+    try {
+      await apiPost("/api/notes", { content: t });
+      noteCache.refresh();
+    } catch {
+      setNotes((prev) => prev.filter((x) => x.id !== entry.id));
+      showToast("Failed to save note.", true);
+    }
   }
   async function deleteNote(id: string) {
-    await apiDelete(`/api/notes/${id}`);
-    noteCache.refresh();
+    const removed = notes.find((x) => x.id === id);
+    setNotes((prev) => prev.filter((x) => x.id !== id));
+    try {
+      await apiDelete(`/api/notes/${id}`);
+      noteCache.refresh();
+    } catch {
+      if (removed) setNotes((prev) => [removed, ...prev]);
+      showToast("Failed to delete note.", true);
+    }
   }
 
   function showAttendanceDetails(type: "present" | "absent") {
