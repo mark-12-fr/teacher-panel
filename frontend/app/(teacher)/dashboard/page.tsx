@@ -236,9 +236,25 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const fetchSchedules = useCallback(async () => { try { return (await apiGet("/api/schedules")).schedules || []; } catch { return []; } }, []);
-  const fetchNotices = useCallback(async () => { try { return (await apiGet("/api/notices")).notices || []; } catch { return []; } }, []);
-  const fetchNotes = useCallback(async () => { try { return (await apiGet("/api/notes")).notes || []; } catch { return []; } }, []);
+  const fetchSchedules = useCallback(async () => {
+    try { const r = (await apiGet("/api/schedules")).schedules || []; if (r.length) return r } catch {}
+    // If API returns empty/fails, keep existing cache
+    const cached = localStorage.getItem("dash_cache_sched");
+    if (cached) { try { const d = JSON.parse(cached).data; if (d?.length) return d } catch {} }
+    return [];
+  }, []);
+  const fetchNotices = useCallback(async () => {
+    try { const r = (await apiGet("/api/notices")).notices || []; if (r.length) return r } catch {}
+    const cached = localStorage.getItem("dash_cache_notice");
+    if (cached) { try { const d = JSON.parse(cached).data; if (d?.length) return d } catch {} }
+    return [];
+  }, []);
+  const fetchNotes = useCallback(async () => {
+    try { const r = (await apiGet("/api/notes")).notes || []; if (r.length) return r } catch {}
+    const cached = localStorage.getItem("dash_cache_note");
+    if (cached) { try { const d = JSON.parse(cached).data; if (d?.length) return d } catch {} }
+    return [];
+  }, []);
 
   const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 60000 });
   const schedCache = useCachedData("dash_cache_sched", fetchSchedules);
