@@ -66,6 +66,7 @@ export default function TeacherShell({
     "https://ui-avatars.com/api/?name=Teacher&background=3b82f6&color=fff&size=128"
   );
   const [uploading, setUploading] = useState(false);
+  const [schoolYear, setSchoolYear] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Read cache synchronously before first paint (hydration may strip SSR defaults)
@@ -160,6 +161,8 @@ export default function TeacherShell({
       try { await apiGet("/api/ping") } catch {}
       try { await apiGet("/api/sections") } catch {}
       try { await apiGet("/api/subjects") } catch {}
+      // Fetch active school year
+      try { const r = await apiGet<any>("/api/active-school-year"); if (r?.school_year) setSchoolYear(r.school_year) } catch {}
     };
     warmup();
     // Heartbeat every 1 second — keeps Render server always warm
@@ -229,7 +232,7 @@ export default function TeacherShell({
           </div>
           <h2>Teacher Panel</h2>
           <div className="sidebar-username">{name || " "}</div>
-          <div className="sidebar-school-year" />
+          <div className="sidebar-school-year">{schoolYear || ""}</div>
         </div>
 
         <nav className="sidebar-menu">

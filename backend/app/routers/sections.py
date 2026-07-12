@@ -39,6 +39,24 @@ async def list_sections(
     return {"sections": orm_list(rows)}
 
 
+@router.get("/active-school-year")
+async def active_school_year(
+    teacher: CurrentTeacher = Depends(get_current_teacher),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (
+        await db.execute(
+            select(Section.school_year)
+            .where(Section.teacher_id == UUID(teacher.id))
+            .distinct()
+        )
+    ).scalars().all()
+    # Return the most recent school year (e.g., "2025-2026")
+    years = [y for y in rows if y]
+    years.sort(reverse=True)
+    return {"school_year": years[0] if years else None}
+
+
 @router.get("/sections/{section_id}")
 async def get_section(
     section_id: str,
