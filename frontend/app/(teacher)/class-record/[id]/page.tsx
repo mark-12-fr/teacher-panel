@@ -296,7 +296,7 @@ export default function ClassRecordGridPage() {
     </button>
   );
 
-  usePageMeta("Class Record", undefined, exportBtn);
+  usePageMeta("Class Record", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
 
   const searchLower = search.toLowerCase();
 
