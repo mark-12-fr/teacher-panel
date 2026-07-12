@@ -59,9 +59,9 @@ export default function TeacherShell({
   const { title, subtitle, action } = usePageMetaValue();
   const { loading } = useRequireAuth();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState<string>("");
+  const [name, setName] = useState<string>(() => localStorage.getItem("cached_user_name") || "");
   const [avatar, setAvatar] = useState<string>(
-    "https://ui-avatars.com/api/?name=Teacher&background=3b82f6&color=fff&size=128"
+    () => localStorage.getItem("cached_user_avatar") || "https://ui-avatars.com/api/?name=Teacher&background=3b82f6&color=fff&size=128"
   );
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
