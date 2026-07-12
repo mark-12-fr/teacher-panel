@@ -220,30 +220,37 @@ export default function ClassRecordGridPage() {
     const id = existing?.id || newId();
     const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
 
+    // Optimistic: update local state immediately
+    const arr = recordsRef.current.slice();
+    const idx = arr.findIndex((r) => r.id === id) >= 0
+      ? arr.findIndex((r) => r.id === id)
+      : arr.findIndex((r) => r.student_id === sid && String(r.quarter) === String(quarterToSave));
+    if (idx >= 0) arr[idx] = { ...arr[idx], id, [field]: val, quarter: quarterToSave };
+    else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
+    commitRecords(arr);
+
     lastLocalSave.current = Date.now();
-    cell.style.opacity = "0.5";
+    cell.dataset.oldVal = newValue;
     try {
       await apiPost(`/api/sections/${sectionId}/class-records`, [
         { id, student_id: sid, quarter: quarterToSave, scores: { [field]: val } },
       ]);
-      // Reconcile local records (both ref + state) without bumping dataVersion.
-      const arr = recordsRef.current.slice();
-      const idx = arr.findIndex((r) => r.id === id) >= 0
-        ? arr.findIndex((r) => r.id === id)
-        : arr.findIndex((r) => r.student_id === sid && String(r.quarter) === String(quarterToSave));
-      if (idx >= 0) arr[idx] = { ...arr[idx], id, [field]: val, quarter: quarterToSave };
-      else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
-      commitRecords(arr);
-      cell.dataset.oldVal = newValue;
       cell.style.backgroundColor = "rgba(16, 185, 129, 0.2)";
       setTimeout(() => (cell.style.backgroundColor = "transparent"), 1000);
     } catch {
+      // Revert on failure
+      const revertArr = recordsRef.current.slice();
+      const revertIdx = revertArr.findIndex((r) => r.id === id);
+      if (revertIdx >= 0) {
+        if (oldVal === "" && !existing) revertArr.splice(revertIdx, 1);
+        else revertArr[revertIdx] = { ...revertArr[revertIdx], [field]: oldVal === "" ? null : oldVal };
+      }
+      commitRecords(revertArr);
       cell.innerText = oldVal;
+      cell.dataset.oldVal = oldVal;
       cell.style.backgroundColor = "rgba(239, 68, 68, 0.2)";
       setTimeout(() => (cell.style.backgroundColor = "transparent"), 1000);
       showToast("Failed to save score. Check your connection.", true);
-    } finally {
-      cell.style.opacity = "1";
     }
   }
 
