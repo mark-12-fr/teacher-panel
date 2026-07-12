@@ -40,20 +40,18 @@ export function toggleTheme() {
   apiPatch("/api/me", { theme: next }).catch(() => {});
 }
 
-/** Sync theme button and push local preference to profile (cross-device). */
+/** Re-apply saved theme after navigation and sync button. */
 export async function pullTheme() {
-  const local = currentTheme();
-  syncToggleButton(local);
+  let saved: Theme = "light";
+  try { const t = localStorage.getItem(THEME_KEY); if (t === "dark" || t === "light") saved = t; } catch {}
+  applyTheme(saved);
   try {
     const r = await apiGet("/api/me");
     const profile = r?.profile?.theme;
-    if (profile && profile !== local) {
-      // Profile differs from local preference — push local to profile
-      apiPatch("/api/me", { theme: local }).catch(() => {});
+    if (profile && profile !== saved) {
+      apiPatch("/api/me", { theme: saved }).catch(() => {});
     }
-  } catch {
-    // Backend unavailable — local preference is already applied
-  }
+  } catch {}
 }
 
 // The no-flash snippet injected in <head> (runs before paint).
