@@ -63,6 +63,16 @@ function useTeacherInfo() {
 
 export default function DashboardPage() {
   usePageMeta("Dashboard", "Teacher Overview");
+
+  // Clear all caches if ?clear-cache=1 is in the URL (for speed testing)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("clear-cache=1")) {
+      Object.keys(localStorage).filter(k => k.startsWith("dash_cache_")).forEach(k => localStorage.removeItem(k));
+      window.history.replaceState({}, "", window.location.pathname);
+      window.location.reload();
+    }
+  }, []);
+
   const cached = useRef(readDashCache());
   const greeting = useGreeting();
   const { title: teacherTitle, firstName: teacherFirstName } = useTeacherInfo();
