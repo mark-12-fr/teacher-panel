@@ -402,6 +402,11 @@
             width: 100%;
             -webkit-overflow-scrolling: touch;
             border-bottom: 1px solid var(--border-color);
+            background:
+                linear-gradient(to right, var(--main-bg) 4px, transparent 20px),
+                linear-gradient(to left, var(--main-bg) 4px, transparent 20px);
+            background-attachment: local, local;
+        }
             border-right: 1px solid var(--border-color);
             display: block;
         }
@@ -446,33 +451,6 @@
             text-align: left !important;
             padding-left: 10px !important;
         }
-
-        .sticky-col {
-            position: sticky;
-            background: var(--card-bg);
-            z-index: 10;
-        }
-
-        th.sticky-col {
-            background: var(--table-header);
-            z-index: 11;
-        }
-
-        .sticky-col:nth-child(1) {
-            left: 0;
-            width: 45px;
-        }
-
-        .sticky-col:nth-child(2) {
-            left: 45px;
-            min-width: 160px;
-            max-width: 160px;
-            border-right: 2px solid #475569 !important;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
 
 
         /* ── Quarter selector + locked (past-quarter) history ── */
@@ -840,7 +818,7 @@
             }
 
             .sticky-col:nth-child(2) {
-                left: 22px;
+                left: 22px !important;
                 min-width: 75px;
                 max-width: 75px;
                 font-size: 0.7rem;
@@ -882,30 +860,40 @@
         /* The "sub" row (1..25, 1..10) gets a soft tint that matches its parent */
         #subHeaderRow th { background: var(--input-bg); }
 
-        /* ── Sticky first 2 columns + header (UI #3) ── */
+        /* ── Sticky first 2 columns + header ── */
         .sticky-col {
             position: sticky !important;
             background: var(--card-bg);
-            z-index: 3;
+            z-index: 2;
         }
-        .sticky-col-1, thead th.sticky-col:first-of-type { left: 0; }
-        .sticky-col-2 { left: 60px; }   /* approximate width of # column */
-        /* Soft shadow on the sticky edge so it's clear there's content under */
-        .sticky-col-2::after {
-            content: '';
-            position: absolute;
-            top: 0; right: -6px; bottom: 0;
-            width: 6px;
-            background: linear-gradient(to right, rgba(0,0,0,0.08), transparent);
-            pointer-events: none;
+        thead th.sticky-col {
+            background: var(--table-header);
+            z-index: 4;
         }
-        /* Hovered row should keep sticky cells tinted too */
-        tbody tr:hover .sticky-col { background: var(--hover-bg) !important; }
+        .sticky-col:nth-child(1) {
+            left: 0;
+            width: 45px;
+            min-width: 45px;
+        }
+        .sticky-col:nth-child(2) {
+            left: 45px;
+            min-width: 160px;
+            max-width: 160px;
+            border-right: 2px solid #475569 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         thead th {
             position: sticky;
             top: 0;
-            z-index: 4;
+            z-index: 3;
         }
+        thead tr:first-child th { top: 0; }
+        thead tr:nth-child(2) th { top: 42px; }
+
+        tbody tr:hover .sticky-col { background: var(--hover-bg) !important; }
 
         /* ── Rounded rows + hover + alternating tint (UI #4) ── */
         #recordTable {
