@@ -31,13 +31,22 @@ ALLOWED_ORIGINS = [
 class ForceCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         origin = request.headers.get("origin", "")
-        if origin not in ALLOWED_ORIGINS:
-            return await call_next(request) if request.method != "OPTIONS" else Response()
+        # Handle preflight OPTIONS immediately — return 200 with CORS headers
+        if request.method == "OPTIONS":
+            if origin not in ALLOWED_ORIGINS:
+                return Response(status_code=200)
+            response = Response(status_code=200)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            return response
         # Add CORS headers after the inner handler (even if it errors out)
+        if origin not in ALLOWED_ORIGINS:
+            return await call_next(request)
         try:
             response = await call_next(request)
         except Exception as e:
-            from starlette.responses import JSONResponse
             response = JSONResponse({"detail": str(e)}, status_code=500)
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
