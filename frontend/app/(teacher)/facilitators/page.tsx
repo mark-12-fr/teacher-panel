@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch, ApiError } from "@/lib/api";
 import { usePageMeta } from "@/lib/page-meta";
+import { useCachedData } from "@/hooks/use-cached-data";
 import "./facilitators.css";
 
 function getLastSeenText(lastLogin?: string | null): { text: string; isActive: boolean } {
@@ -44,19 +45,22 @@ export default function FacilitatorsPage() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 3000);
   }
 
-  const load = useCallback(async () => {
-    try {
-      const [f, s] = await Promise.all([apiGet("/api/facilitators"), apiGet("/api/sections")]);
-      setFacis(f.facilitators || []);
-      setSections(s.sections || []);
-    } catch {
-      showToast("Failed to load facilitators.", true);
-    }
+  const fetchFacis = useCallback(async () => {
+    const [f, s] = await Promise.all([apiGet("/api/facilitators"), apiGet("/api/sections")]);
+    return { facis: f.facilitators || [], sections: s.sections || [] };
   }, []);
 
+  const faciCache = useCachedData("list_cache_facis", fetchFacis, { ttl: 60000 });
+
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!faciCache.data) return;
+    setFacis(faciCache.data.facis);
+    setSections(faciCache.data.sections);
+  }, [faciCache.data]);
+
+  useEffect(() => {
+    if (faciCache.error) showToast("Failed to load facilitators.", true);
+  }, [faciCache.error]);
 
   const stats = useMemo(
     () => ({ total: facis.length, activeSections: new Set(facis.map((f) => f.section)).size }),
@@ -98,7 +102,7 @@ export default function FacilitatorsPage() {
         });
       }
       setModal(false);
-      await load();
+      faciCache.refresh();
       showToast(editingId ? "Facilitator updated!" : "Facilitator assigned!");
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) showToast("That Account ID is already taken. Please use a different one.", true);
@@ -114,7 +118,7 @@ export default function FacilitatorsPage() {
     setDeleteTarget(null);
     try {
       await apiDelete(`/api/facilitators/${id}`);
-      await load();
+      faciCache.refresh();
       showToast("Facilitator access removed.");
     } catch {
       showToast("Failed to delete facilitator.", true);

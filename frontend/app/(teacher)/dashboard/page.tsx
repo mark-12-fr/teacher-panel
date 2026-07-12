@@ -5,6 +5,7 @@ import { Chart, registerables } from "chart.js";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
+import { useCachedData } from "@/hooks/use-cached-data";
 
 Chart.register(...registerables);
 
@@ -67,141 +68,157 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Load everything ─────────────────────────────────────────────────────
-  const loadStats = useCallback(async () => {
-    try {
-      const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
-      const sections = secResp.sections || [];
-      sectionsRef.current = sections;
-      const subjects = subjResp.subjects || [];
-      setSubjectConfigs(subjects);
+  // ── Cache helpers ──────────────────────────────────────────────────────
+  const fetchStats = useCallback(async () => {
+    const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
+    const sections = secResp.sections || [];
+    const subjects = subjResp.subjects || [];
+    setSubjectConfigs(subjects);
 
-      const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
+    const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
 
-      let totalStudents = 0;
-      let present = 0;
-      let absent = 0;
-      const todayAtt: any[] = [];
-      const qTotals = { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } } as Record<string, { t: number; c: number }>;
-      const allScores: TopStudent[] = [];
+    let totalStudents = 0;
+    let present = 0;
+    let absent = 0;
+    const todayAtt: any[] = [];
+    const qTotals = { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } } as Record<string, { t: number; c: number }>;
+    const allScores: TopStudent[] = [];
 
-      const perSection = await Promise.all(
-        sections.map(async (s: any) => {
-          const [st, att, rec] = await Promise.all([
-            apiGet(`/api/sections/${s.id}/students`),
-            apiGet(`/api/sections/${s.id}/attendance?date=${encodeURIComponent(today)}`),
-            apiGet(`/api/sections/${s.id}/class-records`),
-          ]);
-          return { s, students: st.students || [], attendance: att.attendance || [], records: rec.records || [] };
-        })
-      );
+    const perSection = await Promise.all(
+      sections.map(async (s: any) => {
+        const [st, att, rec] = await Promise.all([
+          apiGet(`/api/sections/${s.id}/students`),
+          apiGet(`/api/sections/${s.id}/attendance?date=${encodeURIComponent(today)}`),
+          apiGet(`/api/sections/${s.id}/class-records`),
+        ]);
+        return { s, students: st.students || [], attendance: att.attendance || [], records: rec.records || [] };
+      })
+    );
 
-      perSection.forEach(({ s, students, attendance, records }) => {
-        totalStudents += students.length;
-        attendance.forEach((r: any) => {
-          if (r.status === "Present") present++;
-          else absent++;
-          todayAtt.push({ status: r.status, student_name: r.student_name, section: s.title });
+    perSection.forEach(({ s, students, attendance, records }) => {
+      totalStudents += students.length;
+      attendance.forEach((r: any) => {
+        if (r.status === "Present") present++;
+        else absent++;
+        todayAtt.push({ status: r.status, student_name: r.student_name, section: s.title });
+      });
+
+      students.forEach((student: any) => {
+        const studentRecords = records
+          .filter((r: any) => r.student_id === student.id)
+          .sort((a: any, b: any) => Number(normalizeQtr(a.quarter)) - Number(normalizeQtr(b.quarter)));
+        if (!studentRecords.length) return;
+
+        studentRecords.forEach((row: any) => {
+          let hasScore = false;
+          for (const key in row) {
+            if ((key.startsWith("module_") || key.startsWith("activity_") || key.startsWith("pt_") || key === "at" || key === "qe") && Number(row[key]) > 0) {
+              hasScore = true;
+              break;
+            }
+          }
+          if (!hasScore) return;
+          const qtr = normalizeQtr(row.quarter);
+          const grade = finalGrade(row, s.subject, 100);
+          if (qTotals[qtr]) {
+            qTotals[qtr].t += grade;
+            qTotals[qtr].c++;
+          }
         });
 
-        students.forEach((student: any) => {
-          const studentRecords = records
-            .filter((r: any) => r.student_id === student.id)
-            .sort((a: any, b: any) => Number(normalizeQtr(a.quarter)) - Number(normalizeQtr(b.quarter)));
-          if (!studentRecords.length) return;
-
-          studentRecords.forEach((row: any) => {
-            let hasScore = false;
-            for (const key in row) {
-              if ((key.startsWith("module_") || key.startsWith("activity_") || key.startsWith("pt_") || key === "at" || key === "qe") && Number(row[key]) > 0) {
-                hasScore = true;
-                break;
-              }
-            }
-            if (!hasScore) return;
-            const qtr = normalizeQtr(row.quarter);
-            const grade = finalGrade(row, s.subject, 100);
-            if (qTotals[qtr]) {
-              qTotals[qtr].t += grade;
-              qTotals[qtr].c++;
-            }
+        const merged = studentRecords.reduce((acc: any, curr: any) => {
+          Object.keys(curr).forEach((k) => {
+            if (filled(curr[k])) acc[k] = curr[k];
           });
-
-          const merged = studentRecords.reduce((acc: any, curr: any) => {
-            Object.keys(curr).forEach((k) => {
-              if (filled(curr[k])) acc[k] = curr[k];
-            });
-            return acc;
-          }, {});
-          allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject, 100) });
-        });
+          return acc;
+        }, {});
+        allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject, 100) });
       });
+    });
 
-      todayAttRef.current = todayAtt;
+    const semCounts: Record<string, number> = {};
+    sections.forEach((s: any) => {
+      if (s.semester) semCounts[s.semester] = (semCounts[s.semester] || 0) + 1;
+    });
+    let sem = "both";
+    if (semCounts["2nd Sem"] > 0 && !semCounts["1st Sem"]) sem = "2nd Sem";
+    else if (semCounts["1st Sem"] > 0 && !semCounts["2nd Sem"]) sem = "1st Sem";
 
-      // Active semester from what the teacher set on their sections.
-      const semCounts: Record<string, number> = {};
-      sections.forEach((s: any) => {
-        if (s.semester) semCounts[s.semester] = (semCounts[s.semester] || 0) + 1;
+    const qAvg = (k: string) => (qTotals[k].c > 0 ? Number((qTotals[k].t / qTotals[k].c).toFixed(2)) : null);
+
+    const norm = (v: any) => String(v == null ? "" : v).trim().toLowerCase();
+    const cfgVals = subjects.map((r: any) => Number(r.passing_grade)).filter((n: number) => isFinite(n));
+    const distinct = [...new Set(cfgVals)] as number[];
+    const sole = distinct.length === 1 ? distinct[0] : null;
+    let dashPassing = 75;
+    if (distinct.length > 0) {
+      const perSec = sections.map((s: any) => {
+        const p = passingFor(s.subject);
+        return isFinite(p) ? p : sole != null ? sole : Math.min(...distinct);
       });
-      let sem = "both";
-      if (semCounts["2nd Sem"] > 0 && !semCounts["1st Sem"]) sem = "2nd Sem";
-      else if (semCounts["1st Sem"] > 0 && !semCounts["2nd Sem"]) sem = "1st Sem";
-      setActiveSem(sem);
-
-      const qAvg = (k: string) => (qTotals[k].c > 0 ? Number((qTotals[k].t / qTotals[k].c).toFixed(2)) : null);
-      setChartData([qAvg("1"), qAvg("2"), qAvg("3"), qAvg("4")]);
-
-      // Passing grade: per-subject config; fall back to DepEd 75 when none set.
-      const norm = (v: any) => String(v == null ? "" : v).trim().toLowerCase();
-      const cfgVals = subjects.map((r: any) => Number(r.passing_grade)).filter((n: number) => isFinite(n));
-      const distinct = [...new Set(cfgVals)] as number[];
-      const sole = distinct.length === 1 ? distinct[0] : null;
-      let dashPassing = 75;
-      if (distinct.length > 0) {
-        const perSec = sections.map((s: any) => {
-          const p = passingFor(s.subject);
-          return isFinite(p) ? p : sole != null ? sole : Math.min(...distinct);
-        });
-        const set = [...new Set(perSec)] as number[];
-        dashPassing = set.length === 1 ? set[0] : set.length ? Math.min(...set) : sole != null ? sole : Math.min(...distinct);
-      }
-      setPassing(dashPassing);
-
-      allScores.sort((a, b) => b.grade - a.grade);
-      setTop(allScores.slice(0, 5));
-
-      setCards({ sections: sections.length, students: totalStudents, present, absent });
-      const totAtt = present + absent;
-      setRates(totAtt > 0 ? { p: Math.round((present / totAtt) * 100), a: 100 - Math.round((present / totAtt) * 100) } : null);
-    } catch (e) {
-      console.error(e);
-      setLoadError("Failed to load dashboard data. Check your connection.");
+      const set = [...new Set(perSec)] as number[];
+      dashPassing = set.length === 1 ? set[0] : set.length ? Math.min(...set) : sole != null ? sole : Math.min(...distinct);
     }
+
+    allScores.sort((a, b) => b.grade - a.grade);
+    const totAtt = present + absent;
+
+    return {
+      sections,
+      todayAtt,
+      cards: { sections: sections.length, students: totalStudents, present, absent },
+      rates: totAtt > 0 ? { p: Math.round((present / totAtt) * 100), a: 100 - Math.round((present / totAtt) * 100) } : null,
+      chartData: [qAvg("1"), qAvg("2"), qAvg("3"), qAvg("4")],
+      activeSem: sem,
+      passing: dashPassing,
+      top: allScores.slice(0, 5),
+    };
   }, []);
 
-  const loadSchedules = useCallback(async () => {
-    try {
-      setSchedules((await apiGet("/api/schedules")).schedules || []);
-    } catch {}
-  }, []);
-  const loadNotices = useCallback(async () => {
-    try {
-      setNotices((await apiGet("/api/notices")).notices || []);
-    } catch {}
-  }, []);
-  const loadNotes = useCallback(async () => {
-    try {
-      setNotes((await apiGet("/api/notes")).notes || []);
-    } catch {}
-  }, []);
+  const fetchSchedules = useCallback(async () => (await apiGet("/api/schedules")).schedules || [], []);
+  const fetchNotices = useCallback(async () => (await apiGet("/api/notices")).notices || [], []);
+  const fetchNotes = useCallback(async () => (await apiGet("/api/notes")).notes || [], []);
+
+  const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 60000 });
+  const schedCache = useCachedData("dash_cache_sched", fetchSchedules);
+  const noticeCache = useCachedData("dash_cache_notice", fetchNotices);
+  const noteCache = useCachedData("dash_cache_note", fetchNotes);
+
+  // Apply cached data to state
+  useEffect(() => {
+    if (!statsCache.data) return;
+    const d = statsCache.data;
+    sectionsRef.current = d.sections;
+    todayAttRef.current = d.todayAtt;
+    setCards(d.cards);
+    setRates(d.rates);
+    setChartData(d.chartData);
+    setActiveSem(d.activeSem);
+    setPassing(d.passing);
+    setTop(d.top);
+  }, [statsCache.data]);
 
   useEffect(() => {
-    loadStats();
-    loadSchedules();
-    loadNotices();
-    loadNotes();
-  }, [loadStats, loadSchedules, loadNotices, loadNotes]);
+    if (!schedCache.data) return;
+    setSchedules(schedCache.data);
+  }, [schedCache.data]);
+
+  useEffect(() => {
+    if (!noticeCache.data) return;
+    setNotices(noticeCache.data);
+  }, [noticeCache.data]);
+
+  useEffect(() => {
+    if (!noteCache.data) return;
+    setNotes(noteCache.data);
+  }, [noteCache.data]);
+
+  // Error handling
+  useEffect(() => {
+    if (statsCache.error) {
+      setLoadError("Failed to load dashboard data. Check your connection.");
+    }
+  }, [statsCache.error]);
 
   // ── Chart ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -314,12 +331,12 @@ export default function DashboardPage() {
     await apiPost("/api/schedules", { subject: sched.subject.trim(), time: `${hour12}:${m} ${ampm}`, details: sched.details.trim() });
     setSched({ subject: "", time: "", details: "" });
     setSchedModal(false);
-    loadSchedules();
+    schedCache.refresh();
     showToast("Schedule added!");
   }
   async function deleteSchedule(id: string) {
     await apiDelete(`/api/schedules/${id}`);
-    loadSchedules();
+    schedCache.refresh();
   }
   async function saveNotice() {
     if (!notice.text.trim() || !notice.date) return showToast("Please fill in the notice and date.", true);
@@ -332,23 +349,23 @@ export default function DashboardPage() {
     });
     setNotice({ text: "", date: "", time: "" });
     setNoticeModal(false);
-    loadNotices();
+    noticeCache.refresh();
     showToast("Notice added!");
   }
   async function deleteNotice(id: string) {
     await apiDelete(`/api/notices/${id}`);
-    loadNotices();
+    noticeCache.refresh();
   }
   async function addNote() {
     const t = noteInput.trim();
     if (!t) return;
     await apiPost("/api/notes", { content: t });
     setNoteInput("");
-    loadNotes();
+    noteCache.refresh();
   }
   async function deleteNote(id: string) {
     await apiDelete(`/api/notes/${id}`);
-    loadNotes();
+    noteCache.refresh();
   }
 
   function showAttendanceDetails(type: "present" | "absent") {

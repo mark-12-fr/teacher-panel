@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
 import { usePageMeta } from "@/lib/page-meta";
+import { useCachedData } from "@/hooks/use-cached-data";
 import "./section.css";
 
 const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "" };
@@ -25,35 +26,41 @@ export default function SectionListPage() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 3000);
   }
 
-  const load = useCallback(async () => {
-    try {
-      const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
-      const secs = secResp.sections || [];
-      setSections(secs);
-      setSubjects((subjResp.subjects || []).map((s: any) => s.name).sort((a: string, b: string) => a.localeCompare(b)));
-      // Student counts per section (the list endpoint doesn't include them).
-      const pairs = await Promise.all(
-        secs.map(async (s: any) => {
-          try {
-            const r = await apiGet(`/api/sections/${s.id}/students`);
-            return [s.id, (r.students || []).length] as const;
-          } catch {
-            return [s.id, 0] as const;
-          }
-        })
-      );
-      setCounts(Object.fromEntries(pairs));
-    } catch {
-      showToast("Failed to load sections", true);
-    }
+  const fetchSections = useCallback(async () => {
+    const [secResp, subjResp] = await Promise.all([apiGet("/api/sections"), apiGet("/api/subjects")]);
+    const secs = secResp.sections || [];
+    const sortedSubjects = (subjResp.subjects || []).map((s: any) => s.name).sort((a: string, b: string) => a.localeCompare(b));
+    const pairs = await Promise.all(
+      secs.map(async (s: any) => {
+        try {
+          const r = await apiGet(`/api/sections/${s.id}/students`);
+          return [s.id, (r.students || []).length] as const;
+        } catch {
+          return [s.id, 0] as const;
+        }
+      })
+    );
+    return { sections: secs, subjects: sortedSubjects, counts: Object.fromEntries(pairs) };
   }, []);
 
+  const sectionCache = useCachedData("list_cache_sections", fetchSections, { ttl: 60000 });
+
   useEffect(() => {
-    load();
+    if (!sectionCache.data) return;
+    setSections(sectionCache.data.sections);
+    setSubjects(sectionCache.data.subjects);
+    setCounts(sectionCache.data.counts);
+  }, [sectionCache.data]);
+
+  useEffect(() => {
+    if (sectionCache.error) showToast("Failed to load sections", true);
+  }, [sectionCache.error]);
+
+  useEffect(() => {
     const close = () => setOpenMenu(null);
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
-  }, [load]);
+  }, []);
 
   function openAdd() {
     setEditingId(null);
@@ -90,7 +97,7 @@ export default function SectionListPage() {
       }
       setModal(false);
       setSearch("");
-      await load();
+      sectionCache.refresh();
     } catch {
       showToast("Error saving record.", true);
     }
@@ -102,7 +109,7 @@ export default function SectionListPage() {
       await apiDelete(`/api/sections/${id}`); // backend cascades records/students/attendance
       showToast("Section and all its data deleted.");
       setSearch("");
-      await load();
+      sectionCache.refresh();
     } catch {
       showToast("Error deleting the section.", true);
     }
