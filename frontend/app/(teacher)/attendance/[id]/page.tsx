@@ -30,7 +30,6 @@ export default function AttendanceGridPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
-  usePageMeta("Attendance", undefined, exportBtn);
   const [attendance, setAttendance] = useState<Att[]>([]);
   const attRef = useRef<Att[]>([]);
   // Dates with a save in flight — our own realtime echoes for these are ignored
@@ -271,6 +270,8 @@ export default function AttendanceGridPage() {
       <i className="fa-solid fa-file-excel" /> <span className="export-text">Export Excel</span>
     </button>
   );
+
+  usePageMeta("Attendance", undefined, exportBtn);
 
   const quarter = normQ(section?.quarter);
 

@@ -35,7 +35,6 @@ export default function ClassRecordGridPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
-  usePageMeta("Class Record", undefined, exportBtn);
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
   const [search, setSearch] = useState("");
@@ -268,6 +267,8 @@ export default function ClassRecordGridPage() {
       <i className="fa-solid fa-file-excel" /> Export Excel
     </button>
   );
+
+  usePageMeta("Class Record", undefined, exportBtn);
 
   const searchLower = search.toLowerCase();
 

@@ -34,7 +34,6 @@ export default function PerformanceDetailPage() {
 
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
-  usePageMeta("Class Performance", undefined, actions);
   const [records, setRecords] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [ready, setReady] = useState(false);
@@ -354,6 +353,8 @@ export default function PerformanceDetailPage() {
       </button>
     </div>
   );
+
+  usePageMeta("Class Performance", undefined, actions);
 
   const arrow = (k: SortKey) => (tableState.sortKey === k ? (tableState.sortDir === "asc" ? "▴" : "▾") : "▾");
 
