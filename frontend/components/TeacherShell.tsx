@@ -57,7 +57,7 @@ export default function TeacherShell({
   const pathname = usePathname();
   const active = activeFromPath(pathname);
   const { title, subtitle, action } = usePageMetaValue();
-  const { loading } = useRequireAuth();
+  useRequireAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState<string>(() => localStorage.getItem("cached_user_name") || "");
   const [avatar, setAvatar] = useState<string>(
@@ -151,14 +151,6 @@ export default function TeacherShell({
       img.src = ev.target?.result as string;
     };
     reader.readAsDataURL(file);
-  }
-
-  if (loading) {
-    return (
-      <div className="teacher-page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: "2rem", color: "#3b82f6" }} />
-      </div>
-    );
   }
 
   return (
