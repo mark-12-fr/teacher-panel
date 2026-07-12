@@ -18,12 +18,7 @@ interface TopStudent {
   grade: number;
 }
 
-interface DashCache { cards: typeof cardsInit; rates: { p: number; a: number } | null; chartData: (number|null)[]; activeSem: string; passing: number; top: TopStudent[]; sections: any[]; todayAtt: any[] }
 const cardsInit = { sections: 0, students: 0, present: 0, absent: 0 };
-function readDashCache(): DashCache | null {
-  if (typeof window === "undefined") return null;
-  try { const r = localStorage.getItem("dash_cache_stats"); return r ? JSON.parse(r).data : null } catch { return null }
-}
 
 function useGreeting() {
   const [greeting, setGreeting] = useState("Welcome");
@@ -63,30 +58,19 @@ function useTeacherInfo() {
 
 export default function DashboardPage() {
   usePageMeta("Dashboard", "Teacher Overview");
-
-  // Clear all caches if ?clear-cache=1 is in the URL (for speed testing)
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("clear-cache=1")) {
-      Object.keys(localStorage).filter(k => k.startsWith("dash_cache_")).forEach(k => localStorage.removeItem(k));
-      window.history.replaceState({}, "", window.location.pathname);
-      window.location.reload();
-    }
-  }, []);
-
-  const cached = useRef(readDashCache());
   const greeting = useGreeting();
   const { title: teacherTitle, firstName: teacherFirstName } = useTeacherInfo();
 
-  const [cards, setCards] = useState(cached.current?.cards ?? cardsInit);
-  const [rates, setRates] = useState<{ p: number; a: number } | null>(cached.current?.rates ?? null);
-  const [chartData, setChartData] = useState<(number | null)[]>(cached.current?.chartData ?? [null, null, null, null]);
-  const [activeSem, setActiveSem] = useState(cached.current?.activeSem ?? "both");
-  const [passing, setPassing] = useState(cached.current?.passing ?? 75);
-  const [top, setTop] = useState<TopStudent[]>(cached.current?.top ?? []);
+  const [cards, setCards] = useState<typeof cardsInit>(cardsInit);
+  const [rates, setRates] = useState<{ p: number; a: number } | null>(null);
+  const [chartData, setChartData] = useState<(number | null)[]>([null, null, null, null]);
+  const [activeSem, setActiveSem] = useState("both");
+  const [passing, setPassing] = useState(75);
+  const [top, setTop] = useState<TopStudent[]>([]);
 
-  const [schedules, setSchedules] = useState<any[]>(() => { try { const r = localStorage.getItem("dash_cache_sched"); return r ? JSON.parse(r).data || [] : [] } catch { return [] } });
-  const [notices, setNotices] = useState<any[]>(() => { try { const r = localStorage.getItem("dash_cache_notice"); return r ? JSON.parse(r).data || [] : [] } catch { return [] } });
-  const [notes, setNotes] = useState<any[]>(() => { try { const r = localStorage.getItem("dash_cache_note"); return r ? JSON.parse(r).data || [] : [] } catch { return [] } });
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
   const [noteInput, setNoteInput] = useState("");
 
   const [clock, setClock] = useState({ time: "", date: "" });
@@ -101,8 +85,8 @@ export default function DashboardPage() {
   const [attModal, setAttModal] = useState<{ open: boolean; title: string; list: any[] }>({ open: false, title: "", list: [] });
   const [secModal, setSecModal] = useState(false);
 
-  const sectionsRef = useRef<any[]>(cached.current?.sections ?? []);
-  const todayAttRef = useRef<any[]>(cached.current?.todayAtt ?? []);
+  const sectionsRef = useRef<any[]>([]);
+  const todayAttRef = useRef<any[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -234,14 +218,6 @@ export default function DashboardPage() {
     allScores.sort((a, b) => b.grade - a.grade);
     const totAtt = present + absent;
 
-    // If per-section APIs all failed (sections exist but zero students), preserve existing cache
-    if (sections.length > 0 && totalStudents === 0) {
-      try {
-        const raw = localStorage.getItem("dash_cache_stats");
-        if (raw) { const old = JSON.parse(raw).data; if (old?.cards?.students > 0) return old }
-      } catch {}
-    }
-
     return {
       sections,
       todayAtt,
@@ -254,25 +230,9 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const fetchSchedules = useCallback(async () => {
-    try { const r = (await apiGet("/api/schedules")).schedules || []; if (r.length) return r } catch {}
-    // If API returns empty/fails, keep existing cache
-    const cached = localStorage.getItem("dash_cache_sched");
-    if (cached) { try { const d = JSON.parse(cached).data; if (d?.length) return d } catch {} }
-    return [];
-  }, []);
-  const fetchNotices = useCallback(async () => {
-    try { const r = (await apiGet("/api/notices")).notices || []; if (r.length) return r } catch {}
-    const cached = localStorage.getItem("dash_cache_notice");
-    if (cached) { try { const d = JSON.parse(cached).data; if (d?.length) return d } catch {} }
-    return [];
-  }, []);
-  const fetchNotes = useCallback(async () => {
-    try { const r = (await apiGet("/api/notes")).notes || []; if (r.length) return r } catch {}
-    const cached = localStorage.getItem("dash_cache_note");
-    if (cached) { try { const d = JSON.parse(cached).data; if (d?.length) return d } catch {} }
-    return [];
-  }, []);
+  const fetchSchedules = useCallback(async () => { try { return (await apiGet("/api/schedules")).schedules || []; } catch { return []; } }, []);
+  const fetchNotices = useCallback(async () => { try { return (await apiGet("/api/notices")).notices || []; } catch { return []; } }, []);
+  const fetchNotes = useCallback(async () => { try { return (await apiGet("/api/notes")).notes || []; } catch { return []; } }, []);
 
   const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 300000 });
   const schedCache = useCachedData("dash_cache_sched", fetchSchedules, { ttl: 300000 });
@@ -417,10 +377,6 @@ export default function DashboardPage() {
   }, [chartData, passing]);
 
   // ── Cache helpers (write-through to localStorage) ─────────────────────────
-  const writeCache = (key: string, data: any) => {
-    try { localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() })) } catch {}
-  };
-
   // ── Optimistic CRUD handlers ──────────────────────────────────────────────
   const tempId = () => "_opt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
@@ -431,41 +387,25 @@ export default function DashboardPage() {
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
     const entry = { id: tempId(), subject: sched.subject.trim(), time: `${hour12}:${m} ${ampm}`, details: sched.details.trim() };
-    setSchedules((prev) => {
-      const next = [entry, ...prev];
-      writeCache("dash_cache_sched", next);
-      return next;
-    });
+    setSchedules((prev) => [entry, ...prev]);
     setSched({ subject: "", time: "", details: "" });
     setSchedModal(false);
     try {
       await apiPost("/api/schedules", { subject: entry.subject, time: entry.time, details: entry.details });
       schedCache.refresh();
     } catch {
-      setSchedules((prev) => {
-        const next = prev.filter((x) => x.id !== entry.id);
-        writeCache("dash_cache_sched", next);
-        return next;
-      });
+      setSchedules((prev) => prev.filter((x) => x.id !== entry.id));
       showToast("Failed to add schedule.", true);
     }
   }
   async function deleteSchedule(id: string) {
     const removed = schedules.find((x) => x.id === id);
-    setSchedules((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      writeCache("dash_cache_sched", next);
-      return next;
-    });
+    setSchedules((prev) => prev.filter((x) => x.id !== id));
     try {
       await apiDelete(`/api/schedules/${id}`);
       schedCache.refresh();
     } catch {
-      if (removed) setSchedules((prev) => {
-        const next = [removed, ...prev];
-        writeCache("dash_cache_sched", next);
-        return next;
-      });
+      if (removed) setSchedules((prev) => [removed, ...prev]);
       showToast("Failed to delete schedule.", true);
     }
   }
@@ -473,41 +413,25 @@ export default function DashboardPage() {
     if (!notice.text.trim() || !notice.date) return showToast("Please fill in the notice and date.", true);
     const colors = ["blue", "orange", "green"];
     const entry = { id: tempId(), text: notice.text.trim(), date: notice.date, time: notice.time || null, color: colors[Math.floor(Math.random() * colors.length)] };
-    setNotices((prev) => {
-      const next = [entry, ...prev];
-      writeCache("dash_cache_notice", next);
-      return next;
-    });
+    setNotices((prev) => [entry, ...prev]);
     setNotice({ text: "", date: "", time: "" });
     setNoticeModal(false);
     try {
       await apiPost("/api/notices", { text: entry.text, date: entry.date, time: entry.time, color: entry.color });
       noticeCache.refresh();
     } catch {
-      setNotices((prev) => {
-        const next = prev.filter((x) => x.id !== entry.id);
-        writeCache("dash_cache_notice", next);
-        return next;
-      });
+      setNotices((prev) => prev.filter((x) => x.id !== entry.id));
       showToast("Failed to add notice.", true);
     }
   }
   async function deleteNotice(id: string) {
     const removed = notices.find((x) => x.id === id);
-    setNotices((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      writeCache("dash_cache_notice", next);
-      return next;
-    });
+    setNotices((prev) => prev.filter((x) => x.id !== id));
     try {
       await apiDelete(`/api/notices/${id}`);
       noticeCache.refresh();
     } catch {
-      if (removed) setNotices((prev) => {
-        const next = [removed, ...prev];
-        writeCache("dash_cache_notice", next);
-        return next;
-      });
+      if (removed) setNotices((prev) => [removed, ...prev]);
       showToast("Failed to delete notice.", true);
     }
   }
@@ -515,40 +439,24 @@ export default function DashboardPage() {
     const t = noteInput.trim();
     if (!t) return;
     const entry = { id: tempId(), content: t };
-    setNotes((prev) => {
-      const next = [entry, ...prev];
-      writeCache("dash_cache_note", next);
-      return next;
-    });
+    setNotes((prev) => [entry, ...prev]);
     setNoteInput("");
     try {
       await apiPost("/api/notes", { content: t });
       noteCache.refresh();
     } catch {
-      setNotes((prev) => {
-        const next = prev.filter((x) => x.id !== entry.id);
-        writeCache("dash_cache_note", next);
-        return next;
-      });
+      setNotes((prev) => prev.filter((x) => x.id !== entry.id));
       showToast("Failed to save note.", true);
     }
   }
   async function deleteNote(id: string) {
     const removed = notes.find((x) => x.id === id);
-    setNotes((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      writeCache("dash_cache_note", next);
-      return next;
-    });
+    setNotes((prev) => prev.filter((x) => x.id !== id));
     try {
       await apiDelete(`/api/notes/${id}`);
       noteCache.refresh();
     } catch {
-      if (removed) setNotes((prev) => {
-        const next = [removed, ...prev];
-        writeCache("dash_cache_note", next);
-        return next;
-      });
+      if (removed) setNotes((prev) => [removed, ...prev]);
       showToast("Failed to delete note.", true);
     }
   }
