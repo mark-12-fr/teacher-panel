@@ -231,3 +231,5 @@ frontend/out/
 web/node_modules/
 web/.next/
 web/out/
+
+/NUL

@@ -192,7 +192,7 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .logout-btn svg,
+        .logout-btn i,
         .theme-btn i {
             width: 20px;
             margin-right: 15px;

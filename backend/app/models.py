@@ -41,7 +41,7 @@ class Profile(Base):
     email = Column(Text, nullable=True)
     avatar_url = Column(Text, nullable=True)
     theme = Column(Text, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Facilitator(Base):
@@ -56,7 +56,7 @@ class Facilitator(Base):
     last_login = Column(TIMESTAMP(timezone=True), nullable=True)
     status = Column(Text, nullable=True)
     password = Column(Text, nullable=True)  # bcrypt hash
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Section(Base):
@@ -69,7 +69,7 @@ class Section(Base):
     semester = Column(Text, nullable=True)
     school_year = Column(String, nullable=True)
     quarter = Column(Text, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Student(Base):
@@ -78,7 +78,7 @@ class Student(Base):
     section_id = Column(PGUUID(as_uuid=True))
     full_name = Column(Text)
     gender = Column(Text, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Attendance(Base):
@@ -94,7 +94,7 @@ class Attendance(Base):
     remarks = Column(Text, nullable=True)
     quarter = Column(Text, nullable=True)
     teacher_id = Column(PGUUID(as_uuid=True), nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class ClassRecord(Base):
@@ -108,7 +108,7 @@ class ClassRecord(Base):
     qe = Column(Numeric, nullable=True)
     date = Column(Text, nullable=True)
     quarter = Column(Text, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 # module_1..module_25 and activity_1..activity_10 are numeric/nullable and are
@@ -142,8 +142,8 @@ class PushSubscription(Base):
     user_id = Column(Text)
     endpoint = Column(Text, unique=True)
     subscription = Column(JSONB)
-    created_at = Column(TIMESTAMP(timezone=True))
-    updated_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), default=func.now())
     __table_args__ = (
         CheckConstraint("user_type = ANY (ARRAY['teacher'::text, 'faci'::text])"),
     )
@@ -159,7 +159,7 @@ class Subject(Base):
     exam_percent = Column(Numeric, server_default=sa_text("20"))
     attendance_percent = Column(Numeric, server_default=sa_text("0"))
     passing_grade = Column(Numeric, server_default=sa_text("75"))
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Schedule(Base):
@@ -169,7 +169,7 @@ class Schedule(Base):
     subject = Column(Text)
     time = Column(Text)
     details = Column(Text)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Notice(Base):
@@ -180,7 +180,7 @@ class Notice(Base):
     date = Column(Date)
     time = Column(Time, nullable=True)
     color = Column(Text, server_default=sa_text("'blue'::text"))
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
 class Note(Base):
@@ -188,4 +188,4 @@ class Note(Base):
     id = _uuid_pk()
     user_id = Column(PGUUID(as_uuid=True))
     content = Column(Text)
-    created_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
