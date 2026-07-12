@@ -58,17 +58,16 @@ export default function TeacherShell({
   const active = activeFromPath(pathname);
   const { title, subtitle, action } = usePageMetaValue();
   useRequireAuth();
+  const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState<string>(() => typeof window !== "undefined" ? localStorage.getItem("cached_user_name") || "" : "");
-  const [avatar, setAvatar] = useState<string>(
-    () => typeof window !== "undefined" && localStorage.getItem("cached_user_avatar")
-      ? localStorage.getItem("cached_user_avatar")!
-      : "https://ui-avatars.com/api/?name=Teacher&background=3b82f6&color=fff&size=128"
+  const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState(
+    "https://ui-avatars.com/api/?name=Teacher&background=3b82f6&color=fff&size=128"
   );
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Restore theme + name/avatar from cache before paint (hydration may strip them)
+  // Read cache synchronously before first paint (hydration may strip SSR defaults)
   useLayoutEffect(() => {
     try {
       const t = localStorage.getItem("dashboard_theme");
@@ -80,33 +79,56 @@ export default function TeacherShell({
       const a = localStorage.getItem("cached_user_avatar");
       if (a) setAvatar(a);
     } catch {}
+    setReady(true);
   }, []);
+
+  // Don't paint anything until cache is restored (avoids SSR default flash)
+  if (!ready) return <div className="teacher-page" />
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Identify the current user BEFORE trusting any cached identity, so a
-      // previous user's name/avatar is never shown after an account switch on
-      // a shared browser (covers password login, Google OAuth, and session
-      // restore alike).
       let uid: string | null = null;
+      let nameFromMeta = "";
+      let pictureFromMeta = "";
       try {
         const { data } = await getSupabase().auth.getSession();
-        uid = data.session?.user?.id ?? null;
+        const u = data.session?.user;
+        uid = u?.id ?? null;
+        if (u?.user_metadata) {
+          nameFromMeta = u.user_metadata.full_name || u.user_metadata.name || "";
+          pictureFromMeta = u.user_metadata.picture || u.user_metadata.avatar_url || "";
+        }
       } catch {}
       if (cancelled) return;
 
-      if (uid && localStorage.getItem("cached_user_id") === uid) {
-        const cachedName = localStorage.getItem("cached_user_name");
-        const cachedAvatar = localStorage.getItem("cached_user_avatar");
-        if (cachedName) setName(cachedName);
-        if (cachedAvatar) setAvatar(cachedAvatar);
+      const cachedUid = localStorage.getItem("cached_user_id");
+      if (uid && cachedUid === uid) {
+        const cn = localStorage.getItem("cached_user_name");
+        if (cn) setName(cn);
+        const ca = localStorage.getItem("cached_user_avatar");
+        if (ca) setAvatar(ca);
       } else {
-        // Unknown or mismatched owner → drop the stale identity (and chat) so
-        // it can't be rendered for the wrong account while /api/me loads.
         clearUserCache();
+        // Save basic identity from session metadata (works even if /api/me fails)
+        if (uid) {
+          localStorage.setItem("cached_user_id", uid);
+          if (nameFromMeta) {
+            localStorage.setItem("cached_user_name", nameFromMeta);
+            setName(nameFromMeta);
+            if (pictureFromMeta) {
+              localStorage.setItem("cached_user_avatar", pictureFromMeta);
+              setAvatar(pictureFromMeta);
+            } else {
+              const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameFromMeta)}&background=3b82f6&color=fff&size=128`;
+              localStorage.setItem("cached_user_avatar", fallback);
+              setAvatar(fallback);
+            }
+          }
+        }
       }
 
+      // Best-effort: enrich from our API profile
       try {
         const r = await apiGet("/api/me");
         if (cancelled) return;
@@ -120,16 +142,12 @@ export default function TeacherShell({
           setAvatar(p.avatar_url);
           localStorage.setItem("cached_user_avatar", p.avatar_url);
         } else if (p.full_name) {
-          setAvatar(
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name)}&background=3b82f6&color=fff&size=128`
-          );
+          setAvatar(`https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name)}&background=3b82f6&color=fff&size=128`);
         }
       } catch {}
       pullTheme();
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
