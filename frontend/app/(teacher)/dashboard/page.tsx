@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
@@ -25,9 +25,47 @@ function readDashCache(): DashCache | null {
   try { const r = localStorage.getItem("dash_cache_stats"); return r ? JSON.parse(r).data : null } catch { return null }
 }
 
+function useGreeting() {
+  const [greeting, setGreeting] = useState("Welcome");
+  useEffect(() => {
+    const update = () => {
+      const h = new Date().getHours();
+      setGreeting(h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, []);
+  return greeting;
+}
+
+function useTeacherInfo() {
+  const [title, setTitle] = useState("Ma'am");
+  const [firstName, setFirstName] = useState("Teacher");
+  useLayoutEffect(() => {
+    try {
+      const cached = localStorage.getItem("cached_user_title");
+      if (cached === "Ma'am" || cached === "Sir") setTitle(cached);
+      else {
+        const name = localStorage.getItem("cached_user_name") || "";
+        const first = name.split(" ")[0] || "";
+        const last = first.slice(-1).toLowerCase();
+        const t = "aei".includes(last) ? "Ma'am" : "Sir";
+        localStorage.setItem("cached_user_title", t);
+        setTitle(t);
+      }
+      const name = localStorage.getItem("cached_user_name") || "Teacher";
+      setFirstName(name.split(" ")[0] || "Teacher");
+    } catch {}
+  }, []);
+  return { title, firstName };
+}
+
 export default function DashboardPage() {
   usePageMeta("Dashboard", "Teacher Overview");
   const cached = useRef(readDashCache());
+  const greeting = useGreeting();
+  const { title: teacherTitle, firstName: teacherFirstName } = useTeacherInfo();
 
   const [cards, setCards] = useState(cached.current?.cards ?? cardsInit);
   const [rates, setRates] = useState<{ p: number; a: number } | null>(cached.current?.rates ?? null);
@@ -445,7 +483,7 @@ export default function DashboardPage() {
           <div className="banner-shine" />
           <div className="welcome-text">
             <h2>
-              <i className="fa-solid fa-sun" style={{ color: "#fbbf24" }} /> Welcome!
+              <i className="fa-solid fa-sun" style={{ color: "#fbbf24" }} /> {greeting}, {teacherTitle} {teacherFirstName}!
             </h2>
             <p style={{ fontSize: "0.95rem", opacity: 0.9 }}>Here&apos;s a quick overview of your classes today.</p>
           </div>
