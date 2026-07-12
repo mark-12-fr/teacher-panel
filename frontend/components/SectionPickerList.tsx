@@ -60,7 +60,11 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
   }, [sectionCache.error]);
 
   useEffect(() => {
-    const close = () => setOpenMenu(null);
+    const close = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (target && (target as Element)?.closest?.(".menu-container")) return;
+      setOpenMenu(null);
+    };
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, []);
@@ -205,6 +209,7 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
                         e.stopPropagation();
                         setOpenMenu(openMenu === sec.id ? null : sec.id);
                       }}
+                      onTouchStart={(e) => e.stopPropagation()}
                     >
                       <i className="fa-solid fa-ellipsis-vertical" />
                     </button>
