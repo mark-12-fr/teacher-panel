@@ -2,7 +2,7 @@
 // Shared authenticated shell: sidebar (profile + menu + theme + logout) and a
 // topbar with the mobile menu button + page title. Wraps every teacher page.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiGet, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
@@ -68,12 +68,14 @@ export default function TeacherShell({
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    // Re-apply theme immediately (React hydration may have stripped data-theme)
+  // Re-apply theme before paint (React hydration strips data-theme from <html>)
+  useLayoutEffect(() => {
     let saved: string | null = null;
     try { saved = localStorage.getItem("dashboard_theme") } catch {}
     if (saved === "dark" || saved === "light") applyTheme(saved);
+  }, []);
 
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       // Identify the current user BEFORE trusting any cached identity, so a
