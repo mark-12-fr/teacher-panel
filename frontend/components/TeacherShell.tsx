@@ -80,6 +80,8 @@ export default function TeacherShell({
       if (n) setName(n);
       const a = localStorage.getItem("cached_user_avatar");
       if (a) setAvatar(a);
+      const sy = localStorage.getItem("cached_school_year");
+      if (sy) setSchoolYear(sy);
     } catch {}
     setReady(true);
   }, []);
@@ -162,7 +164,7 @@ export default function TeacherShell({
       try { await apiGet("/api/sections") } catch {}
       try { await apiGet("/api/subjects") } catch {}
       // Fetch active school year
-      try { const r = await apiGet<any>("/api/active-school-year"); if (r?.school_year) setSchoolYear(r.school_year) } catch {}
+      try { const r = await apiGet<any>("/api/active-school-year"); if (r?.school_year) { setSchoolYear(r.school_year); localStorage.setItem("cached_school_year", r.school_year) } } catch {}
     };
     warmup();
     // Heartbeat every 1 second — keeps Render server always warm
