@@ -162,10 +162,14 @@ export default function TeacherShell({
       try { await apiGet("/api/subjects") } catch {}
     };
     warmup();
-    const hb = setInterval(() => {
-      fetch(`${API_BASE}/api/ping`).catch(() => {});
-    }, 60_000); // every minute keeps Render free tier awake
-    return () => clearInterval(hb);
+    // Heartbeat every 1 second — keeps Render server always warm
+    let cancelled = false;
+    (async function beat() {
+      if (cancelled) return;
+      try { await fetch(`${API_BASE}/api/ping`) } catch {}
+      if (!cancelled) setTimeout(beat, 1000);
+    })();
+    return () => { cancelled = true; };
   }, [ready]);
 
   if (!ready) return <div className="teacher-page" />;
