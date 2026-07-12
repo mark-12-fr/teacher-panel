@@ -5,6 +5,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiGet, apiPatch } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase";
 import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
 import { applyTheme, pullTheme, toggleTheme } from "@/lib/theme";
@@ -149,6 +150,22 @@ export default function TeacherShell({
       pullTheme();
     })();
     return () => { cancelled = true; };
+  }, [ready]);
+
+  // ── Server heartbeat + warmup ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!ready) return;
+    const warmup = async () => {
+      // Warm up Render server + cache initial data
+      try { await apiGet("/api/ping") } catch {}
+      try { await apiGet("/api/sections") } catch {}
+      try { await apiGet("/api/subjects") } catch {}
+    };
+    warmup();
+    const hb = setInterval(() => {
+      fetch(`${API_BASE}/api/ping`).catch(() => {});
+    }, 240_000); // every 4 minutes keeps Render free tier awake
+    return () => clearInterval(hb);
   }, [ready]);
 
   if (!ready) return <div className="teacher-page" />;
