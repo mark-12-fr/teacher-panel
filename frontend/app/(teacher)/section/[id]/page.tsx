@@ -132,7 +132,9 @@ export default function SectionDetailPage() {
       loadStudents();
     } catch (e: any) {
       setStudents((prev) => prev.filter((s) => s.id !== entry.id));
-      showToast(e?.message || "Failed to add student", true);
+      const msg = e?.message || "Failed to add student";
+      showToast(`${msg} (API_BASE check console)`, true);
+      console.error("Add student error:", e, "API_BASE:", (await import("@/lib/config")).API_BASE);
     }
   }
   async function updateStudent() {
