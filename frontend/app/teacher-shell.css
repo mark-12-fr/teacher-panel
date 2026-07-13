@@ -1088,8 +1088,10 @@
            button appears to "stay" across every page. */
         .quick-add-fab {
             position: fixed;
-            bottom: 120px;
-            right: 40px;
+            /* Matches the unified floating-button layer in ai-assistant.css
+               (all "+" buttons share this exact spot, AI brain below). */
+            bottom: 96px;
+            right: 24px;
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -1123,8 +1125,8 @@
 
         .quick-add-menu {
             position: fixed;
-            right: 40px;
-            bottom: 192px;
+            right: 24px;
+            bottom: 168px;
             z-index: 9999;
             background: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -1169,14 +1171,14 @@
         }
 
         @media (max-width: 768px) {
-            /* Mirror .fab-add-btn's mobile spot (bottom nav clearance). */
+            /* Mirror the unified layer's mobile spot. */
             .quick-add-fab {
-                bottom: 160px;
-                right: 20px;
+                bottom: 86px;
+                right: 16px;
             }
 
             .quick-add-menu {
-                right: 20px;
-                bottom: 232px;
+                right: 16px;
+                bottom: 158px;
             }
         }

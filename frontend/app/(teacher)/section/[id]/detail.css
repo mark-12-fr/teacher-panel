@@ -616,6 +616,9 @@
 
         #openModal {
             position: fixed;
+            /* NOTE: the floating-button stack is unified in ai-assistant.css
+               (all "+" buttons at right 24 / bottom 96, AI brain below) — that
+               layer wins over these values on purpose. */
             right: 24px !important;
             bottom: 96px !important;
             background: var(--accent-blue);
@@ -918,8 +921,8 @@
             #openModal {
                 right: 16px !important;
                 bottom: 86px !important;
-                width: 55px;
-                height: 55px;
+                width: 60px;
+                height: 60px;
             }
 
         }
