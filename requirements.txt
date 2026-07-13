@@ -1,0 +1,11 @@
+# Render-compat shim — the API's real, pinned dependency list lives in
+# backend/requirements.txt (single source of truth; nothing is duplicated
+# here). The existing Render web service was created manually with its Root
+# Directory at the repo root, so its build command runs
+# `pip install -r requirements.txt` HERE — removing this file breaks every
+# deploy with "Could not open requirements file".
+#
+# Cleaner long-term setup: point the service's Root Directory at backend/
+# (docs/deploy.md, Option B) or recreate it from render.yaml (Option A),
+# then this file and .python-version can be deleted.
+-r backend/requirements.txt
