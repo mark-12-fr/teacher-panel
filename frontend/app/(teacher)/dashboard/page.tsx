@@ -89,9 +89,12 @@ export default function DashboardPage() {
 
   const [attModal, setAttModal] = useState<{ open: boolean; title: string; list: any[] }>({ open: false, title: "", list: [] });
   const [secModal, setSecModal] = useState(false);
+  // Click-a-dot modal: every student's average for that quarter.
+  const [qModal, setQModal] = useState<{ open: boolean; quarter: string; search: string }>({ open: false, quarter: "1", search: "" });
 
   const sectionsRef = useRef<any[]>([]);
   const todayAttRef = useRef<any[]>([]);
+  const qStudentsRef = useRef<Record<string, any[]>>({ "1": [], "2": [], "3": [], "4": [] });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -142,6 +145,9 @@ export default function DashboardPage() {
     let absent = 0;
     const todayAtt: any[] = [];
     const qTotals = { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } } as Record<string, { t: number; c: number }>;
+    // Every student's average per quarter — feeds the chart tooltip (top /
+    // lowest preview) and the click-the-dot "all students" modal.
+    const qStudents: Record<string, any[]> = { "1": [], "2": [], "3": [], "4": [] };
     const allScores: TopStudent[] = [];
 
     try {
@@ -183,6 +189,7 @@ export default function DashboardPage() {
             if (qTotals[qtr]) {
               qTotals[qtr].t += grade;
               qTotals[qtr].c++;
+              qStudents[qtr].push({ name: student.full_name || "No Name", section: s.title, grade });
             }
           });
 
@@ -224,6 +231,12 @@ export default function DashboardPage() {
     }
 
     allScores.sort((a, b) => b.grade - a.grade);
+    Object.values(qStudents).forEach((list) => {
+      list.sort((a, b) => b.grade - a.grade);
+      list.forEach((s, i) => {
+        s.rank = i + 1;
+      });
+    });
     const totAtt = present + absent;
 
     return {
@@ -232,6 +245,7 @@ export default function DashboardPage() {
       cards: { sections: sections.length, students: totalStudents, present, absent },
       rates: totAtt > 0 ? { p: Math.round((present / totAtt) * 100), a: 100 - Math.round((present / totAtt) * 100) } : null,
       chartData: [qAvg("1"), qAvg("2"), qAvg("3"), qAvg("4")],
+      qStudents,
       activeSem: sem,
       passing: dashPassing,
       top: allScores.slice(0, 5),
@@ -253,6 +267,8 @@ export default function DashboardPage() {
     const d = statsCache.data;
     sectionsRef.current = d.sections;
     todayAttRef.current = d.todayAtt;
+    // Older cached payloads (pre-feature) have no qStudents — default empty.
+    qStudentsRef.current = d.qStudents || { "1": [], "2": [], "3": [], "4": [] };
     setCards(d.cards);
     setRates(d.rates);
     setChartData(d.chartData);
@@ -391,6 +407,17 @@ export default function DashboardPage() {
         maintainAspectRatio: false,
         layout: { padding: { top: 8, right: 4 } },
         interaction: { mode: "index", intersect: false },
+        // Click a quarter dot → full "all students' averages" modal.
+        onClick: (_evt: any, elements: any[]) => {
+          const el = (elements || []).find((e: any) => e.datasetIndex === 0);
+          if (!el) return;
+          const q = String(el.index + 1);
+          if ((qStudentsRef.current?.[q] || []).length) setQModal({ open: true, quarter: q, search: "" });
+        },
+        onHover: (evt: any, elements: any[]) => {
+          const t = evt?.native?.target as HTMLElement | undefined;
+          if (t) t.style.cursor = (elements || []).some((e: any) => e.datasetIndex === 0) ? "pointer" : "default";
+        },
         scales: {
           y: {
             beginAtZero: true,
@@ -409,6 +436,26 @@ export default function DashboardPage() {
               label: (c: any) => {
                 if (c.dataset.label?.indexOf("Passing (") === 0) return "";
                 return c.parsed.y !== null ? `Class Average: ${c.parsed.y.toFixed(1)}%` : "No data yet";
+              },
+              // Per-student preview on hover: with hundreds of students a
+              // tooltip can't hold them all, so show the head/tail here and
+              // open the full searchable list on click.
+              afterBody: (items: any[]) => {
+                const idx = items?.[0]?.dataIndex;
+                if (idx == null) return [];
+                const list = qStudentsRef.current?.[String(idx + 1)] || [];
+                if (!list.length) return [];
+                const fmt = (s: any) => ` ${s.grade >= PASS ? "✓" : "✗"} ${Math.round(s.grade)}%  ${s.name}`;
+                const lines: string[] = ["", `Students (${list.length}):`];
+                if (list.length <= 6) {
+                  list.forEach((s: any) => lines.push(fmt(s)));
+                } else {
+                  list.slice(0, 3).forEach((s: any) => lines.push(fmt(s)));
+                  lines.push(` ⋯ ${list.length - 6} more ⋯`);
+                  list.slice(-3).forEach((s: any) => lines.push(fmt(s)));
+                }
+                lines.push("", "Click the dot to view ALL students");
+                return lines;
               },
             },
           },
@@ -820,6 +867,64 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Quarter dot → every student's average for that quarter */}
+      {qModal.open && (() => {
+        const list = qStudentsRef.current?.[qModal.quarter] || [];
+        const t = qModal.search.trim().toLowerCase();
+        const filtered = t
+          ? list.filter((s) => String(s.name).toLowerCase().includes(t) || String(s.section || "").toLowerCase().includes(t))
+          : list;
+        const qAvgVal = chartData[Number(qModal.quarter) - 1];
+        return (
+          <div className="modal-overlay" style={{ display: "flex" }} onClick={(e) => e.target === e.currentTarget && setQModal((m) => ({ ...m, open: false }))}>
+            <div className="modal-content" style={{ maxWidth: 480 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h4>
+                  <i className="fa-solid fa-chart-line" style={{ color: "var(--accent-blue, #3b82f6)", marginRight: 6 }} />
+                  Q{qModal.quarter} — Student Averages
+                </h4>
+                <button onClick={() => setQModal((m) => ({ ...m, open: false }))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", color: "var(--text-muted)" }}><i className="fa-solid fa-xmark" /></button>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                <span>{list.length} student{list.length === 1 ? "" : "s"} with scores</span>
+                {qAvgVal != null && (
+                  <span>
+                    Class Average:{" "}
+                    <strong style={{ color: Number(qAvgVal) >= passing ? "#22c55e" : "#ef4444" }}>{Number(qAvgVal).toFixed(1)}%</strong>
+                  </span>
+                )}
+              </div>
+              <input
+                value={qModal.search}
+                onChange={(e) => setQModal((m) => ({ ...m, search: e.target.value }))}
+                placeholder="Search student or section..."
+                style={{ width: "100%", padding: "9px 12px", marginBottom: 10, borderRadius: 8, border: "1px solid var(--border-color)", background: "var(--input-bg)", color: "var(--text-dark)", outline: "none", fontFamily: "Inter, sans-serif", fontSize: "0.85rem" }}
+              />
+              <ul className="list-container" style={{ maxHeight: 320, overflowY: "auto", padding: 0 }}>
+                {filtered.length === 0 ? (
+                  <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem", padding: "20px 0" }}>No matching students.</li>
+                ) : (
+                  filtered.map((st, i) => (
+                    <li className="item-row" key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted)", width: 26, textAlign: "right", flex: "0 0 auto" }}>#{st.rank || i + 1}</span>
+                        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                          <strong style={{ color: "var(--text-dark)", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{st.name}</strong>
+                          <small style={{ color: "var(--text-muted)" }}>{st.section}</small>
+                        </div>
+                      </div>
+                      <strong style={{ color: Number(st.grade) >= passing ? "#22c55e" : "#ef4444", fontSize: "0.95rem", flex: "0 0 auto" }}>
+                        {Number(st.grade).toFixed(1)}%
+                      </strong>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Sections detail modal */}
       {secModal && (
