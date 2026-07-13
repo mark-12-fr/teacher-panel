@@ -450,33 +450,76 @@ export default function DashboardPage() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            displayColors: false,
-            callbacks: {
-              title: (items: any) => items[0].label,
-              label: (c: any) => {
-                if (c.dataset.label?.indexOf("Passing (") === 0) return "";
-                return c.parsed.y !== null ? `Class Average: ${c.parsed.y.toFixed(1)}%` : "No data yet";
-              },
-              // Per-SECTION preview on hover: each section's average for the
-              // quarter (a handful of lines instead of hundreds of students).
-              // The click-the-dot modal has the full detail incl. drill-down.
-              afterBody: (items: any[]) => {
-                const idx = items?.[0]?.dataIndex;
-                if (idx == null) return [];
-                const secs = sectionAverages(qStudentsRef.current?.[String(idx + 1)] || []);
-                if (!secs.length) return [];
-                const fmt = (s: any) => ` ${s.avg >= PASS ? "✓" : "✗"} ${s.avg.toFixed(1)}%  ${s.section} (${s.count})`;
-                const lines: string[] = ["", `Section Averages (${secs.length}):`];
-                if (secs.length <= 10) {
-                  secs.forEach((s) => lines.push(fmt(s)));
-                } else {
-                  secs.slice(0, 4).forEach((s) => lines.push(fmt(s)));
-                  lines.push(` ⋯ ${secs.length - 8} more ⋯`);
-                  secs.slice(-4).forEach((s) => lines.push(fmt(s)));
-                }
-                lines.push("", "Click the dot for details");
-                return lines;
-              },
+            // Canvas tooltips clip at the chart's edges — with 8+ section rows
+            // the bottom half (and the "click" hint) was getting cut off near
+            // low dots. Render a styled HTML tooltip on document.body instead:
+            // never clipped, theme-aware, and the call-to-action reads clearly.
+            enabled: false,
+            external: (context: any) => {
+              const { chart, tooltip } = context;
+              let el = document.getElementById("dashQTooltip") as HTMLDivElement | null;
+              if (!el) {
+                el = document.createElement("div");
+                el.id = "dashQTooltip";
+                el.style.cssText =
+                  "position:fixed;z-index:2147483200;pointer-events:none;opacity:0;transition:opacity .12s ease;" +
+                  "min-width:235px;max-width:305px;background:var(--card-bg);color:var(--text-dark);" +
+                  "border:1px solid var(--border-color);border-radius:12px;box-shadow:0 14px 34px rgba(15,23,42,.28);" +
+                  "font-family:Inter,sans-serif;font-size:.8rem;overflow:hidden";
+                document.body.appendChild(el);
+              }
+              if (!tooltip || tooltip.opacity === 0) {
+                el.style.opacity = "0";
+                return;
+              }
+              const idx = tooltip.dataPoints?.[0]?.dataIndex;
+              if (idx == null) {
+                el.style.opacity = "0";
+                return;
+              }
+              const avgVal = chartData[idx];
+              const secs = sectionAverages(qStudentsRef.current?.[String(idx + 1)] || []);
+              const clr = (v: number) => (v >= PASS ? "#22c55e" : "#ef4444");
+              const shown = secs.length <= 10 ? secs : secs.slice(0, 4);
+              const tail = secs.length <= 10 ? [] : secs.slice(-4);
+              const row = (s: any) =>
+                `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 14px">` +
+                `<span style="display:flex;align-items:center;gap:8px;min-width:0">` +
+                `<span style="width:7px;height:7px;border-radius:50%;background:${clr(s.avg)};flex:0 0 auto"></span>` +
+                `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.section}` +
+                `<span style="color:var(--text-muted);font-size:.72rem"> · ${s.count} students</span></span></span>` +
+                `<strong style="color:${clr(s.avg)};font-variant-numeric:tabular-nums;flex:0 0 auto">${s.avg.toFixed(1)}%</strong></div>`;
+              el.innerHTML =
+                `<div style="padding:10px 14px 8px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:baseline;gap:14px">` +
+                `<strong style="font-size:.9rem">Quarter ${idx + 1}</strong>` +
+                (avgVal != null
+                  ? `<span style="color:var(--text-muted)">Class Avg <strong style="color:${clr(Number(avgVal))};font-variant-numeric:tabular-nums">${Number(avgVal).toFixed(1)}%</strong></span>`
+                  : `<span style="color:var(--text-muted)">No data yet</span>`) +
+                `</div>` +
+                (secs.length
+                  ? `<div style="padding:7px 0 5px">` +
+                    `<div style="padding:0 14px 5px;color:var(--text-muted);font-size:.68rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase">Section Averages (${secs.length})</div>` +
+                    shown.map(row).join("") +
+                    (tail.length
+                      ? `<div style="text-align:center;color:var(--text-muted);font-size:.72rem;padding:2px 0">⋯ ${secs.length - 8} more ⋯</div>` + tail.map(row).join("")
+                      : "") +
+                    `</div>` +
+                    `<div style="padding:8px 14px;border-top:1px solid var(--border-color);background:var(--input-bg);color:var(--accent-blue,#3b82f6);font-weight:600;font-size:.75rem;display:flex;align-items:center;gap:7px">` +
+                    `<i class="fa-solid fa-hand-pointer"></i> Click the dot for full details</div>`
+                  : "");
+              // Centered above the dot; flips below when there's no room, and
+              // stays clamped inside the viewport either way.
+              const rect = chart.canvas.getBoundingClientRect();
+              const w = el.offsetWidth;
+              const h = el.offsetHeight;
+              let left = rect.left + tooltip.caretX - w / 2;
+              left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+              let top = rect.top + tooltip.caretY - h - 14;
+              if (top < 8) top = rect.top + tooltip.caretY + 16;
+              top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+              el.style.left = left + "px";
+              el.style.top = top + "px";
+              el.style.opacity = "1";
             },
           },
         },
@@ -485,6 +528,7 @@ export default function DashboardPage() {
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
+      document.getElementById("dashQTooltip")?.remove();
     };
   }, [chartData, passing]);
 
