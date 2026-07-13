@@ -11,6 +11,7 @@ import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
 import { applyTheme, pullTheme, toggleTheme } from "@/lib/theme";
 import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
+import QuickAddFab from "@/components/QuickAddFab";
 import "@/app/teacher-shell.css";
 
 export type MenuKey =
@@ -271,6 +272,7 @@ export default function TeacherShell({
         {children}
       </main>
 
+      <QuickAddFab />
       <AIAssistant />
     </div>
   );

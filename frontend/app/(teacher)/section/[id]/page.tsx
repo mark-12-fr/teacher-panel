@@ -38,6 +38,17 @@ export default function SectionDetailPage() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 3000);
   }
 
+  // Quick-add deep link (?add=1 from the global QuickAddFab, e.g. "Add
+  // Student (this class)" on a detail page): auto-open the Add Student modal.
+  // Param consumed so a refresh doesn't re-open it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("add") === "1") {
+      window.history.replaceState(null, "", window.location.pathname);
+      setAddOpen(true);
+    }
+  }, []);
+
   const loadDetails = useCallback(async () => {
     try {
       const r = await apiGet(`/api/sections/${sectionId}`);

@@ -111,6 +111,20 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
     setForm({ ...EMPTY });
     setModal(true);
   }
+
+  // Quick-add deep link (?add=1 from the global QuickAddFab): auto-open the
+  // Add Section modal on arrival. Only on the Sections page — this component
+  // also backs the Class Record / Attendance / Performance pickers, where an
+  // unexpected modal would be confusing. The param is consumed so refreshing
+  // doesn't re-open the modal.
+  useEffect(() => {
+    if (viewPath !== "/section" || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("add") === "1") {
+      window.history.replaceState(null, "", window.location.pathname);
+      openAdd();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   function openEdit(s: any) {
     setEditingId(s.id);
     setForm({
