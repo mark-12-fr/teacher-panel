@@ -97,6 +97,17 @@ export default function GradingSystemPage() {
     setForm({ ...EMPTY });
     setModal(true);
   }
+
+  // Quick-add deep link (?add=1 from the global QuickAddFab). Param consumed
+  // so a refresh doesn't re-open the modal.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("add") === "1") {
+      window.history.replaceState(null, "", window.location.pathname);
+      openAdd();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   function openEdit(s: any) {
     setEditingId(s.id);
     setForm({
