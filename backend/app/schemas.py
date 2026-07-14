@@ -37,12 +37,12 @@ class SectionUpdate(BaseModel):
 # ── Students ────────────────────────────────────────────────────────────────
 class StudentIn(BaseModel):
     full_name: str
-    gender: Optional[str] = None
+    id_no: Optional[str] = None
 
 
 class StudentUpdate(BaseModel):
     full_name: Optional[str] = None
-    gender: Optional[str] = None
+    id_no: Optional[str] = None
 
 
 class StudentsBulkIn(BaseModel):

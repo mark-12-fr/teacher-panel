@@ -159,7 +159,7 @@ async def add_student(
     db: AsyncSession = Depends(get_db),
 ):
     section = await own_section(db, teacher, section_id)
-    row = Student(section_id=section.id, full_name=body.full_name, gender=body.gender)
+    row = Student(section_id=section.id, full_name=body.full_name, id_no=body.id_no)
     db.add(row)
     await db.commit()
     await db.refresh(row)
@@ -176,7 +176,7 @@ async def add_students_bulk(
     section = await own_section(db, teacher, section_id)
     created = []
     for s in body.students:
-        row = Student(section_id=section.id, full_name=s.full_name, gender=s.gender)
+        row = Student(section_id=section.id, full_name=s.full_name, id_no=s.id_no)
         db.add(row)
         created.append(row)
     await db.commit()
