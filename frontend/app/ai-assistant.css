@@ -338,12 +338,21 @@
 
 /* === Floating buttons: high-specificity so page-level !important rules cannot
    re-cover the View / delete controls. Brain sits in the corner, the plus
-   sits above it, and content gets enough bottom room to scroll clear. === */
+   sits above it, and content gets enough bottom room to scroll clear.
+   Z-index MUST stay under .ai-chat-widget / .modal-overlay's 9999 — the "+"
+   button's footprint (bottom:96, right:24) overlaps the open chat widget's
+   bottom-right corner (widget bottom is overridden to 96px below), which is
+   exactly where the chat's send button sits. Any z-index at or above the
+   widget's puts the "+" ON TOP of that corner and swallows the send-button
+   click ("indi ako maka send"). Keeping this stack below 9999 lets the
+   widget/modal correctly cover the FABs in that shared corner when open,
+   and they're still fully usable — same spot, same look — whenever nothing
+   else occupies it. === */
 button.ai-floating-btn,
 .ai-floating-btn {
     bottom: 24px !important;
     right: 24px !important;
-    z-index: 2147483000 !important;
+    z-index: 9998 !important;
 }
 button.fab-add-btn,
 .fab-add-btn,
@@ -353,16 +362,16 @@ button#openModal,
 #openModal {
     bottom: 96px !important;
     right: 24px !important;
-    z-index: 2147483000 !important;
+    z-index: 9997 !important;
 }
 /* Quick-add menu opens just above the unified "+" spot. */
 .quick-add-menu {
     right: 24px !important;
     bottom: 168px !important;
-    z-index: 2147483100 !important;
+    z-index: 9998 !important;
 }
 .quick-add-backdrop {
-    z-index: 2147482900 !important;
+    z-index: 9990 !important;
 }
 .layout .main-content,
 .main-content {
