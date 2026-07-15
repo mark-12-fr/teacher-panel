@@ -8,7 +8,7 @@ import { apiGet, apiPatch } from "@/lib/api";
 import { API_BASE } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase";
 import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
-import { applyTheme, pullTheme, toggleTheme } from "@/lib/theme";
+import { applyTheme, currentTheme, pullTheme } from "@/lib/theme";
 import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
 import QuickAddFab from "@/components/QuickAddFab";
@@ -68,13 +68,17 @@ export default function TeacherShell({
   );
   const [uploading, setUploading] = useState(false);
   const [schoolYear, setSchoolYear] = useState("");
+  const [isDark, setIsDark] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Read cache synchronously before first paint (hydration may strip SSR defaults)
   useLayoutEffect(() => {
     try {
       const t = localStorage.getItem("dashboard_theme");
-      if (t === "dark" || t === "light") applyTheme(t);
+      if (t === "dark" || t === "light") {
+        applyTheme(t);
+        setIsDark(t === "dark");
+      }
     } catch {}
     try {
       const n = localStorage.getItem("cached_user_name");
@@ -152,6 +156,7 @@ export default function TeacherShell({
         } catch {}
       }
       pullTheme();
+      setIsDark(document.documentElement.getAttribute("data-theme") === "dark");
     })();
     return () => { cancelled = true; };
   }, [ready]);
@@ -247,8 +252,13 @@ export default function TeacherShell({
         </nav>
 
         <div className="sidebar-footer">
-          <button onClick={toggleTheme} className="theme-btn" style={{ marginBottom: 5 }}>
-            <i className="fa-solid fa-moon" id="themeIcon" /> <span id="themeText">Dark Mode</span>
+          <button onClick={() => {
+              const next = currentTheme() === "dark" ? "light" : "dark";
+              applyTheme(next);
+              setIsDark(next === "dark");
+              apiPatch("/api/me", { theme: next }).catch(() => {});
+            }} className="theme-btn" style={{ marginBottom: 5 }}>
+            <i className={`fa-solid ${isDark ? "fa-sun" : "fa-moon"}`} /> <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
           </button>
           <button onClick={signOut} className="logout-btn">
             <i className="fa-solid fa-right-from-bracket" /> Log out

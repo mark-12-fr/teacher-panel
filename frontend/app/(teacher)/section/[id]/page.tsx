@@ -135,8 +135,8 @@ export default function SectionDetailPage() {
   }
 
   async function addStudent() {
-    if (!addName.trim()) return showToast("Please fill in all fields!", true);
-    const entry = { id: "_opt_" + Date.now().toString(36), full_name: addName.trim(), id_no: addIdNo.trim() || null };
+    if (!addName.trim() || !addIdNo.trim()) return showToast("Please fill in all fields!", true);
+    const entry = { id: "_opt_" + Date.now().toString(36), full_name: addName.trim(), id_no: addIdNo.trim() };
     setStudents((prev) => [entry, ...prev]);
     setAddName("");
     setAddIdNo("");
@@ -155,11 +155,11 @@ export default function SectionDetailPage() {
     if (!editName.trim()) return showToast("Please fill in all fields!", true);
     const oldName = students.find((s) => s.id === editId)?.full_name || "";
     const oldIdNo = students.find((s) => s.id === editId)?.id_no || "";
-    setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: editName.trim(), id_no: editIdNo.trim() || null } : s));
+    setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: editName.trim(), id_no: editIdNo.trim() } : s));
     setEditId(null);
     showToast("Student updated successfully!");
     try {
-      await apiPatch(`/api/students/${editId}`, { full_name: editName.trim(), id_no: editIdNo.trim() || null });
+      await apiPatch(`/api/students/${editId}`, { full_name: editName.trim(), id_no: editIdNo.trim() });
     } catch {
       setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: oldName, id_no: oldIdNo } : s));
       showToast("Failed to update student", true);
@@ -301,7 +301,7 @@ export default function SectionDetailPage() {
         <div className="modal-content">
           <h3>Add New Student</h3>
           <input type="text" placeholder="Full Name" value={addName} onChange={(e) => setAddName(e.target.value)} />
-          <input type="text" placeholder="ID Number (optional)" value={addIdNo} onChange={(e) => setAddIdNo(e.target.value)} style={{ marginTop: 8 }} />
+          <input type="text" placeholder="ID Number" value={addIdNo} onChange={(e) => setAddIdNo(e.target.value)} style={{ marginTop: 8 }} />
           <div className="actionBtn">
             <button style={{ background: "var(--input-bg)", color: "var(--text-dark)" }} onClick={() => setAddOpen(false)}>Cancel</button>
             <button style={{ background: "#3b82f6", color: "white" }} onClick={addStudent}>Add Student</button>
@@ -315,7 +315,7 @@ export default function SectionDetailPage() {
           <span style={{ position: "absolute", right: 15, top: 10, cursor: "pointer", fontSize: 24, color: "var(--text-muted)" }} onClick={() => setEditId(null)}>×</span>
           <h3>Edit Student Info</h3>
           <input type="text" placeholder="Full Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-          <input type="text" placeholder="ID Number (optional)" value={editIdNo} onChange={(e) => setEditIdNo(e.target.value)} style={{ marginTop: 8 }} />
+          <input type="text" placeholder="ID Number" value={editIdNo} onChange={(e) => setEditIdNo(e.target.value)} style={{ marginTop: 8 }} />
           <div className="actionBtn">
             <button style={{ background: "var(--input-bg)", color: "var(--text-dark)" }} onClick={() => setEditId(null)}>Cancel</button>
             <button style={{ background: "#3b82f6", color: "white" }} onClick={updateStudent}>Update</button>
