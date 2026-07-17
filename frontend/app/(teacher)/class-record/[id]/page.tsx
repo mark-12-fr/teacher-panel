@@ -15,10 +15,20 @@ import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
-import { setSubjectConfigs, componentScores, finalGrade, passingFor } from "@/lib/grading";
+import { setSubjectConfigs, componentScores, finalGrade, passingFor, type ComponentScores } from "@/lib/grading";
 import "./detail.css";
 
 type Rec = any;
+
+// One card in the student grade-breakdown modal (see quarterBreakdown() below).
+type GradeQuarterCard = {
+  db: string;
+  sem: "1st Sem" | "2nd Sem";
+  label: string;
+} & (
+  | { hasData: true; grade: number; comp: ComponentScores; delta: number | null }
+  | { hasData: false; grade: null; comp: null; delta: null }
+);
 
 const MODULES = Array.from({ length: 25 }, (_, i) => `module_${i + 1}`);
 const ACTIVITIES = Array.from({ length: 10 }, (_, i) => `activity_${i + 1}`);
@@ -226,26 +236,26 @@ export default function ClassRecordGridPage() {
   // A pre-quarter-tagging legacy record (quarter is null) has no quarter of its
   // own, so it's shown under Q1 — the one existing fallback recForView() also
   // uses — rather than appearing (identically) under all four cards.
-  function quarterBreakdown(sid: string, fullName: string) {
+  function quarterBreakdown(sid: string, fullName: string): GradeQuarterCard[] {
     const subjectName = section?.subject || "";
     const att100 = attendanceScoreFor(fullName);
-    const cards = GRADE_QUARTERS.map((dq) => {
+    const cards: GradeQuarterCard[] = GRADE_QUARTERS.map((dq) => {
       const rec =
         records.find((r) => r.student_id === sid && exactQ(r.quarter) === dq.db) ||
         (dq.db === "1" ? records.find((r) => r.student_id === sid && exactQ(r.quarter) === null) : undefined);
       const hasData = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
-      if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null as number | null };
+      if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null };
       const comp = componentScores(rec);
       const grade = finalGrade(rec, subjectName, att100);
-      return { ...dq, hasData: true as const, grade, comp, delta: null as number | null };
+      return { ...dq, hasData: true as const, grade, comp, delta: null };
     });
     // Quarter-over-quarter change, only between consecutive quarters that both
     // have real data (so a gap — e.g. Q2 skipped — doesn't produce a delta).
     let prevGrade: number | null = null;
     for (const c of cards) {
       if (!c.hasData) continue;
-      if (prevGrade !== null) (c as any).delta = c.grade! - prevGrade;
-      prevGrade = c.grade!;
+      if (prevGrade !== null) c.delta = c.grade - prevGrade;
+      prevGrade = c.grade;
     }
     return cards;
   }
@@ -521,12 +531,15 @@ export default function ClassRecordGridPage() {
                   return (
                     <tr key={s.id} className="student-data-row" style={hidden ? { display: "none" } : undefined}>
                       <td className="sticky-col">{idx + 1}</td>
-                      <td
-                        className="sticky-col text-left group-divider search-target student-name-cell"
-                        title={`${s.full_name} — tap to view grade breakdown`}
-                        onClick={() => setDetailStudent(s)}
-                      >
-                        <strong>{s.full_name}</strong>
+                      <td className="sticky-col text-left group-divider search-target">
+                        <button
+                          type="button"
+                          className="student-name-btn"
+                          title={`${s.full_name} — tap to view grade breakdown`}
+                          onClick={() => setDetailStudent(s)}
+                        >
+                          <strong>{s.full_name}</strong>
+                        </button>
                       </td>
                       {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 24} />)}
                       {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 9} />)}
@@ -567,11 +580,11 @@ function StudentGradeModal({
 }: {
   student: any;
   section: any;
-  cards: ReturnType<typeof Array.prototype.slice>; // typed loosely; shape comes from quarterBreakdown()
+  cards: GradeQuarterCard[];
   passingGrade: number;
   onClose: () => void;
 }) {
-  const bySem: Record<string, any[]> = { "1st Sem": [], "2nd Sem": [] };
+  const bySem: Record<string, GradeQuarterCard[]> = { "1st Sem": [], "2nd Sem": [] };
   for (const c of cards) bySem[c.sem].push(c);
 
   return (

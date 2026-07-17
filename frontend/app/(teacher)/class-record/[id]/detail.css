@@ -1007,8 +1007,26 @@
         }
 
         /* ── Tap a student's name → grade breakdown modal ── */
-        .student-name-cell { cursor: pointer; }
-        .student-name-cell:hover strong { color: var(--accent-blue); text-decoration: underline; }
+        /* A real <button> (not a clickable <td>) so it's reachable and
+           activatable by keyboard/screen readers, styled to look identical to
+           the plain <strong> name it replaces. */
+        .student-name-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+        .student-name-btn:hover strong { color: var(--accent-blue); text-decoration: underline; }
+        .student-name-btn:focus-visible strong { color: var(--accent-blue); text-decoration: underline; }
+        .student-name-btn:focus-visible {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
 
         .grade-modal-overlay {
             position: fixed;
