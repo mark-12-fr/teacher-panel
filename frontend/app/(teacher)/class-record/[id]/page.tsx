@@ -8,13 +8,14 @@
 // shows a read-only history; only the active quarter is editable. Includes
 // per-student search, live facilitator updates (Supabase realtime), and Excel
 // export. There is no computed-grade column here — grades live on Performance.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
+import { setSubjectConfigs, componentScores, finalGrade, passingFor } from "@/lib/grading";
 import "./detail.css";
 
 type Rec = any;
@@ -22,7 +23,26 @@ type Rec = any;
 const MODULES = Array.from({ length: 25 }, (_, i) => `module_${i + 1}`);
 const ACTIVITIES = Array.from({ length: 10 }, (_, i) => `activity_${i + 1}`);
 const TAIL = ["at", "pt_1", "pt_2", "qe"];
+const ALL_SCORE_FIELDS = [...MODULES, ...ACTIVITIES, ...TAIL];
 const normQ = (q: any) => (q ? String(q).replace(/[^1-4]/g, "") || "1" : "1");
+
+// Db `quarter` is 1..4 across the whole school year; 1-2 belong to 1st Sem and
+// 3-4 to 2nd Sem (mirrors activateSemester()'s "2nd Sem starts at quarter 3").
+// Each entry is one card in the student grade-breakdown modal.
+const GRADE_QUARTERS: { db: string; sem: "1st Sem" | "2nd Sem"; label: string }[] = [
+  { db: "1", sem: "1st Sem", label: "Q1" },
+  { db: "2", sem: "1st Sem", label: "Q2" },
+  { db: "3", sem: "2nd Sem", label: "Q1" },
+  { db: "4", sem: "2nd Sem", label: "Q2" },
+];
+// Unlike normQ (used for the single active grid view), this does NOT default a
+// missing quarter to "1" — needed to tell "genuinely untagged legacy record"
+// apart from "a real Q1 record" when building the multi-quarter breakdown.
+const exactQ = (q: any): string | null => {
+  if (q === null || q === undefined || q === "") return null;
+  return String(q).replace(/[^1-4]/g, "") || null;
+};
+const isFilled = (v: any) => v !== null && v !== undefined && v !== "";
 const newId = () =>
   globalThis.crypto?.randomUUID?.() ||
   "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -39,6 +59,8 @@ export default function ClassRecordGridPage() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
+  const [detailStudent, setDetailStudent] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
 
@@ -97,9 +119,24 @@ export default function ClassRecordGridPage() {
     } catch {}
   }, [sectionId, commitRecords]);
 
+  // Grade weights + attendance, so the per-student breakdown modal computes the
+  // SAME final grade the Performance page would show — neither is essential to
+  // the spreadsheet itself, so both fail silently (falls back to default
+  // weights / 100% attendance, same as Performance does).
+  const loadGradingInputs = useCallback(async () => {
+    try {
+      const subj = await apiGet(`/api/subjects`);
+      setSubjectConfigs(subj.subjects || []);
+    } catch {}
+    try {
+      const att = await apiGet(`/api/sections/${sectionId}/attendance`);
+      setAttendance(att.attendance || []);
+    } catch {}
+  }, [sectionId]);
+
   useEffect(() => {
-    Promise.allSettled([loadDetails(), loadStudents(), loadRecords()]).then(() => setLoading(false));
-  }, [loadDetails, loadStudents, loadRecords]);
+    Promise.allSettled([loadDetails(), loadStudents(), loadRecords(), loadGradingInputs()]).then(() => setLoading(false));
+  }, [loadDetails, loadStudents, loadRecords, loadGradingInputs]);
 
   // Live roster updates: a student added/edited/removed elsewhere reflects
   // here (columns are per-student rows). No-op if realtime isn't enabled.
@@ -159,6 +196,59 @@ export default function ClassRecordGridPage() {
       null,
     [records, viewQuarter]
   );
+
+  // Attendance tallies keyed by student name (mirrors the Performance page —
+  // teacher-entered students have no id_no to join on).
+  const attByName = useMemo(() => {
+    const map: Record<string, { present: number; late: number; excused: number; total: number }> = {};
+    for (const a of attendance) {
+      const name = a.student_name ? String(a.student_name).trim().toLowerCase() : "";
+      if (!name) continue;
+      if (!map[name]) map[name] = { present: 0, late: 0, excused: 0, total: 0 };
+      const st = (a.status || "").toLowerCase();
+      if (st === "present") map[name].present++;
+      else if (st === "late") map[name].late++;
+      else if (st === "excused") map[name].excused++;
+      map[name].total++;
+    }
+    return map;
+  }, [attendance]);
+
+  function attendanceScoreFor(fullName: string): number {
+    const att = attByName[String(fullName || "").trim().toLowerCase()];
+    if (!att || att.total <= 0) return 100;
+    return Math.round(((att.present + 0.5 * (att.late + att.excused)) / att.total) * 100);
+  }
+
+  // One card per quarter for the grade-breakdown modal: each quarter's OWN
+  // record only (never merged across quarters, unlike the Performance page's
+  // single "current" snapshot) so a genuine Q1→Q2→Q3→Q4 progression shows.
+  // A pre-quarter-tagging legacy record (quarter is null) has no quarter of its
+  // own, so it's shown under Q1 — the one existing fallback recForView() also
+  // uses — rather than appearing (identically) under all four cards.
+  function quarterBreakdown(sid: string, fullName: string) {
+    const subjectName = section?.subject || "";
+    const att100 = attendanceScoreFor(fullName);
+    const cards = GRADE_QUARTERS.map((dq) => {
+      const rec =
+        records.find((r) => r.student_id === sid && exactQ(r.quarter) === dq.db) ||
+        (dq.db === "1" ? records.find((r) => r.student_id === sid && exactQ(r.quarter) === null) : undefined);
+      const hasData = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
+      if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null as number | null };
+      const comp = componentScores(rec);
+      const grade = finalGrade(rec, subjectName, att100);
+      return { ...dq, hasData: true as const, grade, comp, delta: null as number | null };
+    });
+    // Quarter-over-quarter change, only between consecutive quarters that both
+    // have real data (so a gap — e.g. Q2 skipped — doesn't produce a delta).
+    let prevGrade: number | null = null;
+    for (const c of cards) {
+      if (!c.hasData) continue;
+      if (prevGrade !== null) (c as any).delta = c.grade! - prevGrade;
+      prevGrade = c.grade!;
+    }
+    return cards;
+  }
 
   function setViewQuarterAndReload(q: string) {
     setViewQuarter(q);
@@ -431,7 +521,11 @@ export default function ClassRecordGridPage() {
                   return (
                     <tr key={s.id} className="student-data-row" style={hidden ? { display: "none" } : undefined}>
                       <td className="sticky-col">{idx + 1}</td>
-                      <td className="sticky-col text-left group-divider search-target" title={s.full_name}>
+                      <td
+                        className="sticky-col text-left group-divider search-target student-name-cell"
+                        title={`${s.full_name} — tap to view grade breakdown`}
+                        onClick={() => setDetailStudent(s)}
+                      >
                         <strong>{s.full_name}</strong>
                       </td>
                       {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 24} />)}
@@ -450,6 +544,92 @@ export default function ClassRecordGridPage() {
         <i className={`fa-solid ${toast.err ? "fa-circle-exclamation" : "fa-circle-check"}`} />
         <span>{toast.msg}</span>
       </div>
+
+      {detailStudent && (
+        <StudentGradeModal
+          student={detailStudent}
+          section={section}
+          cards={quarterBreakdown(detailStudent.id, detailStudent.full_name)}
+          passingGrade={passingFor(section?.subject || "")}
+          onClose={() => setDetailStudent(null)}
+        />
+      )}
     </>
+  );
+}
+
+function StudentGradeModal({
+  student,
+  section,
+  cards,
+  passingGrade,
+  onClose,
+}: {
+  student: any;
+  section: any;
+  cards: ReturnType<typeof Array.prototype.slice>; // typed loosely; shape comes from quarterBreakdown()
+  passingGrade: number;
+  onClose: () => void;
+}) {
+  const bySem: Record<string, any[]> = { "1st Sem": [], "2nd Sem": [] };
+  for (const c of cards) bySem[c.sem].push(c);
+
+  return (
+    <div className="grade-modal-overlay" onClick={onClose}>
+      <div className="grade-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="grade-modal-header">
+          <div>
+            <h3>{student.full_name}</h3>
+            <p>
+              {section?.title || "Section"}
+              {section?.subject ? ` • ${section.subject}` : ""}
+            </p>
+          </div>
+          <button className="grade-modal-close" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark" />
+          </button>
+        </div>
+        <div className="grade-modal-body">
+          {(["1st Sem", "2nd Sem"] as const).map((sem) => (
+            <div className="grade-sem-block" key={sem}>
+              <p className="grade-sem-title">{sem}</p>
+              <div className="grade-quarter-grid">
+                {bySem[sem].map((c) => (
+                  <div className={`grade-quarter-card${c.hasData ? "" : " is-empty"}`} key={sem + c.label}>
+                    <div className="grade-quarter-head">
+                      <span>{c.label}</span>
+                      {c.hasData && c.delta !== null && (
+                        <span className={`grade-delta ${c.delta >= 0 ? "up" : "down"}`}>
+                          {c.delta >= 0 ? "▲" : "▼"} {Math.abs(c.delta)}
+                        </span>
+                      )}
+                    </div>
+                    {c.hasData ? (
+                      <>
+                        <div className={`grade-quarter-final ${c.grade >= passingGrade ? "pass" : "fail"}`}>{c.grade}</div>
+                        <div className="grade-component-row">
+                          <span>Written Works</span>
+                          <b>{Math.round(c.comp.ww)}</b>
+                        </div>
+                        <div className="grade-component-row">
+                          <span>Perf. Task</span>
+                          <b>{Math.round(c.comp.pt)}</b>
+                        </div>
+                        <div className="grade-component-row">
+                          <span>Quarterly Exam</span>
+                          <b>{Math.round(c.comp.qe)}</b>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="grade-quarter-final empty">No data yet</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

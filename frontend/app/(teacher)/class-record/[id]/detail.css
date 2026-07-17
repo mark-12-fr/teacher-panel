@@ -1006,5 +1006,118 @@
             background-color: var(--card-bg);
         }
 
+        /* ── Tap a student's name → grade breakdown modal ── */
+        .student-name-cell { cursor: pointer; }
+        .student-name-cell:hover strong { color: var(--accent-blue); text-decoration: underline; }
+
+        .grade-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .grade-modal-content {
+            background: var(--card-bg);
+            color: var(--text-dark);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 640px;
+            max-height: 86vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        }
+        .grade-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            z-index: 1;
+        }
+        .grade-modal-header h3 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 800; font-family: 'Inter', sans-serif; }
+        .grade-modal-header p { margin: 0; color: var(--text-muted); font-size: 0.85rem; }
+        .grade-modal-close {
+            background: var(--input-bg);
+            border: none;
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .grade-modal-close:hover { background: var(--hover-bg); color: var(--text-dark); }
+
+        .grade-modal-body { padding: 20px 24px 24px; }
+        .grade-sem-block + .grade-sem-block { margin-top: 22px; }
+        .grade-sem-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin: 0 0 10px;
+        }
+        .grade-quarter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .grade-quarter-card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            background: var(--input-bg);
+        }
+        .grade-quarter-card.is-empty { opacity: 0.6; }
+        .grade-quarter-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .grade-quarter-head span { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
+        .grade-delta { font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+        .grade-delta.up { color: #16a34a; background: rgba(34, 197, 94, 0.14); }
+        .grade-delta.down { color: #dc2626; background: rgba(239, 68, 68, 0.14); }
+        .grade-quarter-final {
+            font-size: 1.7rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+        .grade-quarter-final.pass { color: #16a34a; }
+        .grade-quarter-final.fail { color: #dc2626; }
+        .grade-quarter-final.empty { color: var(--text-muted); font-size: 0.95rem; font-weight: 600; }
+        .grade-component-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            padding: 3px 0;
+        }
+        .grade-component-row b { color: var(--text-dark); font-weight: 700; }
+
+        @media (max-width: 560px) {
+            .grade-quarter-grid { grid-template-columns: 1fr; }
+        }
+
         /* Final grade column removed per user request. */
     
