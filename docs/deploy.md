@@ -47,6 +47,28 @@ The repo ships a `render.yaml` Blueprint (at repo root) that already points at `
 > `https://<your-service>.onrender.com/api/ping` → `{"ok": true}`, and browse the
 > interactive docs at `/docs`.
 
+### Backend → Railway (alternative to Render)
+
+The repo ships `backend/railway.json` (start command + `/api/ping` health check)
+and `backend/.python-version` (3.12.9). The one setting that matters is the
+**Root Directory** — it MUST point at `backend/`, otherwise Nixpacks looks for
+`requirements.txt` in the wrong place and the build fails with
+`Could not open requirements file: .../backend/requirements.txt`.
+
+1. Railway → **New Project** → **Deploy from GitHub repo** → pick this repo.
+2. Open the service → **Settings → Source** → set **Root Directory** to
+   **`backend`** → **Save**. (This is the fix for the failed build.)
+3. **Settings → Build** → leave the Build/Install command **empty** so Nixpacks
+   auto-detects `requirements.txt` (do NOT set `pip install -r backend/requirements.txt`
+   here — with Root Directory already at `backend/` that would double the path).
+4. `backend/railway.json` supplies the start command
+   (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`) and health check — nothing
+   to type.
+5. **Variables** → add the same env vars as the Render table above
+   (`DATABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_URL`, `CORS_ORIGINS`, etc.).
+   Railway injects `PORT` automatically.
+6. **Deploy** → verify at `https://<your-service>.up.railway.app/api/ping` → `{"ok": true}`.
+
 ---
 
 ## 2) Frontend → Vercel
