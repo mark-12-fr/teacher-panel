@@ -55,7 +55,9 @@ export function passingFor(subjectName: string): number {
 }
 
 export interface ComponentScores {
-  ww: number;
+  ww: number; // Written Works incl. the AT column — this is what the grade uses.
+  wwOnly: number; // Written Works from modules/activities ONLY (AT split out, for display).
+  at: number; // The standalone AT column on its own (for display).
   pt: number;
   qe: number;
   rawWW: number;
@@ -65,17 +67,25 @@ export interface ComponentScores {
 
 /** Component scores (each capped at 100) from a merged class record. */
 export function componentScores(record: any): ComponentScores {
-  let totalWW = 0;
+  let wwOnly = 0; // modules + activities only
+  let atTotal = 0; // the standalone AT column
   let totalPT = 0;
   const totalQE = num(record && record.qe, 0);
   for (const k in record || {}) {
     const v = record[k];
     if (v === null || v === undefined || v === "") continue;
-    if (k.indexOf("module_") === 0 || k.indexOf("activity_") === 0 || k === "at") totalWW += num(v, 0);
+    if (k.indexOf("module_") === 0 || k.indexOf("activity_") === 0) wwOnly += num(v, 0);
+    else if (k === "at") atTotal += num(v, 0);
     else if (k.indexOf("pt_") === 0) totalPT += num(v, 0);
   }
+  // AT still counts toward Written Works in the grade (unchanged behaviour); the
+  // breakdown modal just displays wwOnly + at separately so it mirrors the
+  // grade grid's own WW / AT columns.
+  const totalWW = wwOnly + atTotal;
   return {
     ww: Math.min(totalWW, 100),
+    wwOnly: Math.min(wwOnly, 100),
+    at: Math.min(atTotal, 100),
     pt: Math.min(totalPT, 100),
     qe: Math.min((totalQE / 50) * 100, 100),
     rawWW: totalWW,

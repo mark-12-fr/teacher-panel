@@ -8,6 +8,10 @@ sqlalchemy==2.0.36
 asyncpg==0.30.0
 greenlet==3.1.1
 
+# Rate limiting — fail-open, in-memory buckets (single instance).
+# Guards the data + AI API against request storms / AI-cost abuse.
+slowapi==0.1.9
+
 # Config / validation
 # pydantic v2 — installs from prebuilt cp312 wheels on the pinned Python 3.12.9
 # (runtime.txt), so no Rust build is needed. The routers rely on v2's

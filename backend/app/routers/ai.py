@@ -7,10 +7,11 @@ context string, returns a formatted reply. Groq primary, Gemini fallback.
 import re
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from ..config import settings
+from ..ratelimit import AI_RATE_LIMIT, limiter
 from ..schemas import AiEvaluateIn
 from ..security import CurrentTeacher, get_current_teacher
 
@@ -114,7 +115,9 @@ async def _gemini_chat(api_key: str, prompt: str) -> str:
 
 
 @router.post("/ai-evaluate")
+@limiter.limit(AI_RATE_LIMIT)
 async def ai_evaluate(
+    request: Request,
     body: AiEvaluateIn,
     teacher: CurrentTeacher = Depends(get_current_teacher),
 ):
