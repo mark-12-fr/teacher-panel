@@ -8,10 +8,14 @@ Run locally:
     uvicorn app.main:app --reload --port 5001
 """
 from fastapi import FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
 from .config import settings
+from .ratelimit import limiter
 from .routers import ai, dashboard, facilitators, grading, push, records, sections
 
 app = FastAPI(
@@ -54,6 +58,16 @@ class ForceCORSMiddleware(BaseHTTPMiddleware):
         response.headers["Access-Control-Allow-Headers"] = "*"
         return response
 
+# Rate limiting (fail-open, per-teacher buckets — see ratelimit.py). Wired
+# INSIDE ForceCORS: it's added BEFORE ForceCORS here, which leaves ForceCORS the
+# outermost middleware, so a 429 from the limiter still passes back out through
+# ForceCORS and picks up the CORS headers the browser needs. SlowAPIMiddleware
+# applies the default per-teacher limit to every route; OPTIONS preflights are
+# short-circuited by ForceCORS and never reach it.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 app.add_middleware(ForceCORSMiddleware)
 
 for r in (dashboard, sections, grading, facilitators, records, ai, push):
@@ -61,12 +75,16 @@ for r in (dashboard, sections, grading, facilitators, records, ai, push):
 
 
 @app.api_route("/", methods=["GET", "HEAD"])
+@limiter.exempt
 async def root():
     return {"status": "ok", "service": "AcadTrack Teacher API"}
 
 
 @app.api_route("/api/ping", methods=["GET", "HEAD"])
+@limiter.exempt
 async def ping():
     # HEAD too: uptime monitors commonly probe with HEAD (lighter than GET),
     # and Render's own health check may as well — a GET-only route 405s those.
+    # Exempt from rate limiting: the health check and uptime monitors poll this
+    # constantly; a 429 here would make the service look Down.
     return {"ok": True}
