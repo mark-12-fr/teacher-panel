@@ -622,7 +622,11 @@ function StudentGradeModal({
                         <div className={`grade-quarter-final ${c.grade >= passingGrade ? "pass" : "fail"}`}>{c.grade}</div>
                         <div className="grade-component-row">
                           <span>Written Works</span>
-                          <b>{Math.round(c.comp.ww)}</b>
+                          <b>{Math.round(c.comp.wwOnly)}</b>
+                        </div>
+                        <div className="grade-component-row">
+                          <span>AT</span>
+                          <b>{Math.round(c.comp.at)}</b>
                         </div>
                         <div className="grade-component-row">
                           <span>Perf. Task</span>
