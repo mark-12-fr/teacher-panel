@@ -9,6 +9,7 @@
 // per-student search, live facilitator updates (Supabase realtime), and Excel
 // export. There is no computed-grade column here — grades live on Performance.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
@@ -60,6 +61,60 @@ const newId = () =>
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
 
+// ── Grid helpers (spreadsheet keyboard nav + paste). Pure DOM, client-only. ──
+const fieldLabel = (field: string): string => {
+  if (field.startsWith("module_")) return "M" + field.slice(7);
+  if (field.startsWith("activity_")) return "A" + field.slice(9);
+  return { at: "AT", pt_1: "PT 1", pt_2: "PT 2", qe: "QE" }[field] || field;
+};
+const cellEl = (sid: string, field: string): HTMLElement | null =>
+  typeof document === "undefined"
+    ? null
+    : document.querySelector<HTMLElement>(
+        `#recordTable td[data-sid="${CSS.escape(sid)}"][data-field="${CSS.escape(field)}"]`
+      );
+const flashCell = (el: HTMLElement | null, kind: "ok" | "err") => {
+  if (!el) return;
+  el.style.backgroundColor = kind === "ok" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)";
+  setTimeout(() => (el.style.backgroundColor = "transparent"), 1000);
+};
+const focusEl = (el: HTMLElement | null) => {
+  if (!el) return;
+  el.focus();
+  try {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+  } catch {}
+};
+// Caret at the very start / end of a single-line cell → arrow keys jump cells
+// instead of moving the caret within the text.
+const caretAtBoundary = (el: HTMLElement, atEnd: boolean): boolean => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return true;
+  const r = sel.getRangeAt(0);
+  if (!r.collapsed) return false;
+  return atEnd ? r.startOffset === (el.textContent || "").length : r.startOffset === 0;
+};
+// Same column, next/previous *visible* student row.
+const siblingRowCell = (cur: HTMLElement, field: string, dir: 1 | -1): HTMLElement | null => {
+  const tr = cur.closest("tr");
+  if (!tr) return null;
+  let row = (dir > 0 ? tr.nextElementSibling : tr.previousElementSibling) as HTMLElement | null;
+  while (row && (row.style.display === "none" || !row.classList.contains("student-data-row")))
+    row = (dir > 0 ? row.nextElementSibling : row.previousElementSibling) as HTMLElement | null;
+  return row ? row.querySelector<HTMLElement>(`[data-field="${CSS.escape(field)}"]`) : null;
+};
+// Same row, next/previous editable score cell.
+const siblingFieldCell = (cur: HTMLElement, dir: 1 | -1): HTMLElement | null => {
+  let el = (dir > 0 ? cur.nextElementSibling : cur.previousElementSibling) as HTMLElement | null;
+  while (el && !el.getAttribute("data-field"))
+    el = (dir > 0 ? el.nextElementSibling : el.previousElementSibling) as HTMLElement | null;
+  return el;
+};
+
 export default function ClassRecordGridPage() {
   const params = useParams<{ id: string }>();
   const sectionId = params.id;
@@ -87,6 +142,12 @@ export default function ClassRecordGridPage() {
   const [activatingS, setActivatingS] = useState(false);
 
   const lastLocalSave = useRef(0);
+
+  // Undo history: each edit / paste pushes ONE set of prior values; Ctrl+Z pops
+  // and restores it. doUndoRef lets a stable document listener call the latest
+  // closure (which reads current quarter / records) without going stale.
+  const undoStack = useRef<{ items: { sid: string; field: string; value: string }[]; label: string }[]>([]);
+  const doUndoRef = useRef<() => void>(() => {});
 
   function showToast(msg: string, err = false) {
     setToast({ show: true, msg, err });
@@ -193,6 +254,23 @@ export default function ClassRecordGridPage() {
       } catch {}
     };
   }, [sectionId, loadRecords]);
+
+  // Ctrl/Cmd+Z anywhere on the page → undo the last score change. A focused
+  // grid cell handles it first (and preventDefaults); this catches the case
+  // where focus has left the grid. Never hijacks undo inside a text input.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey) return;
+      if (e.defaultPrevented) return; // a grid cell already handled it
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+      if (undoStack.current.length === 0) return;
+      e.preventDefault();
+      doUndoRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   const quarterLocked = String(viewQuarter) !== String(currentQuarter);
   const semesterLocked = viewSemester !== currentSemester;
@@ -337,6 +415,10 @@ export default function ClassRecordGridPage() {
       ]);
       cell.style.backgroundColor = "rgba(16, 185, 129, 0.2)";
       setTimeout(() => (cell.style.backgroundColor = "transparent"), 1000);
+      undoStack.current.push({
+        items: [{ sid, field, value: oldVal }],
+        label: `${students.find((x) => x.id === sid)?.full_name || "score"} · ${fieldLabel(field)}`,
+      });
     } catch {
       // Revert on failure
       const revertArr = recordsRef.current.slice();
@@ -354,6 +436,154 @@ export default function ClassRecordGridPage() {
     }
   }
 
+  // Save many cells at once (paste, or an undo that restores several). Groups
+  // by student into one record each, updates local state optimistically, then
+  // posts a single batch. `pushUndo=false` when this IS an undo, so undo isn't
+  // itself undoable into a loop.
+  async function saveMany(entries: { sid: string; field: string; value: string }[], pushUndo = true) {
+    if (quarterLocked || entries.length === 0) return;
+    const activeQ = currentQuarter;
+    const arr = recordsRef.current.slice();
+    const byStudent: Record<string, { id: string; quarter: any; scores: Record<string, any> }> = {};
+    const undoItems: { sid: string; field: string; value: string }[] = [];
+
+    for (const { sid, field, value } of entries) {
+      const val: any = value === "" ? null : value;
+      const existing =
+        arr.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
+        arr.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
+      const id = existing?.id || byStudent[sid]?.id || newId();
+      const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
+      const prev = existing && isFilled(existing[field]) ? String(existing[field]) : "";
+      undoItems.push({ sid, field, value: prev });
+
+      let idx = arr.findIndex((r) => r.id === id);
+      if (idx < 0) idx = arr.findIndex((r) => r.student_id === sid && String(r.quarter) === String(quarterToSave));
+      if (idx >= 0) arr[idx] = { ...arr[idx], id, [field]: val, quarter: quarterToSave };
+      else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
+
+      if (!byStudent[sid]) byStudent[sid] = { id, quarter: quarterToSave, scores: {} };
+      byStudent[sid].scores[field] = val;
+    }
+
+    commitRecords(arr);
+    lastLocalSave.current = Date.now();
+    for (const { sid, field, value } of entries) {
+      const el = cellEl(sid, field);
+      if (el) {
+        el.innerText = value;
+        el.dataset.oldVal = value;
+      }
+    }
+
+    try {
+      const payload = Object.entries(byStudent).map(([sid, p]) => ({
+        id: p.id,
+        student_id: sid,
+        quarter: p.quarter,
+        scores: p.scores,
+      }));
+      await apiPost(`/api/sections/${sectionId}/class-records`, payload);
+      for (const { sid, field } of entries) flashCell(cellEl(sid, field), "ok");
+      if (pushUndo)
+        undoStack.current.push({
+          items: undoItems,
+          label: entries.length > 1 ? `${entries.length} scores` : `${students.find((x) => x.id === entries[0].sid)?.full_name || "score"} · ${fieldLabel(entries[0].field)}`,
+        });
+      if (entries.length > 1) showToast(`Saved ${entries.length} scores.`);
+    } catch {
+      loadRecords(); // revert to server truth
+      for (const { sid, field } of entries) flashCell(cellEl(sid, field), "err");
+      showToast("Failed to save scores. Check your connection.", true);
+    }
+  }
+
+  function doUndo() {
+    if (quarterLocked) return showToast("Switch to the active quarter to undo.", true);
+    const set = undoStack.current.pop();
+    if (!set) return showToast("Nothing to undo.");
+    saveMany(set.items, false);
+    showToast(`Undid: ${set.label}`);
+  }
+
+  // Spreadsheet-style keyboard navigation between editable cells.
+  function handleGridKeyDown(e: ReactKeyboardEvent<HTMLTableCellElement>, field: string) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+      e.preventDefault();
+      doUndo();
+      return;
+    }
+    if (quarterLocked) return;
+    const cur = e.currentTarget;
+    if (e.key === "Enter" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = siblingRowCell(cur, field, 1);
+      cur.blur(); // fires onBlur → saveScore
+      focusEl(next);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = siblingRowCell(cur, field, -1);
+      cur.blur();
+      focusEl(next);
+    } else if (e.key === "ArrowRight" && caretAtBoundary(cur, true)) {
+      const next = siblingFieldCell(cur, 1);
+      if (next) {
+        e.preventDefault();
+        cur.blur();
+        focusEl(next);
+      }
+    } else if (e.key === "ArrowLeft" && caretAtBoundary(cur, false)) {
+      const next = siblingFieldCell(cur, -1);
+      if (next) {
+        e.preventDefault();
+        cur.blur();
+        focusEl(next);
+      }
+    }
+  }
+
+  // Paste a block copied from Excel/Sheets: rows split on newlines (→ students),
+  // columns on tabs (→ score fields), starting at the pasted cell. Non-numeric
+  // cells are skipped so a stray header/name doesn't land in a score box.
+  function handleGridPaste(e: ReactClipboardEvent<HTMLTableCellElement>, field: string) {
+    if (quarterLocked) return;
+    const text = e.clipboardData?.getData("text/plain") ?? "";
+    if (!text) return;
+    e.preventDefault();
+    const matrix = text.replace(/\r/g, "").replace(/\n+$/, "").split("\n").map((l) => l.split("\t"));
+
+    const startTr = e.currentTarget.closest("tr");
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>("#recordTable tbody tr.student-data-row")
+    ).filter((r) => r.style.display !== "none");
+    const startRowIdx = startTr ? rows.indexOf(startTr as HTMLElement) : -1;
+    const startFieldIdx = ALL_SCORE_FIELDS.indexOf(field);
+    if (startRowIdx < 0 || startFieldIdx < 0) return;
+
+    const entries: { sid: string; field: string; value: string }[] = [];
+    for (let r = 0; r < matrix.length; r++) {
+      const targetRow = rows[startRowIdx + r];
+      if (!targetRow) break;
+      const tsid = targetRow.querySelector<HTMLElement>("[data-sid]")?.getAttribute("data-sid");
+      if (!tsid) continue;
+      for (let c = 0; c < matrix[r].length; c++) {
+        const f = ALL_SCORE_FIELDS[startFieldIdx + c];
+        if (!f) break;
+        const raw = (matrix[r][c] ?? "").trim();
+        if (raw !== "" && isNaN(Number(raw))) continue; // skip non-numeric
+        entries.push({ sid: tsid, field: f, value: raw });
+      }
+    }
+    if (entries.length) saveMany(entries, true);
+  }
+
+  // Live final grade for the viewed quarter (null when the row has no scores).
+  function liveGradeFor(sid: string, fullName: string): number | null {
+    const rec = recForView(sid);
+    if (!rec || !ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]))) return null;
+    return finalGrade(rec, section?.subject || "", attendanceScoreFor(fullName));
+  }
+
   async function exportExcel() {
     try {
       showToast("Generating Excel...");
@@ -366,7 +596,7 @@ export default function ClassRecordGridPage() {
       const headers: any[] = ["#", "Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
-      headers.push("AT", "PT 1", "PT 2", "QE");
+      headers.push("AT", "PT 1", "PT 2", "QE", "GRADE");
       rows.push(headers);
 
       students.forEach((s, idx) => {
@@ -376,6 +606,8 @@ export default function ClassRecordGridPage() {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
+        const g = liveGradeFor(s.id, s.full_name);
+        row.push(g === null ? "" : g);
         rows.push(row);
       });
 
@@ -399,6 +631,7 @@ export default function ClassRecordGridPage() {
   usePageMeta("Class Record", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
 
   const searchLower = search.toLowerCase();
+  doUndoRef.current = doUndo; // keep the document Ctrl+Z listener on the latest closure
 
   function ScoreCell({ sid, field, divider }: { sid: string; field: string; divider?: boolean }) {
     const rec = recForView(sid);
@@ -410,16 +643,14 @@ export default function ClassRecordGridPage() {
         key={`${sid}-${field}-${dataVersion}`}
         className={cls}
         data-field={field}
+        data-sid={sid}
+        tabIndex={quarterLocked ? undefined : 0}
         contentEditable={!quarterLocked}
         suppressContentEditableWarning
         onFocus={quarterLocked ? undefined : (e) => (e.currentTarget.dataset.oldVal = e.currentTarget.innerText.trim())}
         onBlur={quarterLocked ? undefined : (e) => saveScore(sid, field, e.currentTarget)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).blur();
-          }
-        }}
+        onKeyDown={(e) => handleGridKeyDown(e, field)}
+        onPaste={quarterLocked ? undefined : (e) => handleGridPaste(e, field)}
       >
         {display}
       </td>
@@ -492,6 +723,18 @@ export default function ClassRecordGridPage() {
           )}
         </div>
 
+        {!quarterLocked && !loading && (
+          <p
+            className="grid-hint"
+            style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "2px 2px 8px", display: "flex", gap: 16, flexWrap: "wrap" }}
+          >
+            <span><b>Enter</b> / <b>↑ ↓</b> move between students</span>
+            <span><b>Tab</b> / <b>← →</b> move between columns</span>
+            <span>Paste a block straight from <b>Excel</b></span>
+            <span><b>Ctrl</b>+<b>Z</b> to undo</span>
+          </p>
+        )}
+
         <div className="table-responsive">
           <table id="recordTable">
             <thead>
@@ -504,6 +747,7 @@ export default function ClassRecordGridPage() {
                 <th className="header-group header-pt">PT 1</th>
                 <th className="header-group header-pt">PT 2</th>
                 <th className="header-group header-qe">QE</th>
+                <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 62 }}>GRADE</th>
               </tr>
               <tr>
                 {Array.from({ length: 25 }, (_, i) => i + 1).map((n) => (
@@ -520,10 +764,10 @@ export default function ClassRecordGridPage() {
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={41} />
+                <SkeletonTableRows rows={6} cols={42} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={41} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
+                  <td colSpan={42} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>
               ) : (
                 students.map((s, idx) => {
@@ -544,6 +788,24 @@ export default function ClassRecordGridPage() {
                       {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 24} />)}
                       {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 9} />)}
                       {TAIL.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
+                      {(() => {
+                        const g = liveGradeFor(s.id, s.full_name);
+                        const pass = g !== null && g >= passingFor(section?.subject || "");
+                        return (
+                          <td
+                            className="group-divider grade-live-cell"
+                            title={g === null ? "No scores yet" : pass ? "Passing" : "Below passing"}
+                            style={{
+                              fontWeight: 700,
+                              textAlign: "center",
+                              color: g === null ? "var(--text-muted)" : pass ? "#059669" : "#dc2626",
+                              background: g === null ? undefined : pass ? "rgba(16,185,129,0.10)" : "rgba(239,68,68,0.10)",
+                            }}
+                          >
+                            {g === null ? "—" : g}
+                          </td>
+                        );
+                      })()}
                     </tr>
                   );
                 })
