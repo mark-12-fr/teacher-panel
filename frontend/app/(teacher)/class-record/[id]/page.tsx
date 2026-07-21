@@ -15,7 +15,7 @@ import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
-import { setSubjectConfigs, componentScores, finalGrade, passingFor, type ComponentScores } from "@/lib/grading";
+import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, type ComponentScores } from "@/lib/grading";
 import "./detail.css";
 
 type Rec = any;
@@ -619,7 +619,7 @@ function StudentGradeModal({
                     </div>
                     {c.hasData ? (
                       <>
-                        <div className={`grade-quarter-final ${c.grade >= passingGrade ? "pass" : "fail"}`}>{c.grade}</div>
+                        <div className="grade-quarter-final total">{displayedTotal(c.comp)}</div>
                         <div className="grade-component-row">
                           <span>Written Works</span>
                           <b>{Math.round(c.comp.wwOnly)}</b>
@@ -635,6 +635,10 @@ function StudentGradeModal({
                         <div className="grade-component-row">
                           <span>Quarterly Exam</span>
                           <b>{Math.round(c.comp.qe)}</b>
+                        </div>
+                        <div className={`grade-component-row grade-average-row ${c.grade >= passingGrade ? "pass" : "fail"}`}>
+                          <span>Average Grade</span>
+                          <b>{c.grade}</b>
                         </div>
                       </>
                     ) : (
