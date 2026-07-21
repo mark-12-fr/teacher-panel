@@ -1122,6 +1122,9 @@
         }
         .grade-quarter-final.pass { color: #16a34a; }
         .grade-quarter-final.fail { color: #dc2626; }
+        /* The headline is now a raw point total, not a grade, so it stays a
+           neutral strong colour — pass/fail lives on the Average Grade row. */
+        .grade-quarter-final.total { color: var(--text-dark); }
         .grade-quarter-final.empty { color: var(--text-muted); font-size: 0.95rem; font-weight: 600; }
         .grade-component-row {
             display: flex;
@@ -1132,6 +1135,17 @@
             padding: 3px 0;
         }
         .grade-component-row b { color: var(--text-dark); font-weight: 700; }
+        /* The relocated average grade: a summary line under Quarterly Exam,
+           divided off from the component rows and colour-coded pass/fail. */
+        .grade-average-row {
+            border-top: 1px solid var(--border-color);
+            margin-top: 5px;
+            padding-top: 7px;
+            font-weight: 700;
+        }
+        .grade-average-row span { color: var(--text-dark); }
+        .grade-average-row.pass b { color: #16a34a; }
+        .grade-average-row.fail b { color: #dc2626; }
 
         @media (max-width: 560px) {
             .grade-quarter-grid { grid-template-columns: 1fr; }

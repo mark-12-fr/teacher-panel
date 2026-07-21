@@ -94,6 +94,16 @@ export function componentScores(record: any): ComponentScores {
   };
 }
 
+/** The point total shown as the headline of each grade-breakdown card: the four
+ *  displayed component scores (Written Works, AT, Perf. Task, Quarterly Exam)
+ *  added together, each rounded exactly the way the modal renders them so the
+ *  big number always equals the sum of the rows beneath it. This is a raw point
+ *  tally for the teacher's convenience, NOT the weighted grade — that stays
+ *  available via finalGrade(). */
+export function displayedTotal(c: ComponentScores): number {
+  return Math.round(c.wwOnly) + Math.round(c.at) + Math.round(c.pt) + Math.round(c.qe);
+}
+
 /** Attendance score 0–100 from {present, late, total}. No records → 100. */
 export function attScore(att: { present?: number; late?: number; total?: number } | null | undefined): number {
   if (!att || !att.total) return 100;
