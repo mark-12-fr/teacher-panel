@@ -210,32 +210,38 @@
             text-decoration: none
         }
 
-        /* TOAST NOTIFICATION STYLES */
         .toast-notification {
+            visibility: hidden;
+            min-width: 300px;
+            max-width: 420px;
+            background: #fff;
+            color: #111827;
+            border-radius: 10px;
+            padding: 14px 18px;
             position: fixed;
+            z-index: 10000;
+            right: 24px;
             top: 24px;
-            right: -350px;
-            background: #10b981;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-            font-size: 14.5px;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1), visibility 0.25s;
             display: flex;
             align-items: center;
             gap: 12px;
-            transition: right 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            z-index: 9999;
+            border-left: 4px solid #10b981;
         }
 
         .toast-notification.show {
-            right: 24px;
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0) scale(1);
         }
 
         .toast-notification.error {
-            background: #ef4444;
-            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+            border-left-color: #ef4444;
         }
 
 .login-page{min-height:100vh;}
