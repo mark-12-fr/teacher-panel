@@ -469,11 +469,34 @@
             content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;
         }
         .q-tab.viewing.active-q::after { background: #bbf7d0; }
-        .s-tab { background: var(--input-bg); border: 1px solid var(--border-color); padding: 6px 16px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dark); transition: all 0.2s; }
+        .s-tab { display: inline-flex; align-items: center; gap: 6px; background: var(--input-bg); border: 1px solid var(--border-color); padding: 6px 16px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dark); transition: all 0.2s; }
         .s-tab:hover { background: var(--hover-bg); }
         .s-tab.viewing-s { background: #8b5cf6; color: #fff; border-color: transparent; }
         .s-tab.active-s::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; }
         .s-tab.viewing-s.active-s::after { background: #bbf7d0; }
+
+        /* Manual "Save Scores" bar — edits are staged locally and written only
+           when this is pressed, so entering scores stays smooth. */
+        .save-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 2px 10px; }
+        .save-scores-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer;
+            font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 700;
+            background: var(--input-bg); color: var(--text-muted);
+            border: 1px solid var(--border-color); transition: all 0.15s;
+        }
+        .save-scores-btn:disabled { cursor: default; opacity: 0.85; }
+        /* When there are unsaved scores the button turns green + gently pulses. */
+        .save-scores-btn.has-unsaved {
+            background: #16a34a; color: #fff; border-color: transparent;
+            box-shadow: 0 4px 14px -4px rgba(22, 163, 74, 0.6);
+            animation: savebtn-pulse 1.8s ease-in-out infinite;
+        }
+        .save-scores-btn.has-unsaved:hover { background: #15803d; }
+        @keyframes savebtn-pulse { 0%, 100% { box-shadow: 0 4px 14px -4px rgba(22,163,74,0.55); } 50% { box-shadow: 0 4px 20px -2px rgba(22,163,74,0.85); } }
+        @media (prefers-reduced-motion: reduce) { .save-scores-btn.has-unsaved { animation: none; } }
+        .unsaved-note { font-size: 0.76rem; font-weight: 700; color: #b45309; }
+        :root[data-theme="dark"] .unsaved-note { color: #fbbf24; }
         .lock-banner {
             display: none; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600;
             color: #b45309; background: rgba(245,158,11,0.13); border: 1px solid rgba(245,158,11,0.25);
