@@ -35,6 +35,13 @@ async def get_attendance(
     )
     if date is not None:
         stmt = stmt.where(Attendance.date == date)
+    # Safety cap so one request can never pull an unbounded set as data grows.
+    # A single section's attendance is roster × school-days; 50k newest rows is
+    # ~6 school years for a 40-student class — unreachable in normal use, so the
+    # frontend's attendance-rate math (which reads the whole section) is never
+    # actually truncated. The idx_attendance_teacher_section_date index keeps
+    # this fast; see backend/sql/001_performance_indexes.sql.
+    stmt = stmt.order_by(Attendance.created_at.desc()).limit(50000)
     rows = (await db.execute(stmt)).scalars().all()
     return {"attendance": orm_list(rows)}
 
