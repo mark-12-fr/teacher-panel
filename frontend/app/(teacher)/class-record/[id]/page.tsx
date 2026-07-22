@@ -149,10 +149,29 @@ export default function ClassRecordGridPage() {
   const undoStack = useRef<{ items: { sid: string; field: string; value: string }[]; label: string }[]>([]);
   const doUndoRef = useRef<() => void>(() => {});
 
+  // Manual save: every edited cell is STAGED here (keyed `sid|field`) with the
+  // value to write and the last-SAVED value for undo. Nothing hits the server
+  // until "Save Scores" is pressed. dirtyCount mirrors the map size so the Save
+  // button + unsaved badge re-render; `saving` disables the button mid-post.
+  const pendingRef = useRef<Map<string, { sid: string; field: string; value: string; oldVal: string }>>(new Map());
+  const [dirtyCount, setDirtyCount] = useState(0);
+  const [saving, setSaving] = useState(false);
+
   function showToast(msg: string, err = false) {
     setToast({ show: true, msg, err });
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 4000);
   }
+
+  // Warn before a tab close / refresh drops staged-but-unsaved scores.
+  useEffect(() => {
+    if (dirtyCount === 0) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirtyCount]);
 
   const commitRecords = useCallback((next: Rec[]) => {
     recordsRef.current = next;
@@ -338,11 +357,22 @@ export default function ClassRecordGridPage() {
     return cards;
   }
 
+  // Discards any staged-but-unsaved scores (the view reloads), so confirm first.
+  function confirmDropUnsaved(): boolean {
+    if (pendingRef.current.size === 0) return true;
+    if (!window.confirm("You have unsaved scores. Switching will discard them. Switch anyway?")) return false;
+    pendingRef.current.clear();
+    setDirtyCount(0);
+    return true;
+  }
+
   function setViewQuarterAndReload(q: string) {
+    if (!confirmDropUnsaved()) return;
     setViewQuarter(q);
     setDataVersion((v) => v + 1);
   }
   function setViewSemesterOnly(sem: string) {
+    if (!confirmDropUnsaved()) return;
     setViewSemester(sem);
   }
 
@@ -379,7 +409,42 @@ export default function ClassRecordGridPage() {
     }
   }
 
-  async function saveScore(sid: string, field: string, cell: HTMLTableCellElement) {
+  // ── Manual save ───────────────────────────────────────────────────────────
+  // Edits are STAGED locally (optimistic — the row's GRADE and the live preview
+  // update at once) and only written to the server when "Save Scores" is
+  // pressed. This keeps score entry smooth instead of firing a network
+  // round-trip every time you leave a cell.
+
+  // Record an edited cell in the pending map (or drop it when it's back to its
+  // saved value). `savedVal` — the last SAVED value — is only used the FIRST
+  // time a cell becomes dirty, so undo/Save always restore the right baseline
+  // even after several edits to the same cell before saving.
+  function markPending(sid: string, field: string, value: string, savedVal: string) {
+    const key = `${sid}|${field}`;
+    const prev = pendingRef.current.get(key);
+    const originalOld = prev ? prev.oldVal : savedVal;
+    if (value === originalOld) pendingRef.current.delete(key);
+    else pendingRef.current.set(key, { sid, field, value, oldVal: originalOld });
+    setDirtyCount(pendingRef.current.size);
+  }
+
+  // Apply one edit to the in-memory records array (no network). Mutates `arr`.
+  function applyLocalScore(arr: Rec[], sid: string, field: string, value: string) {
+    const activeQ = currentQuarter;
+    const val: any = value === "" ? null : value;
+    const existing =
+      arr.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
+      arr.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
+    const id = existing?.id || newId();
+    const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
+    let idx = arr.findIndex((r) => r.id === id);
+    if (idx < 0) idx = arr.findIndex((r) => r.student_id === sid && String(r.quarter) === String(quarterToSave));
+    if (idx >= 0) arr[idx] = { ...arr[idx], id, [field]: val, quarter: quarterToSave };
+    else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
+  }
+
+  // Stage a single edited cell — fired on blur / spreadsheet navigation.
+  function stageScore(sid: string, field: string, cell: HTMLTableCellElement) {
     const newValue = cell.innerText.trim();
     const oldVal = cell.dataset.oldVal ?? "";
     if (newValue === oldVal) return;
@@ -389,93 +454,68 @@ export default function ClassRecordGridPage() {
       showToast("Please enter numbers only.", true);
       return;
     }
-
-    const activeQ = currentQuarter;
-    const existing =
-      recordsRef.current.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
-      recordsRef.current.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
-    const val: any = newValue === "" ? null : newValue;
-    const id = existing?.id || newId();
-    const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
-
-    // Optimistic: update local state immediately
+    const rec = recForView(sid);
+    const savedVal = rec && isFilled(rec[field]) ? String(rec[field]) : "";
     const arr = recordsRef.current.slice();
-    const idx = arr.findIndex((r) => r.id === id) >= 0
-      ? arr.findIndex((r) => r.id === id)
-      : arr.findIndex((r) => r.student_id === sid && String(r.quarter) === String(quarterToSave));
-    if (idx >= 0) arr[idx] = { ...arr[idx], id, [field]: val, quarter: quarterToSave };
-    else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
+    applyLocalScore(arr, sid, field, newValue);
     commitRecords(arr);
-
-    lastLocalSave.current = Date.now();
     cell.dataset.oldVal = newValue;
-    try {
-      await apiPost(`/api/sections/${sectionId}/class-records`, [
-        { id, student_id: sid, quarter: quarterToSave, scores: { [field]: val } },
-      ]);
-      cell.style.backgroundColor = "rgba(16, 185, 129, 0.2)";
-      setTimeout(() => (cell.style.backgroundColor = "transparent"), 1000);
-      undoStack.current.push({
-        items: [{ sid, field, value: oldVal }],
-        label: `${students.find((x) => x.id === sid)?.full_name || "score"} · ${fieldLabel(field)}`,
-      });
-    } catch {
-      // Revert on failure
-      const revertArr = recordsRef.current.slice();
-      const revertIdx = revertArr.findIndex((r) => r.id === id);
-      if (revertIdx >= 0) {
-        if (oldVal === "" && !existing) revertArr.splice(revertIdx, 1);
-        else revertArr[revertIdx] = { ...revertArr[revertIdx], [field]: oldVal === "" ? null : oldVal };
-      }
-      commitRecords(revertArr);
-      cell.innerText = oldVal;
-      cell.dataset.oldVal = oldVal;
-      cell.style.backgroundColor = "rgba(239, 68, 68, 0.2)";
-      setTimeout(() => (cell.style.backgroundColor = "transparent"), 1000);
-      showToast("Failed to save score. Check your connection.", true);
-    }
+    markPending(sid, field, newValue, savedVal);
   }
 
-  // Save many cells at once (paste, or an undo that restores several). Groups
-  // by student into one record each, updates local state optimistically, then
-  // posts a single batch. `pushUndo=false` when this IS an undo, so undo isn't
-  // itself undoable into a loop.
-  async function saveMany(entries: { sid: string; field: string; value: string }[], pushUndo = true) {
+  // Stage many cells at once (Excel paste, or an undo that restores several) —
+  // same optimistic local update, batched; the write still waits for Save.
+  function stageMany(entries: { sid: string; field: string; value: string }[]) {
     if (quarterLocked || entries.length === 0) return;
-    const activeQ = currentQuarter;
     const arr = recordsRef.current.slice();
-    const byStudent: Record<string, { id: string; quarter: any; scores: Record<string, any> }> = {};
-    const undoItems: { sid: string; field: string; value: string }[] = [];
-
-    for (const { sid, field, value } of entries) {
-      const val: any = value === "" ? null : value;
-      const existing =
-        arr.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
+    const savedByKey: Record<string, string> = {};
+    for (const { sid, field } of entries) {
+      const key = `${sid}|${field}`;
+      if (key in savedByKey) continue;
+      const rec =
+        arr.find((r) => r.student_id === sid && String(r.quarter) === String(currentQuarter)) ||
         arr.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
-      const id = existing?.id || byStudent[sid]?.id || newId();
-      const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
-      const prev = existing && isFilled(existing[field]) ? String(existing[field]) : "";
-      undoItems.push({ sid, field, value: prev });
-
-      let idx = arr.findIndex((r) => r.id === id);
-      if (idx < 0) idx = arr.findIndex((r) => r.student_id === sid && String(r.quarter) === String(quarterToSave));
-      if (idx >= 0) arr[idx] = { ...arr[idx], id, [field]: val, quarter: quarterToSave };
-      else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
-
-      if (!byStudent[sid]) byStudent[sid] = { id, quarter: quarterToSave, scores: {} };
-      byStudent[sid].scores[field] = val;
+      savedByKey[key] = rec && isFilled(rec[field]) ? String(rec[field]) : "";
     }
-
+    for (const { sid, field, value } of entries) applyLocalScore(arr, sid, field, value);
     commitRecords(arr);
-    lastLocalSave.current = Date.now();
     for (const { sid, field, value } of entries) {
       const el = cellEl(sid, field);
       if (el) {
         el.innerText = value;
         el.dataset.oldVal = value;
       }
+      markPending(sid, field, value, savedByKey[`${sid}|${field}`]);
     }
+  }
 
+  // Write every staged edit to the server in ONE batch (grouped per student).
+  // On success the pending set clears and the batch goes on the undo stack; on
+  // failure the edits stay staged so the facilitator can just press Save again.
+  async function savePending() {
+    if (quarterLocked) {
+      showToast("Switch to the active quarter to save.", true);
+      return;
+    }
+    const entries = Array.from(pendingRef.current.values());
+    if (entries.length === 0) {
+      showToast("No new scores to save.");
+      return;
+    }
+    setSaving(true);
+    const activeQ = currentQuarter;
+    const byStudent: Record<string, { id: string; quarter: any; scores: Record<string, any> }> = {};
+    const undoItems: { sid: string; field: string; value: string }[] = [];
+    for (const { sid, field, value, oldVal } of entries) {
+      const existing =
+        recordsRef.current.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
+        recordsRef.current.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
+      const id = existing?.id || byStudent[sid]?.id || newId();
+      const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
+      if (!byStudent[sid]) byStudent[sid] = { id, quarter: quarterToSave, scores: {} };
+      byStudent[sid].scores[field] = value === "" ? null : value;
+      undoItems.push({ sid, field, value: oldVal });
+    }
     try {
       const payload = Object.entries(byStudent).map(([sid, p]) => ({
         id: p.id,
@@ -484,17 +524,20 @@ export default function ClassRecordGridPage() {
         scores: p.scores,
       }));
       await apiPost(`/api/sections/${sectionId}/class-records`, payload);
+      lastLocalSave.current = Date.now();
       for (const { sid, field } of entries) flashCell(cellEl(sid, field), "ok");
-      if (pushUndo)
-        undoStack.current.push({
-          items: undoItems,
-          label: entries.length > 1 ? `${entries.length} scores` : `${students.find((x) => x.id === entries[0].sid)?.full_name || "score"} · ${fieldLabel(entries[0].field)}`,
-        });
-      if (entries.length > 1) showToast(`Saved ${entries.length} scores.`);
+      undoStack.current.push({
+        items: undoItems,
+        label: entries.length > 1 ? `${entries.length} scores` : `${students.find((x) => x.id === entries[0].sid)?.full_name || "score"} · ${fieldLabel(entries[0].field)}`,
+      });
+      pendingRef.current.clear();
+      setDirtyCount(0);
+      showToast(`Saved ${entries.length} score${entries.length === 1 ? "" : "s"}.`);
     } catch {
-      loadRecords(); // revert to server truth
       for (const { sid, field } of entries) flashCell(cellEl(sid, field), "err");
-      showToast("Failed to save scores. Check your connection.", true);
+      showToast("Failed to save. Check your connection and press Save again.", true);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -502,8 +545,8 @@ export default function ClassRecordGridPage() {
     if (quarterLocked) return showToast("Switch to the active quarter to undo.", true);
     const set = undoStack.current.pop();
     if (!set) return showToast("Nothing to undo.");
-    saveMany(set.items, false);
-    showToast(`Undid: ${set.label}`);
+    stageMany(set.items);
+    showToast(`Undid: ${set.label} — press Save to keep it.`);
   }
 
   // Spreadsheet-style keyboard navigation between editable cells.
@@ -518,7 +561,7 @@ export default function ClassRecordGridPage() {
     if (e.key === "Enter" || e.key === "ArrowDown") {
       e.preventDefault();
       const next = siblingRowCell(cur, field, 1);
-      cur.blur(); // fires onBlur → saveScore
+      cur.blur(); // fires onBlur → stageScore
       focusEl(next);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -574,7 +617,10 @@ export default function ClassRecordGridPage() {
         entries.push({ sid: tsid, field: f, value: raw });
       }
     }
-    if (entries.length) saveMany(entries, true);
+    if (entries.length) {
+      stageMany(entries);
+      showToast(`Pasted ${entries.length} score${entries.length === 1 ? "" : "s"} — press Save to keep ${entries.length === 1 ? "it" : "them"}.`);
+    }
   }
 
   // Live final grade for the viewed quarter (null when the row has no scores).
@@ -648,7 +694,7 @@ export default function ClassRecordGridPage() {
         contentEditable={!quarterLocked}
         suppressContentEditableWarning
         onFocus={quarterLocked ? undefined : (e) => (e.currentTarget.dataset.oldVal = e.currentTarget.innerText.trim())}
-        onBlur={quarterLocked ? undefined : (e) => saveScore(sid, field, e.currentTarget)}
+        onBlur={quarterLocked ? undefined : (e) => stageScore(sid, field, e.currentTarget)}
         onKeyDown={(e) => handleGridKeyDown(e, field)}
         onPaste={quarterLocked ? undefined : (e) => handleGridPaste(e, field)}
       >
@@ -724,15 +770,30 @@ export default function ClassRecordGridPage() {
         </div>
 
         {!quarterLocked && !loading && (
-          <p
-            className="grid-hint"
-            style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "2px 2px 8px", display: "flex", gap: 16, flexWrap: "wrap" }}
-          >
-            <span><b>Enter</b> / <b>↑ ↓</b> move between students</span>
-            <span><b>Tab</b> / <b>← →</b> move between columns</span>
-            <span>Paste a block straight from <b>Excel</b></span>
-            <span><b>Ctrl</b>+<b>Z</b> to undo</span>
-          </p>
+          <div className="save-bar">
+            <button
+              type="button"
+              className={`save-scores-btn${dirtyCount > 0 ? " has-unsaved" : ""}`}
+              onClick={savePending}
+              disabled={saving || dirtyCount === 0}
+              title={dirtyCount > 0 ? "Save your entered scores" : "No new scores to save"}
+            >
+              <i className="fa-solid fa-floppy-disk" />
+              {saving ? "Saving…" : dirtyCount > 0 ? `Save ${dirtyCount} score${dirtyCount === 1 ? "" : "s"}` : "All saved"}
+            </button>
+            {dirtyCount > 0 && (
+              <span className="unsaved-note">Unsaved — press Save (scores are not saved automatically).</span>
+            )}
+            <span
+              className="grid-hint"
+              style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginLeft: "auto" }}
+            >
+              <span><b>Enter</b> / <b>↑ ↓</b> students</span>
+              <span><b>Tab</b> / <b>← →</b> columns</span>
+              <span>Paste from <b>Excel</b></span>
+              <span><b>Ctrl</b>+<b>Z</b> undo</span>
+            </span>
+          </div>
         )}
 
         <div className="table-responsive">
