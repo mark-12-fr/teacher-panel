@@ -20,6 +20,12 @@ from ..utils import orm_list, orm_to_dict
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
+# Upper bound on the personal board lists (schedules / notices / notes). These
+# are per-teacher and shown newest-first, so capping the fetch means one account
+# accumulating years of entries can never pull an unbounded set in one request.
+# Far above any real teacher's count, so normal boards are never truncated.
+MAX_PERSONAL_ITEMS = 500
+
 
 # ── Dashboard bulk fetch ────────────────────────────────────────────────────
 @router.get("/dashboard-bulk")
@@ -146,7 +152,7 @@ async def list_schedules(
 ):
     rows = (
         await db.execute(
-            select(Schedule).where(Schedule.user_id == UUID(teacher.id)).order_by(Schedule.created_at.asc())
+            select(Schedule).where(Schedule.user_id == UUID(teacher.id)).order_by(Schedule.created_at.asc()).limit(MAX_PERSONAL_ITEMS)
         )
     ).scalars().all()
     return {"schedules": orm_list(rows)}
@@ -186,7 +192,7 @@ async def list_notices(
 ):
     rows = (
         await db.execute(
-            select(Notice).where(Notice.user_id == UUID(teacher.id)).order_by(Notice.created_at.desc())
+            select(Notice).where(Notice.user_id == UUID(teacher.id)).order_by(Notice.created_at.desc()).limit(MAX_PERSONAL_ITEMS)
         )
     ).scalars().all()
     return {"notices": orm_list(rows)}
@@ -240,7 +246,7 @@ async def list_notes(
 ):
     rows = (
         await db.execute(
-            select(Note).where(Note.user_id == UUID(teacher.id)).order_by(Note.created_at.desc())
+            select(Note).where(Note.user_id == UUID(teacher.id)).order_by(Note.created_at.desc()).limit(MAX_PERSONAL_ITEMS)
         )
     ).scalars().all()
     return {"notes": orm_list(rows)}

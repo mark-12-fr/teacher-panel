@@ -8,9 +8,11 @@ sqlalchemy==2.0.36
 asyncpg==0.30.0
 greenlet==3.1.1
 
-# Rate limiting — fail-open, in-memory buckets (single instance).
-# Guards the data + AI API against request storms / AI-cost abuse.
+# Rate limiting — fail-open buckets guarding the data + AI API against request
+# storms / AI-cost abuse. In-memory by default; shared via Redis when REDIS_URL
+# is set (see ratelimit.py) so the limit stays consistent across replicas.
 slowapi==0.1.9
+redis==5.2.1
 
 # Config / validation
 # pydantic v2 — installs from prebuilt cp312 wheels on the pinned Python 3.12.9
