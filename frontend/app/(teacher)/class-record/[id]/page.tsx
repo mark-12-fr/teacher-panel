@@ -661,7 +661,9 @@ export default function ClassRecordGridPage() {
       const headers: any[] = ["#", "Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
-      headers.push("AT", "PT 1", "PT 2", "QE", "TOTAL", "GRADE");
+      headers.push("AT", "PT 1", "PT 2", "QE");
+      headers.push("Modules", "Activity", "Achievement Test", "Performance Task", "Quarterly Exam");
+      headers.push("TOTAL", "GRADE");
       rows.push(headers);
 
       students.forEach((s, idx) => {
@@ -671,6 +673,16 @@ export default function ClassRecordGridPage() {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
+        // Component summary (matches the grade-breakdown modal): Modules /
+        // Activity / Achievement Test / Performance Task / Quarterly Exam.
+        const cs = rec ? componentScores(rec) : null;
+        row.push(
+          cs ? Math.round(cs.modulesOnly) : "",
+          cs ? Math.round(cs.activitiesOnly) : "",
+          cs ? Math.round(cs.at) : "",
+          cs ? Math.round(cs.pt) : "",
+          cs ? Math.round(cs.qe) : "",
+        );
         const t = totalScoreFor(s.id);
         row.push(t === null ? "" : t);
         const g = liveGradeFor(s.id, s.full_name);
@@ -979,14 +991,18 @@ function StudentGradeModal({
                         <div className="grade-quarter-final total">{displayedTotal(c.comp)}</div>
                         <div className="grade-component-row">
                           <span>Modules</span>
-                          <b>{Math.round(c.comp.wwOnly)}</b>
+                          <b>{Math.round(c.comp.modulesOnly)}</b>
                         </div>
                         <div className="grade-component-row">
-                          <span>AT</span>
+                          <span>Activity</span>
+                          <b>{Math.round(c.comp.activitiesOnly)}</b>
+                        </div>
+                        <div className="grade-component-row">
+                          <span>Achievement Test</span>
                           <b>{Math.round(c.comp.at)}</b>
                         </div>
                         <div className="grade-component-row">
-                          <span>Perf. Task</span>
+                          <span>Performance Task</span>
                           <b>{Math.round(c.comp.pt)}</b>
                         </div>
                         <div className="grade-component-row">
