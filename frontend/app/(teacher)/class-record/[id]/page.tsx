@@ -630,6 +630,25 @@ export default function ClassRecordGridPage() {
     return finalGrade(rec, section?.subject || "", attendanceScoreFor(fullName));
   }
 
+  // Raw point total for the viewed quarter: every entered score added up
+  // (all 25 modules + 10 activities + AT + PT 1 + PT 2 + QE). null when the
+  // student has no scores yet, so the cell shows "—" like the GRADE column.
+  function totalScoreFor(sid: string): number | null {
+    const rec = recForView(sid);
+    if (!rec) return null;
+    let sum = 0;
+    let any = false;
+    for (const f of ALL_SCORE_FIELDS) {
+      if (!isFilled(rec[f])) continue;
+      const n = Number(rec[f]);
+      if (isFinite(n)) {
+        sum += n;
+        any = true;
+      }
+    }
+    return any ? Math.round(sum * 100) / 100 : null;
+  }
+
   async function exportExcel() {
     try {
       showToast("Generating Excel...");
@@ -642,7 +661,7 @@ export default function ClassRecordGridPage() {
       const headers: any[] = ["#", "Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
-      headers.push("AT", "PT 1", "PT 2", "QE", "GRADE");
+      headers.push("AT", "PT 1", "PT 2", "QE", "TOTAL", "GRADE");
       rows.push(headers);
 
       students.forEach((s, idx) => {
@@ -652,6 +671,8 @@ export default function ClassRecordGridPage() {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
+        const t = totalScoreFor(s.id);
+        row.push(t === null ? "" : t);
         const g = liveGradeFor(s.id, s.full_name);
         row.push(g === null ? "" : g);
         rows.push(row);
@@ -808,7 +829,8 @@ export default function ClassRecordGridPage() {
                 <th className="header-group header-pt">PT 1</th>
                 <th className="header-group header-pt">PT 2</th>
                 <th className="header-group header-qe">QE</th>
-                <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 62 }}>GRADE</th>
+                <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 60 }}>TOTAL</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 62 }}>GRADE</th>
               </tr>
               <tr>
                 {Array.from({ length: 25 }, (_, i) => i + 1).map((n) => (
@@ -825,10 +847,10 @@ export default function ClassRecordGridPage() {
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={42} />
+                <SkeletonTableRows rows={6} cols={43} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={42} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
+                  <td colSpan={43} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>
               ) : (
                 students.map((s, idx) => {
@@ -850,11 +872,23 @@ export default function ClassRecordGridPage() {
                       {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 9} />)}
                       {TAIL.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
                       {(() => {
+                        const t = totalScoreFor(s.id);
+                        return (
+                          <td
+                            className="group-divider"
+                            title={t === null ? "No scores yet" : "Sum of all entered scores"}
+                            style={{ fontWeight: 700, textAlign: "center", color: t === null ? "var(--text-muted)" : "var(--text-dark)" }}
+                          >
+                            {t === null ? "—" : t}
+                          </td>
+                        );
+                      })()}
+                      {(() => {
                         const g = liveGradeFor(s.id, s.full_name);
                         const pass = g !== null && g >= passingFor(section?.subject || "");
                         return (
                           <td
-                            className="group-divider grade-live-cell"
+                            className="grade-live-cell"
                             title={g === null ? "No scores yet" : pass ? "Passing" : "Below passing"}
                             style={{
                               fontWeight: 700,
