@@ -978,7 +978,7 @@ function StudentGradeModal({
                       <>
                         <div className="grade-quarter-final total">{displayedTotal(c.comp)}</div>
                         <div className="grade-component-row">
-                          <span>Written Works</span>
+                          <span>Modules</span>
                           <b>{Math.round(c.comp.wwOnly)}</b>
                         </div>
                         <div className="grade-component-row">
