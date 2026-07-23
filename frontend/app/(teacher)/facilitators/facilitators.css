@@ -552,31 +552,38 @@
 
         .toast-notification {
             visibility: hidden;
-            min-width: 280px;
-            background-color: #10b981;
-            color: #fff;
+            min-width: 260px;
+            max-width: 400px;
+            background: #ffffff;
+            color: #0f172a;
             text-align: left;
-            border-radius: 8px;
-            padding: 16px 20px;
+            border-radius: 12px;
+            padding: 14px 18px;
             position: fixed;
             z-index: 10000;
-            right: 30px;
+            right: 24px;
             top: 20px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.45;
+            box-shadow: 0 18px 45px -12px rgba(2, 6, 23, 0.35), 0 0 0 1px rgba(148, 163, 184, 0.14);
             opacity: 0;
-            transform: translateY(-20px);
-            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+            transform: translateY(-14px) scale(0.98);
+            transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
             display: flex;
             align-items: center;
             gap: 12px;
+            border-left: 4px solid #16a34a;
         }
-
+        .toast-notification i { color: #16a34a; font-size: 1.05rem; flex-shrink: 0; }
+        .toast-notification.error { border-left-color: #dc2626; }
+        .toast-notification.error i { color: #dc2626; }
+        [data-theme="dark"] .toast-notification { background: #1e293b; color: #f1f5f9; box-shadow: 0 18px 45px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(148, 163, 184, 0.16); }
+        @media (prefers-reduced-motion: reduce) { .toast-notification { transition: opacity 0.2s ease; transform: none; } }
         .toast-notification.show {
             visibility: visible;
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
 
         .ai-chat-widget {
