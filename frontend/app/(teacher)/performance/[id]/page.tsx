@@ -353,7 +353,7 @@ export default function PerformanceDetailPage() {
       out.push([`Class Performance — ${sectionLabel}`]);
       out.push([`Q${qNorm(section?.quarter) === "0" ? "1" : qNorm(section?.quarter)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       out.push([]);
-      out.push(["Rank", "Student Name", "Written Works", "Performance Task", "Quarterly Exam", "Final Grade"]);
+      out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Final Grade"]);
       tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.final_grade || 0]));
       await writeStyledSheet(out, {
         sheetName: "Performance",
@@ -460,7 +460,7 @@ export default function PerformanceDetailPage() {
                 {([
                   ["rank", "Rank"],
                   ["name", "Student Name"],
-                  ["ww", "Written Works"],
+                  ["ww", "Modules"],
                   ["pt", "Perf. Task"],
                   ["qe", "Quarterly Exam"],
                   ["grade", "Final Grade"],
