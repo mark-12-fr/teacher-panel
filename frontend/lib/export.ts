@@ -7,21 +7,27 @@
 
 type WS = any;
 
-/** Auto-fit every column to its widest cell (min width configurable). */
-function autoFitColumns(XLSX: any, ws: WS, minWidth = 10): void {
+/** Auto-fit every column to its widest cell. Rows before `startRow` (the title
+ *  / subtitle banner, which only fills column A) are skipped so a long title
+ *  can't blow out the first column's width, and every width is capped. The
+ *  first column (the "#" / rank index) is allowed to shrink to its short
+ *  content instead of the general minimum. */
+function autoFitColumns(XLSX: any, ws: WS, minWidth = 10, startRow = 0, maxWidth = 50): void {
   if (!ws["!ref"]) return;
   const range = XLSX.utils.decode_range(ws["!ref"]);
+  const from = Math.max(range.s.r, startRow);
   const colWidths: { wch: number }[] = [];
   for (let C = range.s.c; C <= range.e.c; C++) {
     let maxLen = 0;
-    for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let R = from; R <= range.e.r; R++) {
       const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
       if (cell && cell.v !== undefined) {
         const len = String(cell.v).length;
         if (len > maxLen) maxLen = len;
       }
     }
-    colWidths[C] = { wch: Math.max(minWidth, maxLen + 3) };
+    const floor = C === range.s.c ? 4 : minWidth; // let the index (#) column be snug
+    colWidths[C] = { wch: Math.min(maxWidth, Math.max(floor, maxLen + 3)) };
   }
   ws["!cols"] = colWidths;
 }
@@ -127,7 +133,7 @@ export async function writeStyledSheet(
 ): Promise<void> {
   const XLSX: any = await import("xlsx-js-style");
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  autoFitColumns(XLSX, ws);
+  autoFitColumns(XLSX, ws, 10, opts.headerRow ?? 0);
   formatExcelSheet(XLSX, ws, { headerRow: opts.headerRow });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, opts.sheetName || "Sheet1");
