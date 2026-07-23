@@ -658,7 +658,7 @@ export default function ClassRecordGridPage() {
       rows.push([`Class Record — ${sectionName}${subjectName ? " — " + subjectName : ""}`]);
       rows.push([`Q${currentQuarter}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
-      const headers: any[] = ["#", "Student Name"];
+      const headers: any[] = ["Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
       headers.push("AT", "PT 1", "PT 2", "QE");
@@ -666,9 +666,9 @@ export default function ClassRecordGridPage() {
       headers.push("TOTAL", "GRADE");
       rows.push(headers);
 
-      students.forEach((s, idx) => {
+      students.forEach((s) => {
         const rec = recForView(s.id);
-        const row: any[] = [idx + 1, s.full_name];
+        const row: any[] = [s.full_name];
         [...MODULES, ...ACTIVITIES, ...TAIL].forEach((f) => {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
