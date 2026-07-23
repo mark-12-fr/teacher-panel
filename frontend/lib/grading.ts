@@ -56,8 +56,10 @@ export function passingFor(subjectName: string): number {
 
 export interface ComponentScores {
   ww: number; // Written Works incl. the AT column — this is what the grade uses.
-  wwOnly: number; // Written Works from modules/activities ONLY (AT split out, for display).
-  at: number; // The standalone AT column on its own (for display).
+  wwOnly: number; // Modules + Activities combined (AT split out, for display).
+  modulesOnly: number; // Modules columns only (for display).
+  activitiesOnly: number; // Activity columns only (for display).
+  at: number; // The standalone AT (Achievement Test) column on its own (for display).
   pt: number;
   qe: number;
   rawWW: number;
@@ -67,24 +69,29 @@ export interface ComponentScores {
 
 /** Component scores (each capped at 100) from a merged class record. */
 export function componentScores(record: any): ComponentScores {
-  let wwOnly = 0; // modules + activities only
-  let atTotal = 0; // the standalone AT column
+  let modulesOnly = 0; // module_* columns
+  let activitiesOnly = 0; // activity_* columns
+  let atTotal = 0; // the standalone AT (Achievement Test) column
   let totalPT = 0;
   const totalQE = num(record && record.qe, 0);
   for (const k in record || {}) {
     const v = record[k];
     if (v === null || v === undefined || v === "") continue;
-    if (k.indexOf("module_") === 0 || k.indexOf("activity_") === 0) wwOnly += num(v, 0);
+    if (k.indexOf("module_") === 0) modulesOnly += num(v, 0);
+    else if (k.indexOf("activity_") === 0) activitiesOnly += num(v, 0);
     else if (k === "at") atTotal += num(v, 0);
     else if (k.indexOf("pt_") === 0) totalPT += num(v, 0);
   }
-  // AT still counts toward Written Works in the grade (unchanged behaviour); the
-  // breakdown modal just displays wwOnly + at separately so it mirrors the
-  // grade grid's own WW / AT columns.
+  // Modules + Activities + AT all still count toward Written Works in the grade
+  // (unchanged behaviour); the breakdown modal just displays Modules, Activity
+  // and AT (Achievement Test) as separate rows.
+  const wwOnly = modulesOnly + activitiesOnly;
   const totalWW = wwOnly + atTotal;
   return {
     ww: Math.min(totalWW, 100),
     wwOnly: Math.min(wwOnly, 100),
+    modulesOnly: Math.min(modulesOnly, 100),
+    activitiesOnly: Math.min(activitiesOnly, 100),
     at: Math.min(atTotal, 100),
     pt: Math.min(totalPT, 100),
     qe: Math.min((totalQE / 50) * 100, 100),
@@ -94,14 +101,20 @@ export function componentScores(record: any): ComponentScores {
   };
 }
 
-/** The point total shown as the headline of each grade-breakdown card: the four
- *  displayed component scores (Written Works, AT, Perf. Task, Quarterly Exam)
- *  added together, each rounded exactly the way the modal renders them so the
- *  big number always equals the sum of the rows beneath it. This is a raw point
- *  tally for the teacher's convenience, NOT the weighted grade — that stays
- *  available via finalGrade(). */
+/** The point total shown as the headline of each grade-breakdown card: the five
+ *  displayed component scores (Modules, Activity, Achievement Test, Performance
+ *  Task, Quarterly Exam) added together, each rounded exactly the way the modal
+ *  renders them so the big number always equals the sum of the rows beneath it.
+ *  This is a raw point tally for the teacher's convenience, NOT the weighted
+ *  grade — that stays available via finalGrade(). */
 export function displayedTotal(c: ComponentScores): number {
-  return Math.round(c.wwOnly) + Math.round(c.at) + Math.round(c.pt) + Math.round(c.qe);
+  return (
+    Math.round(c.modulesOnly) +
+    Math.round(c.activitiesOnly) +
+    Math.round(c.at) +
+    Math.round(c.pt) +
+    Math.round(c.qe)
+  );
 }
 
 /** Attendance score 0–100 from {present, late, total}. No records → 100. */
