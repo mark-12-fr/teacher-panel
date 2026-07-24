@@ -18,7 +18,8 @@ export default function LoginPage() {
   const [googleBusy, setGoogleBusy] = useState(false);
 
   const [splashHidden, setSplashHidden] = useState(false);
-  const [splashLoading, setSplashLoading] = useState(true);
+  const [splashFill, setSplashFill] = useState(0);
+  const [splashFillMs, setSplashFillMs] = useState(1700);
   const [splashSubtitle, setSplashSubtitle] = useState("MJR Vertex");
 
   const [toast, setToast] = useState<{ show: boolean; msg: string; type: ToastType }>({
@@ -53,8 +54,9 @@ export default function LoginPage() {
     sb.auth.getSession().then(({ data }) => {
       if (!active) return;
       if (data.session) {
-        setSplashLoading(false);
         setSplashSubtitle("Loading your workspace...");
+        setSplashFillMs(700);
+        setSplashFill(100); // reaches full just before the 800ms redirect
         setTimeout(() => (window.location.href = "/dashboard"), 800);
       } else {
         const saved = localStorage.getItem("remembered_email");
@@ -62,6 +64,7 @@ export default function LoginPage() {
           setEmail(saved);
           setRememberMe(true);
         }
+        setSplashFill(100); // fills over ~1700ms, then the splash reveals the form
         setTimeout(() => setSplashHidden(true), 1800);
       }
     });
@@ -233,7 +236,12 @@ export default function LoginPage() {
           </div>
           <h1 className="splash-title">AcadTrack</h1>
           <p className="splash-subtitle">{splashSubtitle}</p>
-          {splashLoading && <div className="splash-loader" />}
+          <div className="splash-loader">
+            <div
+              className="splash-loader-fill"
+              style={{ width: `${splashFill}%`, transition: `width ${splashFillMs}ms cubic-bezier(0.4, 0, 0.2, 1)` }}
+            />
+          </div>
         </div>
       </div>
 
