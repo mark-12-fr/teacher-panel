@@ -16,6 +16,7 @@ import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
+import LoadingBar from "@/components/LoadingBar";
 import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, type ComponentScores } from "@/lib/grading";
 import "./detail.css";
 
@@ -122,6 +123,7 @@ export default function ClassRecordGridPage() {
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -225,7 +227,20 @@ export default function ClassRecordGridPage() {
   }, [sectionId]);
 
   useEffect(() => {
-    Promise.allSettled([loadDetails(), loadStudents(), loadRecords(), loadGradingInputs()]).then(() => setLoading(false));
+    // Pure real progress: the bar advances one step for each of the four data
+    // loads as it actually finishes, so it fills at the true speed of the
+    // connection (no faked trickle) and hits 100% exactly when the page is ready.
+    const tasks = [loadDetails, loadStudents, loadRecords, loadGradingInputs];
+    let done = 0;
+    setLoadProgress(0);
+    Promise.allSettled(
+      tasks.map((t) =>
+        Promise.resolve(t()).finally(() => {
+          done += 1;
+          setLoadProgress(Math.round((done / tasks.length) * 100));
+        })
+      )
+    ).then(() => setLoading(false));
   }, [loadDetails, loadStudents, loadRecords, loadGradingInputs]);
 
   // Live roster updates: a student added/edited/removed elsewhere reflects
@@ -738,6 +753,7 @@ export default function ClassRecordGridPage() {
 
   return (
     <>
+      <LoadingBar progress={loadProgress} active={loading} />
       {loading ? (
         <SkeletonDashWrap />
       ) : (
