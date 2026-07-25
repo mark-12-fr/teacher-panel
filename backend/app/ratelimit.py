@@ -19,15 +19,9 @@ Design goals — this must NOT cause false errors for real teachers:
     the request through instead of 500-ing it.
   • Generous limits a normal teacher will never reach.
 
-Storage is in-memory by default (correct for a single instance). Set the
-``REDIS_URL`` env var to a ``redis://…`` URL and the buckets move to Redis,
-shared across every replica — so scaling the API horizontally (several Railway
-instances behind one URL) keeps ONE consistent limit per teacher instead of one
-bucket per instance. Unset ``REDIS_URL`` and it stays in-memory, unchanged.
+Storage is in-memory, which is correct for a single API instance.
 """
 from __future__ import annotations
-
-import os
 
 import jwt
 from slowapi import Limiter
@@ -74,19 +68,14 @@ def _rate_limit_key(request: Request) -> str:
     return f"ip:{_client_ip(request)}"
 
 
-# Shared bucket store when scaled to multiple instances. Empty (the default) →
-# SlowAPI's in-memory storage, which is per-process and correct for one replica.
-# Set REDIS_URL (e.g. Railway's Redis plugin) to share buckets across replicas.
-_REDIS_URL = os.getenv("REDIS_URL", "").strip()
-
 # ``default_limits`` is the broad DoS guard applied to every route by
-# SlowAPIMiddleware (see main.py). ``storage_uri`` selects in-memory vs Redis.
-# ``swallow_errors`` fails open (even a Redis blip lets the request through
-# rather than 500-ing it); the RateLimit-* headers show a client its budget.
+# SlowAPIMiddleware (see main.py). ``swallow_errors`` fails open (any limiter
+# hiccup lets the request through rather than 500-ing it); the RateLimit-*
+# headers show a client its remaining budget.
 limiter = Limiter(
     key_func=_rate_limit_key,
     default_limits=["300/minute"],
-    storage_uri=_REDIS_URL or "memory://",
+    storage_uri="memory://",
     swallow_errors=True,
     headers_enabled=True,
 )
