@@ -95,10 +95,18 @@ teacher-panel/
 │       ├── routers/   # API route handlers
 │       ├── models.py  # SQLAlchemy models
 │       └── main.py    # FastAPI app entry point
-├── docs/              # Deployment documentation
+├── docs/              # Architecture, codebase & deployment docs
 ├── render.yaml        # Render Blueprint config
 └── vercel.json        # Vercel deployment config
 ```
+
+---
+
+## 📚 Documentation
+
+- **[docs/CODEBASE.md](docs/CODEBASE.md)** — codebase architecture, folder structure & conventions (security · scalability · maintainability)
+- **[docs/architecture.md](docs/architecture.md)** — system architecture & runtime data flows
+- **[docs/deploy.md](docs/deploy.md)** — deployment runbook
 
 ---
 
