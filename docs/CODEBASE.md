@@ -37,7 +37,7 @@ change should make one of them *more* true, never less.
 | **Separation of concerns** | Each layer has one job. UI never talks to the database; HTTP handlers never contain business rules that belong in a domain module. |
 | **Single source of truth** | A rule or value is defined **once** and imported everywhere. Grades come only from `lib/grading.ts`; config only from `lib/config.ts` / `app/config.py`. |
 | **Secure by default** | The safe path is the easy path: auth is enforced by a shared dependency, the database is closed by Row-Level Security, secrets live only in env vars. |
-| **Stateless & scalable** | The backend keeps no per-user state in memory, so it can run as many identical instances as traffic needs. State lives in Postgres (durable) or Redis (ephemeral, optional). |
+| **Stateless & scalable** | The backend can run as many identical instances as traffic needs. Durable state lives in Postgres; the one bit of ephemeral, per-instance state (rate-limit buckets) is in-memory today and would move to a shared store (Redis) only when scaling to multiple instances. |
 | **Convention over configuration** | Folders and filenames follow one predictable pattern, so a new file has an obvious home and a reader has an obvious place to look. |
 
 ---
@@ -285,9 +285,12 @@ without a rewrite.
 
 - **Stateless backend.** No per-user memory ⇒ run N identical instances behind one
   URL and load-balance freely.
-- **Shared, not sticky, state.** The rate limiter defaults to in-memory (correct
-  for one instance) and can switch to **Redis** with a single env var to stay
-  consistent across many instances — the code is already Redis-ready.
+- **Rate limiting that scales when needed.** The limiter keeps its per-user
+  buckets in memory — correct and sufficient for a single backend instance.
+  Running *multiple* instances would need those buckets in a shared store (e.g.
+  Redis) so the limit stays consistent across them; that's a small, well-scoped
+  change to make when horizontal scaling actually arrives — it is intentionally
+  **not** wired today.
 - **Indexed reads + bounded queries.** Hot columns are indexed and list endpoints
   are paginated/limited, so latency stays flat as data grows.
 - **CDN edge.** The static frontend is served from Vercel's global CDN; only data
