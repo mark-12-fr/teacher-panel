@@ -20,7 +20,6 @@ export default function LoginPage() {
   const [splashHidden, setSplashHidden] = useState(false);
   const [splashFill, setSplashFill] = useState(0);
   const [splashFillMs, setSplashFillMs] = useState(1700);
-  const [splashSubtitle, setSplashSubtitle] = useState("MJR Vertex");
 
   const [toast, setToast] = useState<{ show: boolean; msg: string; type: ToastType }>({
     show: false,
@@ -54,18 +53,17 @@ export default function LoginPage() {
     sb.auth.getSession().then(({ data }) => {
       if (!active) return;
       if (data.session) {
-        setSplashSubtitle("Loading your workspace...");
-        setSplashFillMs(700);
-        setSplashFill(100); // reaches full just before the 800ms redirect
-        setTimeout(() => (window.location.href = "/dashboard"), 800);
+        setSplashFillMs(1600);
+        setSplashFill(100); // reaches full just before the 1750ms redirect
+        setTimeout(() => (window.location.href = "/dashboard"), 1750);
       } else {
         const saved = localStorage.getItem("remembered_email");
         if (saved) {
           setEmail(saved);
           setRememberMe(true);
         }
-        setSplashFill(100); // fills over ~1700ms, then the splash reveals the form
-        setTimeout(() => setSplashHidden(true), 1800);
+        setSplashFill(100); // fills over ~1900ms, then the splash reveals the form
+        setTimeout(() => setSplashHidden(true), 2000);
       }
     });
     return () => {
@@ -242,13 +240,12 @@ export default function LoginPage() {
               <span
                 key={i}
                 className="splash-letter"
-                style={{ animationDelay: `${0.3 + i * 0.07}s` }}
+                style={{ animationDelay: `${0.25 + i * 0.055}s` }}
               >
                 {ch === " " ? "\u00A0" : ch}
               </span>
             ))}
           </h1>
-          <p className="splash-subtitle">{splashSubtitle}</p>
           <div className="splash-loader">
             <div
               className="splash-loader-fill"
