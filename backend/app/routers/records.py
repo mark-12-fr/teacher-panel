@@ -10,6 +10,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..cache import cache_get, cache_invalidate, cache_key, cache_set
 from ..database import get_db
 from ..deps import own_section
 from ..models import CLASS_RECORD_SCORE_FIELDS, Attendance, ClassRecord
@@ -29,6 +30,10 @@ async def get_attendance(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("attendance", teacher.id, section_id, date or "")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     section = await own_section(db, teacher, section_id)
     stmt = select(Attendance).where(
         Attendance.section == section.title, Attendance.teacher_id == UUID(teacher.id)
@@ -43,7 +48,9 @@ async def get_attendance(
     # this fast; see backend/sql/001_performance_indexes.sql.
     stmt = stmt.order_by(Attendance.created_at.desc()).limit(50000)
     rows = (await db.execute(stmt)).scalars().all()
-    return {"attendance": orm_list(rows)}
+    result = {"attendance": orm_list(rows)}
+    await cache_set(ck, result, ttl=30)
+    return result
 
 
 @router.post("/{section_id}/attendance")
@@ -76,6 +83,7 @@ async def save_attendance(
             )
         )
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:attendance:{section_id}:*")
     return {"message": "Attendance saved", "count": len(body.items)}
 
 
@@ -86,11 +94,17 @@ async def get_records(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("records", teacher.id, section_id)
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     section = await own_section(db, teacher, section_id)
     rows = (
         await db.execute(select(ClassRecord).where(ClassRecord.section_id == section.id))
     ).scalars().all()
-    return {"records": orm_list(rows)}
+    result = {"records": orm_list(rows)}
+    await cache_set(ck, result, ttl=30)
+    return result
 
 
 @router.post("/{section_id}/class-records")
@@ -127,4 +141,5 @@ async def upsert_records(
         await db.execute(stmt)
         written += 1
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:records:{section_id}")
     return {"message": "Records saved", "count": written}

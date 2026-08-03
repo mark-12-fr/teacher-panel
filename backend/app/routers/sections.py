@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..cache import cache_get, cache_invalidate, cache_key, cache_set
 from ..database import get_db
 from ..deps import own_section
 from ..models import Attendance, ClassRecord, Section, Student
@@ -29,6 +30,10 @@ async def list_sections(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("sections", teacher.id, "list")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     # One query with a LEFT JOIN + COUNT instead of a follow-up
     # /sections/{id}/students request per section — the list pages (Section,
     # Class Record, Attendance, Class Performance) used to fire N extra HTTP
@@ -47,7 +52,9 @@ async def list_sections(
         d = orm_to_dict(section)
         d["student_count"] = student_count
         sections.append(d)
-    return {"sections": sections}
+    result = {"sections": sections}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.get("/active-school-year")
@@ -55,6 +62,10 @@ async def active_school_year(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("school_year", teacher.id)
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     rows = (
         await db.execute(
             select(Section.school_year)
@@ -65,7 +76,9 @@ async def active_school_year(
     # Return the most recent school year (e.g., "2025-2026")
     years = [y for y in rows if y]
     years.sort(reverse=True)
-    return {"school_year": years[0] if years else None}
+    result = {"school_year": years[0] if years else None}
+    await cache_set(ck, result, ttl=300)
+    return result
 
 
 @router.get("/sections/{section_id}")
@@ -74,8 +87,14 @@ async def get_section(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("section", teacher.id, section_id)
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     section = await own_section(db, teacher, section_id)
-    return {"section": orm_to_dict(section)}
+    result = {"section": orm_to_dict(section)}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("/sections")
@@ -96,6 +115,8 @@ async def create_section(
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:sections:*")
+    await cache_invalidate(f"tp:{teacher.id}:school_year*")
     return {"section": orm_to_dict(row)}
 
 
@@ -111,6 +132,9 @@ async def update_section(
         setattr(section, k, v)
     await db.commit()
     await db.refresh(section)
+    await cache_invalidate(f"tp:{teacher.id}:sections:*")
+    await cache_invalidate(f"tp:{teacher.id}:section:{section_id}")
+    await cache_invalidate(f"tp:{teacher.id}:school_year*")
     return {"section": orm_to_dict(section)}
 
 
@@ -132,6 +156,10 @@ async def delete_section(
     )
     await db.execute(delete(Section).where(Section.id == section.id))
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:sections:*")
+    await cache_invalidate(f"tp:{teacher.id}:section:{section_id}")
+    await cache_invalidate(f"tp:{teacher.id}:students:*")
+    await cache_invalidate(f"tp:{teacher.id}:school_year*")
     return {"ok": True}
 
 
@@ -142,13 +170,19 @@ async def list_students(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("students", teacher.id, section_id)
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     section = await own_section(db, teacher, section_id)
     rows = (
         await db.execute(
             select(Student).where(Student.section_id == section.id).order_by(Student.full_name.asc())
         )
     ).scalars().all()
-    return {"students": orm_list(rows)}
+    result = {"students": orm_list(rows)}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("/sections/{section_id}/students")
@@ -163,6 +197,8 @@ async def add_student(
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:students:{section_id}")
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk*")
     return {"student": orm_to_dict(row)}
 
 
@@ -182,6 +218,8 @@ async def add_students_bulk(
     await db.commit()
     for r in created:
         await db.refresh(r)
+    await cache_invalidate(f"tp:{teacher.id}:students:{section_id}")
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk*")
     return {"students": orm_list(created), "count": len(created)}
 
 
@@ -210,6 +248,8 @@ async def update_student(
         setattr(student, k, v)
     await db.commit()
     await db.refresh(student)
+    await cache_invalidate(f"tp:{teacher.id}:students:{student.section_id}")
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk*")
     return {"student": orm_to_dict(student)}
 
 
@@ -223,4 +263,6 @@ async def delete_student(
     await db.execute(delete(ClassRecord).where(ClassRecord.student_id == student.id))
     await db.execute(delete(Student).where(Student.id == student.id))
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:students:{student.section_id}")
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk*")
     return {"ok": True}

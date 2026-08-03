@@ -10,6 +10,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..cache import cache_get, cache_invalidate, cache_key, cache_set
 from ..database import get_db
 from ..models import Facilitator, FacilitatorLog
 from ..schemas import FacilitatorIn, FacilitatorUpdate
@@ -30,6 +31,10 @@ async def list_facilitators(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("facilitators", teacher.id, "list")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     rows = (
         await db.execute(
             select(Facilitator)
@@ -37,7 +42,9 @@ async def list_facilitators(
             .order_by(Facilitator.created_at.desc())
         )
     ).scalars().all()
-    return {"facilitators": [_public(r) for r in rows]}
+    result = {"facilitators": [_public(r) for r in rows]}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("")
@@ -65,6 +72,7 @@ async def create_facilitator(
             detail="That Account ID is already taken. Please use a different one.",
         )
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:facilitators:*")
     return {"message": "Facilitator assigned successfully!", "facilitator": _public(row)}
 
 
@@ -99,6 +107,7 @@ async def update_facilitator(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That Account ID is already taken.")
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:facilitators:*")
     return {"message": "Facilitator successfully updated!", "facilitator": _public(row)}
 
 
@@ -131,4 +140,5 @@ async def delete_facilitator(
     row = await _own_faci(db, teacher, fac_id)
     await db.execute(delete(Facilitator).where(Facilitator.id == row.id))
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:facilitators:*")
     return {"ok": True}

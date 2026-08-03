@@ -12,6 +12,7 @@ from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..cache import cache_get, cache_invalidate, cache_key, cache_set
 from ..database import get_db
 from ..models import Attendance, ClassRecord, Note, Notice, Profile, Schedule, Section, Student, Subject
 from ..schemas import NoteIn, NoticeIn, ProfileUpdate, ScheduleIn
@@ -45,6 +46,11 @@ async def dashboard_bulk(
     overhead of fetching the raw rows.
     """
     tid = UUID(teacher.id)
+
+    ck = cache_key("dashboard_bulk", str(tid), today or "")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
 
     section_rows = (
         await db.execute(
@@ -96,13 +102,15 @@ async def dashboard_bulk(
                 ).scalars().all()
             )
 
-    return {
+    result = {
         "sections": sections,
         "subjects": subjects,
         "students": students,
         "class_records": records,
         "attendance_today": attendance_today,
     }
+    await cache_set(ck, result, ttl=30)
+    return result
 
 
 # ── Profile ─────────────────────────────────────────────────────────────────
@@ -150,12 +158,18 @@ async def list_schedules(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("schedules", teacher.id, "list")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     rows = (
         await db.execute(
             select(Schedule).where(Schedule.user_id == UUID(teacher.id)).order_by(Schedule.created_at.asc()).limit(MAX_PERSONAL_ITEMS)
         )
     ).scalars().all()
-    return {"schedules": orm_list(rows)}
+    result = {"schedules": orm_list(rows)}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("/schedules")
@@ -168,6 +182,7 @@ async def create_schedule(
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:schedules:*")
     return {"schedule": orm_to_dict(row)}
 
 
@@ -181,6 +196,7 @@ async def delete_schedule(
         delete(Schedule).where(Schedule.id == UUID(schedule_id), Schedule.user_id == UUID(teacher.id))
     )
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:schedules:*")
     return {"ok": True}
 
 
@@ -190,12 +206,18 @@ async def list_notices(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("notices", teacher.id, "list")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     rows = (
         await db.execute(
             select(Notice).where(Notice.user_id == UUID(teacher.id)).order_by(Notice.created_at.desc()).limit(MAX_PERSONAL_ITEMS)
         )
     ).scalars().all()
-    return {"notices": orm_list(rows)}
+    result = {"notices": orm_list(rows)}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("/notices")
@@ -222,6 +244,7 @@ async def create_notice(
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:notices:*")
     return {"notice": orm_to_dict(row)}
 
 
@@ -235,6 +258,7 @@ async def delete_notice(
         delete(Notice).where(Notice.id == UUID(notice_id), Notice.user_id == UUID(teacher.id))
     )
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:notices:*")
     return {"ok": True}
 
 
@@ -244,12 +268,18 @@ async def list_notes(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("notes", teacher.id, "list")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     rows = (
         await db.execute(
             select(Note).where(Note.user_id == UUID(teacher.id)).order_by(Note.created_at.desc()).limit(MAX_PERSONAL_ITEMS)
         )
     ).scalars().all()
-    return {"notes": orm_list(rows)}
+    result = {"notes": orm_list(rows)}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("/notes")
@@ -262,6 +292,7 @@ async def create_note(
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:notes:*")
     return {"note": orm_to_dict(row)}
 
 
@@ -273,4 +304,5 @@ async def delete_note(
 ):
     await db.execute(delete(Note).where(Note.id == UUID(note_id), Note.user_id == UUID(teacher.id)))
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:notes:*")
     return {"ok": True}

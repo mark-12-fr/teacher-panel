@@ -14,6 +14,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
+from .cache import close_redis, init_redis
 from .config import settings
 from .ratelimit import limiter
 from .routers import ai, dashboard, facilitators, grading, push, records, sections
@@ -23,6 +24,16 @@ app = FastAPI(
     version="1.0.0",
     description="Backend for the AcadTrack Teacher panel (Next.js frontend).",
 )
+
+
+@app.on_event("startup")
+async def _startup():
+    await init_redis(settings.REDIS_URL)
+
+
+@app.on_event("shutdown")
+async def _shutdown():
+    await close_redis()
 
 # Force CORS headers on every response (bypass any middleware issues)
 ALLOWED_ORIGINS = [

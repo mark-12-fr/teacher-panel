@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..cache import cache_get, cache_invalidate, cache_key, cache_set
 from ..database import get_db
 from ..models import Subject
 from ..schemas import SubjectIn, SubjectUpdate
@@ -19,12 +20,18 @@ async def list_subjects(
     teacher: CurrentTeacher = Depends(get_current_teacher),
     db: AsyncSession = Depends(get_db),
 ):
+    ck = cache_key("subjects", teacher.id, "list")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
     rows = (
         await db.execute(
             select(Subject).where(Subject.teacher_id == UUID(teacher.id)).order_by(Subject.name.asc())
         )
     ).scalars().all()
-    return {"subjects": orm_list(rows)}
+    result = {"subjects": orm_list(rows)}
+    await cache_set(ck, result, ttl=60)
+    return result
 
 
 @router.post("")
@@ -37,6 +44,7 @@ async def create_subject(
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:subjects:*")
     return {"subject": orm_to_dict(row)}
 
 
@@ -63,6 +71,7 @@ async def update_subject(
         setattr(row, k, v)
     await db.commit()
     await db.refresh(row)
+    await cache_invalidate(f"tp:{teacher.id}:subjects:*")
     return {"subject": orm_to_dict(row)}
 
 
@@ -75,4 +84,5 @@ async def delete_subject(
     row = await _own_subject(db, teacher, subject_id)
     await db.execute(delete(Subject).where(Subject.id == row.id))
     await db.commit()
+    await cache_invalidate(f"tp:{teacher.id}:subjects:*")
     return {"ok": True}

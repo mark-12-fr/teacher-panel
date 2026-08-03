@@ -47,6 +47,7 @@ def _sanitize_db_url(raw: str) -> str:
 
 class Settings:
     DATABASE_URL: str = ""
+    REDIS_URL: str = ""
     SUPABASE_JWT_SECRET: str = ""
     SUPABASE_JWT_AUDIENCE: str = "authenticated"
     SUPABASE_URL: str = ""
@@ -61,6 +62,7 @@ class Settings:
 
     def __init__(self) -> None:
         self.DATABASE_URL = _sanitize_db_url(os.getenv("DATABASE_URL", ""))
+        self.REDIS_URL = os.getenv("REDIS_URL", "").strip()
         self.SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
         self.SUPABASE_JWT_AUDIENCE = os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated")
         self.SUPABASE_URL = os.getenv("SUPABASE_URL", "")
