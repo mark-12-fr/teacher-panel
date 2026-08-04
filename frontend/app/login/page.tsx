@@ -228,13 +228,6 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="splash-screen" style={splashHidden ? { opacity: 0, visibility: "hidden" } : undefined}>
         <div className="splash-content">
-          <div className="splash-logo-wrap">
-            <div className="splash-logo-ring" />
-            <div className="splash-logo-container">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.jpg" alt="Logo" />
-            </div>
-          </div>
           <h1 className="splash-title">
             {"AcadTrack".split("").map((ch, i) => (
               <span
