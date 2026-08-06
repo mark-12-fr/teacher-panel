@@ -1,0 +1,135 @@
+/* Animated dropdown list (SmoothSelect.tsx) — styled to match .modal-input
+   on the original teacher-panel design. */
+
+.ss-root {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.ss-trigger {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--modal-border);
+    border-radius: 8px;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    background: var(--input-bg);
+    color: var(--text-dark);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ss-trigger.empty {
+    color: var(--text-muted);
+}
+
+.ss-trigger:hover {
+    border-color: #3b82f6;
+}
+
+.ss-trigger.open,
+.ss-trigger:focus-visible {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.ss-trigger-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ss-chevron {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.ss-trigger.open .ss-chevron {
+    transform: rotate(180deg);
+}
+
+.ss-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 5px;
+    transform-origin: top center;
+    animation: ssPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ssPop {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ss-option {
+    display: block;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-dark);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    opacity: 0;
+    animation: ssOptIn 0.2s ease-out forwards;
+    transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes ssOptIn {
+    from {
+        opacity: 0;
+        transform: translateY(-3px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ss-option:hover,
+.ss-option:focus-visible {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    outline: none;
+}
+
+.ss-option.selected {
+    background: rgba(59, 130, 246, 0.15);
+    color: #2563eb;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .ss-option.selected {
+    background: rgba(59, 130, 246, 0.25);
+    color: #93c5fd;
+}

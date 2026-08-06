@@ -6,6 +6,7 @@ import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import SmoothSelect from "@/components/SmoothSelect";
 import "./facilitators.css";
 
 function getLastSeenText(lastLogin?: string | null): { text: string; isActive: boolean } {
@@ -278,16 +279,12 @@ export default function FacilitatorsPage() {
           <div className="modal-content">
             <h4 style={{ marginBottom: 20, color: "var(--text-dark)" }}>{editingId ? "Edit Facilitator" : "Assign Facilitator"}</h4>
             <input type="text" className="modal-input" placeholder="Facilitator Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <select className="modal-select" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>
-              <option value="" disabled>
-                {sections.length ? "Select Section to Assign" : "No sections created yet."}
-              </option>
-              {sections.map((s) => (
-                <option key={s.id} value={s.title}>
-                  {s.title} ({s.semester || "1st Sem"})
-                </option>
-              ))}
-            </select>
+            <SmoothSelect
+              value={form.section}
+              onChange={(v) => setForm({ ...form, section: v })}
+              options={sections.map((s) => ({ value: s.title, label: `${s.title} (${s.semester || "1st Sem"})` }))}
+              placeholder={sections.length ? "Select Section to Assign" : "No sections created yet."}
+            />
             <div>
               {!editingId && (
                 <input type="text" className="modal-input" placeholder="Account ID (e.g. FACI-001)" value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })} />

@@ -11,6 +11,7 @@ import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
 import { SkeletonSectionCards } from "@/components/Skeleton";
+import SmoothSelect from "@/components/SmoothSelect";
 import "@/app/(teacher)/section/section.css";
 
 const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "", school_level: "" };
@@ -287,37 +288,49 @@ const QUARTER_OPTS =
           <div className="modal-content">
             <h4 style={{ marginBottom: 20, color: "var(--text-dark)" }}>{editingId ? "Edit Section" : "Add New Section"}</h4>
             <input type="text" className="modal-input" placeholder="Section Name (e.g. STEM12-1)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <select className="modal-input" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}>
-              <option value="" disabled>Select Subject</option>
-              {subjectSelect.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+            <SmoothSelect
+              value={form.subject}
+              onChange={(v) => setForm({ ...form, subject: v })}
+              options={subjectSelect.map((n) => ({ value: n, label: n }))}
+              placeholder="Select Subject"
+            />
             <input type="text" className="modal-input" placeholder="Room (e.g. BLANCO-200)" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} />
-            <select className="modal-input" value={form.school_level} onChange={(e) => setForm({ ...form, school_level: e.target.value })}>
-              <option value="" disabled>Select School Level</option>
-              <option value="JHS">JHS - Junior High School</option>
-              <option value="SHS">SHS - Senior High School</option>
-              <option value="College">College</option>
-            </select>
-            <select className="modal-input" value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })}>
-              <option value="" disabled>Select Semester</option>
-              <option value="1st Sem">1st Semester</option>
-              <option value="2nd Sem">2nd Semester</option>
-            </select>
-            <select className="modal-input" value={form.quarter} onChange={(e) => setForm({ ...form, quarter: e.target.value })}>
-              <option value="" disabled>{form.school_level === "College" ? "Select Term" : "Select Quarter"}</option>
-              {QUARTER_OPTS.map((q) => (
-                <option key={q.value} value={q.value}>{q.label}</option>
-              ))}
-            </select>
-            <select className="modal-input" value={form.school_year} onChange={(e) => setForm({ ...form, school_year: e.target.value })}>
-              <option value="" disabled>Select School Year</option>
-              <option value="2023-2024">2023-2024</option>
-              <option value="2024-2025">2024-2025</option>
-              <option value="2025-2026">2025-2026</option>
-              <option value="2026-2027">2026-2027</option>
-            </select>
+            <SmoothSelect
+              value={form.school_level}
+              onChange={(v) => setForm({ ...form, school_level: v })}
+              options={[
+                { value: "JHS", label: "JHS - Junior High School" },
+                { value: "SHS", label: "SHS - Senior High School" },
+                { value: "College", label: "College" },
+              ]}
+              placeholder="Select School Level"
+            />
+            <SmoothSelect
+              value={form.semester}
+              onChange={(v) => setForm({ ...form, semester: v })}
+              options={[
+                { value: "1st Sem", label: "1st Semester" },
+                { value: "2nd Sem", label: "2nd Semester" },
+              ]}
+              placeholder="Select Semester"
+            />
+            <SmoothSelect
+              value={form.quarter}
+              onChange={(v) => setForm({ ...form, quarter: v })}
+              options={QUARTER_OPTS}
+              placeholder={form.school_level === "College" ? "Select Term" : "Select Quarter"}
+            />
+            <SmoothSelect
+              value={form.school_year}
+              onChange={(v) => setForm({ ...form, school_year: v })}
+              options={[
+                { value: "2023-2024", label: "2023-2024" },
+                { value: "2024-2025", label: "2024-2025" },
+                { value: "2025-2026", label: "2025-2026" },
+                { value: "2026-2027", label: "2026-2027" },
+              ]}
+              placeholder="Select School Year"
+            />
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button onClick={() => setModal(false)} style={{ flex: 1, padding: 12, borderRadius: 8, border: "none", cursor: "pointer", background: "var(--input-bg)", color: "var(--text-dark)", fontWeight: 500 }}>Cancel</button>
               <button onClick={save} style={{ flex: 2, background: "#3b82f6", color: "white", padding: 12, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>Save</button>
