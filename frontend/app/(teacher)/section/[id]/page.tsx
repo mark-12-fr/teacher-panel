@@ -8,8 +8,19 @@ import { usePageMeta } from "@/lib/page-meta";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import "./detail.css";
 
-const normQ = (q: any, college?: boolean) => {
-  if (college) return String(q || "Prelim");
+const collegeTermFor = (q: any, sem: string): string => {
+  const s = String(q || "").trim();
+  if (s === "Prelim" || s === "Midterm" || s === "Final") return s;
+  const n = s.replace(/[^1-4]/g, "");
+  if (!n) return "Prelim";
+  return (
+    sem === "2nd Sem"
+      ? { "1": "Final", "2": "Final", "3": "Prelim", "4": "Midterm" }
+      : { "1": "Prelim", "2": "Midterm", "3": "Final", "4": "Final" }
+  )[n] || "Prelim";
+};
+const normQ = (q: any, college?: boolean, sem: string = "1st Sem") => {
+  if (college) return collegeTermFor(q, sem);
   return q ? String(q).replace(/[^1-4]/g, "") || "1" : "1";
 };
 
@@ -63,7 +74,7 @@ export default function SectionDetailPage() {
       setCurrentSemester(cs);
       setViewSemester(cs);
       const isCollege = sec.school_level === "College";
-      const cq = normQ(sec.quarter, isCollege);
+      const cq = normQ(sec.quarter, isCollege, cs);
       setCurrentQuarter(cq);
       setViewQuarter(cq);
     } catch {

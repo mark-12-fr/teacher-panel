@@ -20,8 +20,19 @@ type Att = { student_name: string; date: string; status: string };
 const MONTHS_UP = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const pad2 = (n: number) => String(n).padStart(2, "0");
-const normQ = (q: any, college?: boolean) => {
-  if (college) return String(q || "Prelim");
+const collegeTermFor = (q: any, sem: string): string => {
+  const s = String(q || "").trim();
+  if (s === "Prelim" || s === "Midterm" || s === "Final") return s;
+  const n = s.replace(/[^1-4]/g, "");
+  if (!n) return "Prelim";
+  return (
+    sem === "2nd Sem"
+      ? { "1": "Final", "2": "Final", "3": "Prelim", "4": "Midterm" }
+      : { "1": "Prelim", "2": "Midterm", "3": "Final", "4": "Final" }
+  )[n] || "Prelim";
+};
+const normQ = (q: any, college?: boolean, sem: string = "1st Sem") => {
+  if (college) return collegeTermFor(q, sem);
   return q ? String(q).replace(/[^1-4]/g, "") || "1" : "1";
 };
 const todayGB = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -183,7 +194,7 @@ export default function AttendanceGridPage() {
         section: section?.title || "",
         date,
         subject: section?.subject || "",
-        quarter: normQ(section?.quarter, section?.school_level === "College"),
+        quarter: normQ(section?.quarter, section?.school_level === "College", section?.semester || "1st Sem"),
         items,
       });
     } catch {
@@ -298,7 +309,7 @@ export default function AttendanceGridPage() {
   usePageMeta("Attendance", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
 
   const college = section?.school_level === "College";
-  const quarter = normQ(section?.quarter, college);
+  const quarter = normQ(section?.quarter, college, section?.semester || "1st Sem");
 
   return (
     <>

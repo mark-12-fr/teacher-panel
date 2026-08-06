@@ -36,8 +36,28 @@ const MODULES = Array.from({ length: 25 }, (_, i) => `module_${i + 1}`);
 const ACTIVITIES = Array.from({ length: 10 }, (_, i) => `activity_${i + 1}`);
 const TAIL = ["at", "pt_1", "pt_2", "qe"];
 const ALL_SCORE_FIELDS = [...MODULES, ...ACTIVITIES, ...TAIL];
-const normQ = (q: any, college?: boolean) => {
-  if (college) return String(q || "Prelim");
+// College sections created before term support stored numeric quarters
+// (1,2 in 1st Sem; 3,4 in 2nd Sem). Map those legacy values to the term they
+// correspond to so old college sections get proper Prelim/Midterm/Final tabs.
+const collegeTermFor = (q: any, sem: string): string => {
+  const s = String(q || "").trim();
+  if (s === "Prelim" || s === "Midterm" || s === "Final") return s;
+  const n = s.replace(/[^1-4]/g, "");
+  if (!n) return "Prelim";
+  return (
+    sem === "2nd Sem"
+      ? { "1": "Final", "2": "Final", "3": "Prelim", "4": "Midterm" }
+      : { "1": "Prelim", "2": "Midterm", "3": "Final", "4": "Final" }
+  )[n] || "Prelim";
+};
+// Inverse of collegeTermFor: the legacy numeric quarter a record from this
+// semester's term would have been stored under (null when there is none).
+const legacyNumFor = (term: string, sem: string): string | null => {
+  if (sem === "2nd Sem") return term === "Prelim" ? "3" : term === "Midterm" ? "4" : null;
+  return term === "Prelim" ? "1" : term === "Midterm" ? "2" : null;
+};
+const normQ = (q: any, college?: boolean, sem: string = "1st Sem") => {
+  if (college) return collegeTermFor(q, sem);
   return q ? String(q).replace(/[^1-4]/g, "") || "1" : "1";
 };
 
@@ -203,7 +223,7 @@ export default function ClassRecordGridPage() {
       const cs = sec.semester || "1st Sem";
       setCurrentSemester(cs);
       setViewSemester(cs);
-      const cq = normQ(sec.quarter, sec.school_level === "College");
+      const cq = normQ(sec.quarter, sec.school_level === "College", cs);
       setCurrentQuarter(cq);
       setViewQuarter(cq);
       setCollege(sec.school_level === "College");
@@ -330,11 +350,16 @@ export default function ClassRecordGridPage() {
   // Record shown for a student in the viewed quarter (falls back to a legacy
   // quarter-less row), matching the original createRow() lookup.
   const recForView = useCallback(
-    (sid: string) =>
-      records.find((r) => r.student_id === sid && String(r.quarter) === String(viewQuarter)) ||
-      records.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined)) ||
-      null,
-    [records, viewQuarter]
+    (sid: string) => {
+      const legacy = college ? legacyNumFor(String(viewQuarter), viewSemester) : null;
+      return (
+        records.find((r) => r.student_id === sid && String(r.quarter) === String(viewQuarter)) ||
+        (legacy ? records.find((r) => r.student_id === sid && String(r.quarter) === legacy) : undefined) ||
+        records.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined)) ||
+        null
+      );
+    },
+    [records, viewQuarter, viewSemester, college]
   );
 
   // Attendance tallies keyed by student name (mirrors the Performance page â€”
@@ -374,8 +399,8 @@ export default function ClassRecordGridPage() {
       : GRADE_QUARTERS;
     const cards: GradeQuarterCard[] = src.map((dq) => {
       const rec =
-        records.find((r) => r.student_id === sid && exactQ(r.quarter) === dq.db) ||
-        (dq.db === "1" ? records.find((r) => r.student_id === sid && exactQ(r.quarter) === null) : undefined);
+        records.find((r) => r.student_id === sid && (college ? collegeTermFor(r.quarter, dq.sem) === dq.db : exactQ(r.quarter) === dq.db)) ||
+        ((dq.db === "1" || (college && dq.db === "Prelim")) ? records.find((r) => r.student_id === sid && exactQ(r.quarter) === null) : undefined);
       const hasData = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
       if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null };
       const comp = componentScores(rec);
@@ -468,8 +493,10 @@ export default function ClassRecordGridPage() {
   function applyLocalScore(arr: Rec[], sid: string, field: string, value: string) {
     const activeQ = currentQuarter;
     const val: any = value === "" ? null : value;
+    const legacyQ = college ? legacyNumFor(String(activeQ), currentSemester) : null;
     const existing =
       arr.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
+      (legacyQ ? arr.find((r) => r.student_id === sid && String(r.quarter) === legacyQ) : undefined) ||
       arr.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
     const id = existing?.id || newId();
     const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
@@ -543,8 +570,10 @@ export default function ClassRecordGridPage() {
     const byStudent: Record<string, { id: string; quarter: any; scores: Record<string, any> }> = {};
     const undoItems: { sid: string; field: string; value: string }[] = [];
     for (const { sid, field, value, oldVal } of entries) {
+      const legacyQ = college ? legacyNumFor(String(activeQ), currentSemester) : null;
       const existing =
         recordsRef.current.find((r) => r.student_id === sid && String(r.quarter) === String(activeQ)) ||
+        (legacyQ ? recordsRef.current.find((r) => r.student_id === sid && String(r.quarter) === legacyQ) : undefined) ||
         recordsRef.current.find((r) => r.student_id === sid && (r.quarter === null || r.quarter === undefined));
       const id = existing?.id || byStudent[sid]?.id || newId();
       const quarterToSave = existing && existing.quarter != null ? existing.quarter : activeQ;
