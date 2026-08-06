@@ -1,30 +1,30 @@
-/* Ported from section(2).html <style> (page-specific; shell base in teacher-shell.css). */
+﻿/* Ported from section(2).html <style> (page-specific; shell base in teacher-shell.css). */
 
 :root {
-            --sidebar-bg: #111827;
-            --main-bg: #eef2ff;
-            --accent-blue: #3b82f6;
+            --sidebar-bg: #0b1220;
+            --main-bg: #f3f5fa;
+            --accent-blue: #4f46e5;
             --card-bg: #ffffff;
-            --text-dark: #111827;
-            --text-muted: #6b7280;
-            --border-color: #f1f5f9;
-            --input-bg: #f8faff;
-            --modal-border: #ddd;
-            --shadow-color: rgba(0, 0, 0, 0.05);
-            --hover-bg: #f3f4f6;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e7eaf3;
+            --input-bg: #f6f8fc;
+            --modal-border: #dfe4ef;
+            --shadow-color: rgba(15, 23, 42, 0.06);
+            --hover-bg: #f1f4fa;
         }
 
         [data-theme="dark"] {
-            --sidebar-bg: #0b0f19;
-            --main-bg: #111827;
-            --card-bg: #1f2937;
-            --text-dark: #f9fafb;
-            --text-muted: #9ca3af;
-            --border-color: #374151;
-            --input-bg: #374151;
-            --modal-border: #4b5563;
-            --shadow-color: rgba(0, 0, 0, 0.3);
-            --hover-bg: #374151;
+            --sidebar-bg: #080d18;
+            --main-bg: #0f1526;
+            --card-bg: #161f33;
+            --text-dark: #e8ecf6;
+            --text-muted: #94a3b8;
+            --border-color: #26304a;
+            --input-bg: #1b2540;
+            --modal-border: #2c3754;
+            --shadow-color: rgba(0, 0, 0, 0.35);
+            --hover-bg: #1e2946;
         }
 
         html {
@@ -282,13 +282,14 @@
             grid-template-columns: repeat(5, minmax(0, 1fr));
             background: var(--card-bg);
             padding: 25px 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            border-radius: 16px;
+            box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+            border: 1px solid var(--border-color);
             margin-bottom: 25px;
             width: 100%;
             max-width: 100%;
             align-items: center;
-            transition: background 0.3s, box-shadow 0.3s;
+            transition: background 0.3s, box-shadow 0.3s, border 0.3s;
         }
 
         .dash-wrap {
@@ -300,11 +301,12 @@
 
         .dash-wrap h3 {
             color: var(--text-muted);
-            font-size: 12px;
-            letter-spacing: 1px;
+            font-size: 11px;
+            letter-spacing: 1.2px;
             margin-bottom: 5px;
             text-transform: uppercase;
-            font-weight: 600;
+            font-weight: 700;
+            font-family: 'Outfit', 'Inter', sans-serif;
         }
 
         .dash-wrap h4 {
@@ -316,7 +318,7 @@
             word-break: break-word;
         }
 
-        /* Kept for backwards compat — :last-child was the only centered
+        /* Kept for backwards compat â€” :last-child was the only centered
            card before. Now all .dash-wrap are centered, so this rule
            is a no-op but doesn't hurt. */
         .dash-wrap:last-child {
@@ -324,45 +326,42 @@
         }
 
         .quarter-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--card-bg);
-            padding: 14px 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px var(--shadow-color);
-            border: 1px solid var(--border-color);
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            transition: background 0.3s, border 0.3s;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
         }
-        .quarter-bar-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            margin-right: 8px;
-        }
+        .quarter-bar-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
         .q-tab {
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            padding: 6px 16px;
-            border-radius: 6px;
+            padding: 7px 16px; border-radius: 999px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-dark); font-weight: 600;
+            font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+            transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.12s, box-shadow 0.18s;
             font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--text-dark);
-            transition: all 0.2s;
         }
-        .q-tab:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-        .q-tab.active-q { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-        .q-tab.viewing { outline: 3px solid var(--accent-blue); outline-offset: 2px; }
-        .s-tab { background: var(--input-bg); border: 1px solid var(--border-color); padding: 6px 16px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-dark); transition: all 0.2s; }
-        .s-tab:hover { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
-        .s-tab.active-s { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
-        .s-tab.viewing-s { outline: 3px solid #8b5cf6; outline-offset: 2px; }
+        .q-tab:hover { background: var(--hover-bg); border-color: rgba(99, 102, 241, 0.4); }
+        .q-tab.viewing {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff; border-color: transparent;
+            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.55);
+        }
+        .q-tab.active-q::after {
+            content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;
+        }
+        .q-tab.viewing.active-q::after { background: #bbf7d0; }
+        .s-tab {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--input-bg); border: 1px solid var(--border-color);
+            padding: 7px 18px; border-radius: 999px;
+            font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; color: var(--text-dark);
+            transition: all 0.18s;
+        }
+        .s-tab:hover { background: var(--hover-bg); border-color: rgba(139, 92, 246, 0.4); }
+        .s-tab.viewing-s {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff; border-color: transparent;
+            box-shadow: 0 4px 12px -4px rgba(124, 58, 237, 0.55);
+        }
+        .s-tab.active-s::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; }
+        .s-tab.viewing-s.active-s::after { background: #ddd6fe; }
         .lock-banner {
             display: none;
             align-items: center;
@@ -373,43 +372,46 @@
             white-space: nowrap;
         }
         .q-activate-btn {
-            background: #10b981;
+            background: linear-gradient(135deg, #10b981, #059669);
             color: #fff;
             border: none;
             padding: 6px 14px;
-            border-radius: 6px;
+            border-radius: 999px;
             font-size: 0.78rem;
             font-weight: 600;
             cursor: pointer;
             font-family: 'Inter', sans-serif;
-            transition: background 0.2s;
+            box-shadow: 0 4px 10px -4px rgba(16, 185, 129, 0.5);
+            transition: transform 0.15s, box-shadow 0.2s;
             white-space: nowrap;
         }
-        .q-activate-btn:hover { background: #059669; }
+        .q-activate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -4px rgba(16, 185, 129, 0.6); }
         @media (max-width: 640px) { .quarter-bar { flex-wrap: wrap; } }
 
         .badge {
             display: inline-block;
-            background: var(--input-bg);
-            color: var(--accent-blue);
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
             padding: 5px 15px;
-            border-radius: 8px;
+            border-radius: 999px;
             font-size: 0.95rem;
             font-weight: 700;
+            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45);
         }
 
 
         .class-list-box {
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 25px 30px;
-            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+            border: 1px solid var(--border-color);
             width: 100%;
             max-width: 100%;
             min-width: 0;
             margin: 0 auto;
             overflow: hidden;
-            transition: background 0.3s, box-shadow 0.3s;
+            transition: background 0.3s, box-shadow 0.3s, border 0.3s;
         }
 
         .search-container {
@@ -462,7 +464,7 @@
             text-align: center;
         }
 
-        /* thead: top of card — sticky so it stays visible on scroll */
+        /* thead: top of card â€” sticky so it stays visible on scroll */
         thead th {
             background: var(--card-bg);
             color: var(--text-muted);
@@ -617,7 +619,7 @@
         #openModal {
             position: fixed;
             /* NOTE: the floating-button stack is unified in ai-assistant.css
-               (all "+" buttons at right 24 / bottom 96, AI brain below) — that
+               (all "+" buttons at right 24 / bottom 96, AI brain below) â€” that
                layer wins over these values on purpose. */
             right: 24px !important;
             bottom: 96px !important;
@@ -646,9 +648,9 @@
             visibility: hidden;
             min-width: 300px;
             max-width: 420px;
-            background: #fff;
-            color: #111827;
-            border-radius: 10px;
+            background: var(--card-bg);
+            color: var(--text-dark);
+            border-radius: 12px;
             padding: 14px 18px;
             position: fixed;
             z-index: 10000;
@@ -656,7 +658,8 @@
             top: 24px;
             font-size: 0.9rem;
             font-weight: 500;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
             opacity: 0;
             transform: translateY(-8px) scale(0.98);
             transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1), visibility 0.25s;
@@ -701,7 +704,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(-45deg, #3b82f6, #6366f1);
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -932,7 +935,7 @@
 
         }
 
-        /* ── Icon-only action buttons with tooltips (UI only) ── */
+        /* â”€â”€ Icon-only action buttons with tooltips (UI only) â”€â”€ */
         .action-btns {
             display: flex;
             gap: 6px;
@@ -968,7 +971,7 @@
         .icon-btn-delete:hover {
             background: rgba(239, 68, 68, 0.2);
         }
-        /* Tooltip on hover — pure CSS using a data-attribute via ::after */
+        /* Tooltip on hover â€” pure CSS using a data-attribute via ::after */
         .icon-btn[data-tip]::after {
             content: attr(data-tip);
             position: absolute;
@@ -1006,7 +1009,7 @@
             background: rgba(239, 68, 68, 0.3);
         }
 
-        /* ── Empty state (UI only) ── */
+        /* â”€â”€ Empty state (UI only) â”€â”€ */
         .empty-state {
             text-align: center;
             padding: 40px 20px;

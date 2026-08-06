@@ -2,32 +2,32 @@
 
         :root {
 
-            --sidebar-bg: #111827;
-            --main-bg: #eef2ff;
-            --accent-blue: #3b82f6;
+            --sidebar-bg: #0b1220;
+            --main-bg: #f3f5fa;
+            --accent-blue: #4f46e5;
             --white: #ffffff;
-            --text-dark: #1e293b;
+            --text-dark: #0f172a;
             --text-muted: #64748b;
-            --border-color: #e2e8f0;
+            --border-color: #e7eaf3;
             --card-bg: #ffffff;
-            --input-bg: #f8faff;
-            --shadow-color: rgba(0, 0, 0, 0.05);
-            --icon-bg: #eff6ff;
-            --hover-bg: #f3f4f6;
+            --input-bg: #f6f8fc;
+            --shadow-color: rgba(15, 23, 42, 0.06);
+            --icon-bg: #eef0fd;
+            --hover-bg: #f1f4fa;
         }
 
 
         [data-theme="dark"] {
-            --sidebar-bg: #0b0f19;
-            --main-bg: #111827;
-            --card-bg: #1f2937;
-            --text-dark: #f9fafb;
-            --text-muted: #9ca3af;
-            --border-color: #374151;
-            --input-bg: #374151;
-            --shadow-color: rgba(0, 0, 0, 0.3);
-            --icon-bg: rgba(59, 130, 246, 0.15);
-            --hover-bg: #374151;
+            --sidebar-bg: #080d18;
+            --main-bg: #0f1526;
+            --card-bg: #161f33;
+            --text-dark: #e8ecf6;
+            --text-muted: #94a3b8;
+            --border-color: #26304a;
+            --input-bg: #1b2540;
+            --shadow-color: rgba(0, 0, 0, 0.35);
+            --icon-bg: rgba(99, 102, 241, 0.18);
+            --hover-bg: #1e2946;
         }
 
         html {
@@ -290,11 +290,11 @@
         .about-card {
             background: var(--card-bg);
             border-radius: 16px;
-            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
             padding: 20px 50px;
             border: 1px solid var(--border-color);
             width: 100%;
-            transition: background 0.3s, border 0.3s, box-shadow 0.3s;
+            transition: background 0.3s, border 0.3s, box-shadow 0.3s, transform 0.2s;
         }
 
         .about-section {

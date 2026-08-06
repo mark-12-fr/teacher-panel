@@ -1,35 +1,35 @@
-/* Ported from performance(2).html <style> (page-specific; shell base in teacher-shell.css). */
+﻿/* Ported from performance(2).html <style> (page-specific; shell base in teacher-shell.css). */
 
         :root {
 
-            --sidebar-bg: #111827;
-            --main-bg: #eef2ff;
-            --accent-blue: #3b82f6;
+            --sidebar-bg: #0b1220;
+            --main-bg: #f3f5fa;
+            --accent-blue: #4f46e5;
             --white: #ffffff;
-            --text-dark: #1f2937;
-            --text-muted: #6b7280;
-            --border-color: #f3f4f6;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e7eaf3;
             --pass-color: #16a34a;
             --fail-color: #dc2626;
             --card-bg: #ffffff;
-            --input-bg: #f8faff;
-            --hover-bg: #f1f5f9;
-            --shadow-color: rgba(0, 0, 0, 0.02);
-            --modal-border: #ddd;
+            --input-bg: #f6f8fc;
+            --hover-bg: #f1f4fa;
+            --shadow-color: rgba(15, 23, 42, 0.06);
+            --modal-border: #dfe4ef;
         }
 
 
         [data-theme="dark"] {
-            --sidebar-bg: #0b0f19;
-            --main-bg: #111827;
-            --card-bg: #1f2937;
-            --text-dark: #f9fafb;
-            --text-muted: #9ca3af;
-            --border-color: #374151;
-            --input-bg: #374151;
-            --hover-bg: #4b5563;
-            --modal-border: #4b5563;
-            --shadow-color: rgba(0, 0, 0, 0.3);
+            --sidebar-bg: #080d18;
+            --main-bg: #0f1526;
+            --card-bg: #161f33;
+            --text-dark: #e8ecf6;
+            --text-muted: #94a3b8;
+            --border-color: #26304a;
+            --input-bg: #1b2540;
+            --hover-bg: #1e2946;
+            --modal-border: #2c3754;
+            --shadow-color: rgba(0, 0, 0, 0.35);
         }
 
 
@@ -341,11 +341,13 @@
             grid-template-columns: repeat(4, 1fr);
             background: var(--card-bg);
             padding: 25px 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
             margin-bottom: 25px;
             width: 100%;
             align-items: center;
+            transition: background 0.3s, box-shadow 0.3s, border 0.3s;
         }
 
         .dash-wrap {
@@ -357,11 +359,12 @@
 
         .dash-wrap h3 {
             color: var(--text-muted);
-            font-size: 12px;
-            letter-spacing: 1px;
+            font-size: 11px;
+            letter-spacing: 1.2px;
             margin-bottom: 5px;
             text-transform: uppercase;
-            font-weight: 600;
+            font-weight: 700;
+            font-family: 'Outfit', 'Inter', sans-serif;
         }
 
         .dash-wrap h4 {
@@ -381,12 +384,13 @@
 
         .badge {
             display: inline-block;
-            background: var(--input-bg);
-            color: var(--accent-blue);
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
             padding: 5px 15px;
-            border-radius: 8px;
+            border-radius: 999px;
             font-size: 0.95rem;
             font-weight: 700;
+            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45);
         }
 
 
@@ -398,20 +402,40 @@
         }
 
         .stat-card {
+            position: relative;
             background: var(--card-bg);
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 2px 4px var(--shadow-color);
+            box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
             border: 1px solid var(--border-color);
-            transition: background 0.3s, border 0.3s;
+            overflow: hidden;
+            transition: background 0.3s, border 0.3s, transform 0.2s;
         }
 
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        }
+
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+        .stat-card:hover { transform: translateY(-2px); }
+
         .stat-card h5 {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
             text-transform: uppercase;
-            font-weight: 600;
+            letter-spacing: 1.1px;
+            font-weight: 700;
             margin-bottom: 10px;
+            font-family: 'Outfit', 'Inter', sans-serif;
         }
 
         .stat-card h2 {
@@ -419,6 +443,7 @@
             font-weight: 700;
             margin: 0;
             color: var(--text-dark);
+            font-family: 'Outfit', 'Inter', sans-serif;
         }
 
         .text-blue {
@@ -665,9 +690,9 @@
             visibility: hidden;
             min-width: 300px;
             max-width: 420px;
-            background: #fff;
-            color: #111827;
-            border-radius: 10px;
+            background: var(--card-bg);
+            color: var(--text-dark);
+            border-radius: 12px;
             padding: 14px 18px;
             position: fixed;
             z-index: 10000;
@@ -675,7 +700,8 @@
             top: 24px;
             font-size: 0.9rem;
             font-weight: 500;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
             opacity: 0;
             transform: translateY(-8px) scale(0.98);
             transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1), visibility 0.25s;
@@ -703,20 +729,21 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background-color: var(--accent-blue);
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
             border: none;
         }
 
         .ai-floating-btn:hover {
-            transform: scale(1.1);
+            transform: scale(1.08);
+            box-shadow: 0 14px 30px -6px rgba(79, 70, 229, 0.65);
         }
 
         .ai-chat-widget {
@@ -743,7 +770,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(-45deg, #3b82f6, #6366f1);
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -821,7 +848,7 @@
         }
 
 
-        /* ── Stat card color accents ── */
+        /* â”€â”€ Stat card color accents â”€â”€ */
         .stat-card { position: relative; overflow: hidden; }
         .stat-card::before {
             content: '';
@@ -839,7 +866,7 @@
         .stat-card-yellow { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(245,158,11,0.05) 100%); }
         .stat-card-red    { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(239,68,68,0.05) 100%); }
 
-        /* ── Failing students alert ── */
+        /* â”€â”€ Failing students alert â”€â”€ */
         .failing-alert {
             display: none;
             width: fit-content;
@@ -861,7 +888,7 @@
             color: #fca5a5;
         }
 
-        /* ── PASS / FAIL badge ── */
+        /* â”€â”€ PASS / FAIL badge â”€â”€ */
         .grade-badge {
             display: inline-flex;
             align-items: center;
@@ -878,12 +905,12 @@
         [data-theme="dark"] .grade-badge-pass { background: rgba(34,197,94,0.2); color: #86efac; }
         [data-theme="dark"] .grade-badge-fail { background: rgba(239,68,68,0.2); color: #fca5a5; }
 
-        /* ── Top 3 row highlights ── */
+        /* â”€â”€ Top 3 row highlights â”€â”€ */
         .rank-row-1 td { background: rgba(245,158,11,0.07) !important; }
         .rank-row-2 td { background: rgba(156,163,175,0.08) !important; }
         .rank-row-3 td { background: rgba(205,127,50,0.06) !important; }
 
-        /* ── Grade mini progress bar ── */
+        /* â”€â”€ Grade mini progress bar â”€â”€ */
         .grade-bar {
             height: 4px;
             background: var(--border-color);
@@ -893,7 +920,7 @@
         }
         .grade-bar-fill { height: 100%; border-radius: 3px; }
 
-        /* ── Retry button (error state) ── */
+        /* â”€â”€ Retry button (error state) â”€â”€ */
         .retry-btn {
             background: var(--accent-blue);
             color: white;
