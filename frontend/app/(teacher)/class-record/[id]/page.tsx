@@ -36,7 +36,10 @@ const MODULES = Array.from({ length: 25 }, (_, i) => `module_${i + 1}`);
 const ACTIVITIES = Array.from({ length: 10 }, (_, i) => `activity_${i + 1}`);
 const TAIL = ["at", "pt_1", "pt_2", "qe"];
 const ALL_SCORE_FIELDS = [...MODULES, ...ACTIVITIES, ...TAIL];
-const normQ = (q: any) => (q ? String(q).replace(/[^1-4]/g, "") || "1" : "1");
+const normQ = (q: any, college?: boolean) => {
+  if (college) return String(q || "Prelim");
+  return q ? String(q).replace(/[^1-4]/g, "") || "1" : "1";
+};
 
 // Db `quarter` is 1..4 across the whole school year; 1-2 belong to 1st Sem and
 // 3-4 to 2nd Sem (mirrors activateSemester()'s "2nd Sem starts at quarter 3").
@@ -47,12 +50,23 @@ const GRADE_QUARTERS: { db: string; sem: "1st Sem" | "2nd Sem"; label: string }[
   { db: "3", sem: "2nd Sem", label: "Q1" },
   { db: "4", sem: "2nd Sem", label: "Q2" },
 ];
+// College uses three terms per semester instead of two quarters. Terms repeat
+// across semesters (Prelim/Midterm/Final both semesters), so a college
+// breakdown only spans the CURRENT semester to avoid ambiguous matches.
+const COLLEGE_TERMS: { db: string; label: string }[] = [
+  { db: "Prelim", label: "Prelim" },
+  { db: "Midterm", label: "Midterm" },
+  { db: "Final", label: "Final" },
+];
+const isCollegeTerm = (v: string) => v === "Prelim" || v === "Midterm" || v === "Final";
 // Unlike normQ (used for the single active grid view), this does NOT default a
 // missing quarter to "1" — needed to tell "genuinely untagged legacy record"
 // apart from "a real Q1 record" when building the multi-quarter breakdown.
 const exactQ = (q: any): string | null => {
   if (q === null || q === undefined || q === "") return null;
-  return String(q).replace(/[^1-4]/g, "") || null;
+  const s = String(q);
+  if (isCollegeTerm(s)) return s;
+  return s.replace(/[^1-4]/g, "") || null;
 };
 const isFilled = (v: any) => v !== null && v !== undefined && v !== "";
 const newId = () =>
@@ -121,6 +135,7 @@ export default function ClassRecordGridPage() {
   const sectionId = params.id;
 
   const [section, setSection] = useState<any>(null);
+  const [college, setCollege] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -188,9 +203,10 @@ export default function ClassRecordGridPage() {
       const cs = sec.semester || "1st Sem";
       setCurrentSemester(cs);
       setViewSemester(cs);
-      const cq = normQ(sec.quarter);
+      const cq = normQ(sec.quarter, sec.school_level === "College");
       setCurrentQuarter(cq);
       setViewQuarter(cq);
+      setCollege(sec.school_level === "College");
     } catch {
       showToast("Unauthorized or Section not found", true);
     }
@@ -308,6 +324,8 @@ export default function ClassRecordGridPage() {
 
   const quarterLocked = String(viewQuarter) !== String(currentQuarter);
   const semesterLocked = viewSemester !== currentSemester;
+  const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
+  const qLabel = (q: string) => (college ? q : `Q${q}`);
 
   // Record shown for a student in the viewed quarter (falls back to a legacy
   // quarter-less row), matching the original createRow() lookup.
@@ -351,7 +369,10 @@ export default function ClassRecordGridPage() {
   function quarterBreakdown(sid: string, fullName: string): GradeQuarterCard[] {
     const subjectName = section?.subject || "";
     const att100 = attendanceScoreFor(fullName);
-    const cards: GradeQuarterCard[] = GRADE_QUARTERS.map((dq) => {
+    const src = college
+      ? COLLEGE_TERMS.map((t) => ({ ...t, sem: (viewSemester || "1st Sem") as "1st Sem" | "2nd Sem" }))
+      : GRADE_QUARTERS;
+    const cards: GradeQuarterCard[] = src.map((dq) => {
       const rec =
         records.find((r) => r.student_id === sid && exactQ(r.quarter) === dq.db) ||
         (dq.db === "1" ? records.find((r) => r.student_id === sid && exactQ(r.quarter) === null) : undefined);
@@ -392,13 +413,13 @@ export default function ClassRecordGridPage() {
   }
 
   async function activateQuarter() {
-    if (quarterLocked && !window.confirm(`Switch active quarter to Q${viewQuarter}? Past records stay saved.`)) return;
+    if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { quarter: viewQuarter });
       setCurrentQuarter(viewQuarter);
       setDataVersion((v) => v + 1);
-      showToast(`Section updated to Q${viewQuarter}!`);
+      showToast(`Section updated to ${qLabel(viewQuarter)}!`);
     } catch {
       showToast("Failed to update quarter.", true);
     } finally {
@@ -407,8 +428,8 @@ export default function ClassRecordGridPage() {
   }
 
   async function activateSemester() {
-    const newQuarter = viewSemester === "1st Sem" ? "1" : "3";
-    if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to Q${newQuarter}. Past records stay saved.`)) return;
+    const newQuarter = viewSemester === "1st Sem" ? (college ? "Prelim" : "1") : college ? "Prelim" : "3";
+    if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { semester: viewSemester, quarter: newQuarter });
@@ -671,7 +692,7 @@ export default function ClassRecordGridPage() {
       const subjectName = section?.subject || "";
       const rows: any[][] = [];
       rows.push([`Class Record — ${sectionName}${subjectName ? " — " + subjectName : ""}`]);
-      rows.push([`Q${currentQuarter}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
+      rows.push([`${qLabel(currentQuarter)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
       const headers: any[] = ["Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
@@ -759,7 +780,7 @@ export default function ClassRecordGridPage() {
       ) : (
         <div className="dashboard-wrapper">
           <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
-          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
+          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">{qLabel(currentQuarter)}</h4></div>
           <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
           <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
           <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>
@@ -773,23 +794,23 @@ export default function ClassRecordGridPage() {
         </div>
 
         <div className="quarter-bar">
-          <span className="quarter-bar-label">Quarter</span>
-          {["1", "2", "3", "4"].map((q) => (
+          <span className="quarter-bar-label">{college ? "Term" : "Quarter"}</span>
+          {quarterTabs.map((q) => (
             <button
               key={q}
               className={`q-tab${q === viewQuarter ? " viewing" : ""}${q === currentQuarter ? " active-q" : ""}`}
               onClick={() => setViewQuarterAndReload(q)}
             >
-              Q{q}
+              {qLabel(q)}
             </button>
           ))}
           {quarterLocked && (
             <>
               <span className="lock-banner" style={{ display: "inline-flex" }}>
-                <i className="fa-solid fa-lock" /> Q{viewQuarter} is not yet active.
+                <i className="fa-solid fa-lock" /> {qLabel(viewQuarter)} is not yet active.
               </span>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
-                {activatingQ ? "Saving..." : `Activate Q${viewQuarter}`}
+                {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
               </button>
             </>
           )}
@@ -971,6 +992,7 @@ function StudentGradeModal({
 }) {
   const bySem: Record<string, GradeQuarterCard[]> = { "1st Sem": [], "2nd Sem": [] };
   for (const c of cards) bySem[c.sem].push(c);
+  const sems = (Object.keys(bySem) as ("1st Sem" | "2nd Sem")[]).filter((s) => bySem[s].length > 0);
 
   return (
     <div className="grade-modal-overlay" onClick={onClose}>
@@ -988,7 +1010,7 @@ function StudentGradeModal({
           </button>
         </div>
         <div className="grade-modal-body">
-          {(["1st Sem", "2nd Sem"] as const).map((sem) => (
+          {sems.map((sem) => (
             <div className="grade-sem-block" key={sem}>
               <p className="grade-sem-title">{sem}</p>
               <div className="grade-quarter-grid">

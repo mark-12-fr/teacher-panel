@@ -20,7 +20,10 @@ type Att = { student_name: string; date: string; status: string };
 const MONTHS_UP = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const pad2 = (n: number) => String(n).padStart(2, "0");
-const normQ = (q: any) => (q ? String(q).replace(/[^1-4]/g, "") || "1" : "1");
+const normQ = (q: any, college?: boolean) => {
+  if (college) return String(q || "Prelim");
+  return q ? String(q).replace(/[^1-4]/g, "") || "1" : "1";
+};
 const todayGB = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 const markOf = (status?: string | null) =>
   status === "Present" ? { m: "P", c: "mark-p" } : status === "Absent" ? { m: "A", c: "mark-a" } : status === "Late" ? { m: "L", c: "mark-l" } : { m: "-", c: "mark-none" };
@@ -180,7 +183,7 @@ export default function AttendanceGridPage() {
         section: section?.title || "",
         date,
         subject: section?.subject || "",
-        quarter: normQ(section?.quarter),
+        quarter: normQ(section?.quarter, section?.school_level === "College"),
         items,
       });
     } catch {
@@ -294,7 +297,8 @@ export default function AttendanceGridPage() {
 
   usePageMeta("Attendance", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
 
-  const quarter = normQ(section?.quarter);
+  const college = section?.school_level === "College";
+  const quarter = normQ(section?.quarter, college);
 
   return (
     <>
@@ -303,7 +307,7 @@ export default function AttendanceGridPage() {
       ) : (
         <div className="dashboard-wrapper">
           <div className="dash-wrap"><h3>SEMESTER</h3><h4>{section?.semester || "1st Sem"}</h4></div>
-          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{quarter}</h4></div>
+          <div className="dash-wrap"><h3>{college ? "TERM" : "QUARTER"}</h3><h4 className="badge">{college ? quarter : `Q${quarter}`}</h4></div>
           <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
           <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
           <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>

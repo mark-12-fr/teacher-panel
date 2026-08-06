@@ -23,9 +23,16 @@ const SEMESTER_QUARTERS: Record<string, string[]> = {
   "2nd Sem": ["3", "4"],
   Summer: ["1"],
 };
-const qNorm = (q: any) => String(q ?? 0).replace(/[^1-4]/g, "") || "0";
+const qNorm = (q: any, college?: boolean) => {
+  if (college) return String(q || "Prelim");
+  return String(q ?? 0).replace(/[^1-4]/g, "") || "0";
+};
 const filled = (v: any) => v !== null && v !== undefined && v !== "";
 const ordinal = (q: string) => q + (q === "1" ? "st" : q === "2" ? "nd" : q === "3" ? "rd" : "th") + " Qtr";
+const COLLEGE_TERMS = ["Prelim", "Midterm", "Final"];
+const qSortKey = (q: any, college?: boolean) =>
+  college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
+const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
 type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number };
 type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
@@ -111,6 +118,7 @@ export default function PerformanceDetailPage() {
 
   const subject = section?.subject || "";
   const semester = section?.semester || "1st Sem";
+  const college = section?.school_level === "College";
   const passing = useMemo(() => (ready ? passingFor(subject) : 75), [ready, subject]);
 
   // ── Derive per-student rows + aggregate stats (mirrors loadPerformanceData) ──
@@ -128,12 +136,14 @@ export default function PerformanceDetailPage() {
       attByName[name].total++;
     }
 
-    const qBuckets: Record<string, { t: number; c: number }> = { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } };
+    const qBuckets: Record<string, { t: number; c: number }> = college
+      ? { Prelim: { t: 0, c: 0 }, Midterm: { t: 0, c: 0 }, Final: { t: 0, c: 0 } }
+      : { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } };
 
     const rows: Row[] = students.map((student) => {
       const studentRecords = records
         .filter((r) => r.student_id === student.id)
-        .sort((a, b) => Number(qNorm(a.quarter)) - Number(qNorm(b.quarter)));
+        .sort((a, b) => qSortKey(a.quarter, college) - qSortKey(b.quarter, college));
       const merged = studentRecords.reduce((acc: any, curr: any) => {
         Object.keys(curr).forEach((k) => {
           if (filled(curr[k])) acc[k] = curr[k];
@@ -164,7 +174,7 @@ export default function PerformanceDetailPage() {
           }
         }
         if (!hasScore) return;
-        const qk = qNorm(rec.quarter) === "0" ? "1" : qNorm(rec.quarter);
+        const qk = college ? qNorm(rec.quarter, college) : qNorm(rec.quarter) === "0" ? "1" : qNorm(rec.quarter);
         if (qBuckets[qk]) {
           qBuckets[qk].t += finalGrade(rec, subject, 100);
           qBuckets[qk].c++;
@@ -200,7 +210,7 @@ export default function PerformanceDetailPage() {
     });
 
     return { rows, stats: { totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist, qBuckets } };
-  }, [students, records, attendance, subject, passing]);
+  }, [students, records, attendance, subject, passing, college]);
 
   const num = perf.rows.length;
   const stats = perf.stats;
@@ -215,10 +225,11 @@ export default function PerformanceDetailPage() {
     const n = num || 1;
 
     // Line: class average per quarter (this semester's quarters + any with data).
-    const semQ = SEMESTER_QUARTERS[semester] || ["1", "2"];
-    const withData = ["1", "2", "3", "4"].filter((q) => stats.qBuckets[q].c > 0);
-    const quarters = [...new Set([...semQ, ...withData])].sort();
-    const lineLabels = quarters.map(ordinal);
+    const semQ = college ? COLLEGE_TERMS : SEMESTER_QUARTERS[semester] || ["1", "2"];
+    const allQs = college ? COLLEGE_TERMS : ["1", "2", "3", "4"];
+    const withData = allQs.filter((q) => stats.qBuckets[q].c > 0);
+    const quarters = [...new Set([...semQ, ...withData])].sort((a, b) => qSortKey(a, college) - qSortKey(b, college));
+    const lineLabels = quarters.map((q) => termLabel(q, college));
     const lineData = quarters.map((q) => (stats.qBuckets[q].c > 0 ? Number((stats.qBuckets[q].t / stats.qBuckets[q].c).toFixed(2)) : null));
 
     const valid = lineData.filter((v) => v != null && !isNaN(v as number)) as number[];
@@ -292,7 +303,7 @@ export default function PerformanceDetailPage() {
       charts.current.bar?.destroy();
       charts.current = {};
     };
-  }, [ready, perf, passing, semester, num, stats]);
+  }, [ready, perf, passing, semester, num, stats, college]);
 
   // ── Ranking table ────────────────────────────────────────────────────────────
   const tieBreak = (a: Row, b: Row) => {
@@ -351,7 +362,7 @@ export default function PerformanceDetailPage() {
       const sectionLabel = section?.title || "Section";
       const out: any[][] = [];
       out.push([`Class Performance — ${sectionLabel}`]);
-      out.push([`Q${qNorm(section?.quarter) === "0" ? "1" : qNorm(section?.quarter)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
+      out.push([`${termLabel(qNorm(section?.quarter) === "0" ? "1" : qNorm(section?.quarter), college)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       out.push([]);
       out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Final Grade"]);
       tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.final_grade || 0]));

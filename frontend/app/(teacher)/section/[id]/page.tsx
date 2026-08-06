@@ -8,7 +8,10 @@ import { usePageMeta } from "@/lib/page-meta";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import "./detail.css";
 
-const normQ = (q: any) => (q ? String(q).replace(/[^1-4]/g, "") || "1" : "1");
+const normQ = (q: any, college?: boolean) => {
+  if (college) return String(q || "Prelim");
+  return q ? String(q).replace(/[^1-4]/g, "") || "1" : "1";
+};
 
 export default function SectionDetailPage() {
   const params = useParams<{ id: string }>();
@@ -59,7 +62,8 @@ export default function SectionDetailPage() {
       const cs = sec.semester || "1st Sem";
       setCurrentSemester(cs);
       setViewSemester(cs);
-      const cq = normQ(sec.quarter);
+      const isCollege = sec.school_level === "College";
+      const cq = normQ(sec.quarter, isCollege);
       setCurrentQuarter(cq);
       setViewQuarter(cq);
     } catch {
@@ -102,14 +106,17 @@ export default function SectionDetailPage() {
 
   const quarterLocked = String(viewQuarter) !== String(currentQuarter);
   const semesterLocked = viewSemester !== currentSemester;
+  const isCollege = section?.school_level === "College";
+  const quarterTabs = isCollege ? ["Prelim", "Midterm", "Final"] : ["1", "2", "3", "4"];
+  const qLabel = (q: string) => (isCollege ? q : `Q${q}`);
 
   async function activateQuarter() {
-    if (quarterLocked && !window.confirm(`Switch active quarter to Q${viewQuarter}? Past records stay saved.`)) return;
+    if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { quarter: viewQuarter });
       setCurrentQuarter(viewQuarter);
-      showToast(`Section updated to Q${viewQuarter}!`);
+      showToast(`Section updated to ${qLabel(viewQuarter)}!`);
     } catch {
       showToast("Failed to update quarter.", true);
     } finally {
@@ -118,8 +125,8 @@ export default function SectionDetailPage() {
   }
 
   async function activateSemester() {
-    const newQuarter = viewSemester === "1st Sem" ? "1" : "3";
-    if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to Q${newQuarter}. Past records stay saved.`)) return;
+    const newQuarter = viewSemester === "1st Sem" ? (isCollege ? "Prelim" : "1") : isCollege ? "Prelim" : "3";
+    if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { semester: viewSemester, quarter: newQuarter });
@@ -187,7 +194,7 @@ export default function SectionDetailPage() {
       ) : (
         <div className="dashboard-wrapper">
           <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
-          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
+          <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">{qLabel(currentQuarter)}</h4></div>
           <div className="dash-wrap"><h3>LEVEL</h3><h4>{section?.school_level || "JHS"}</h4></div>
           <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
           <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
@@ -196,23 +203,23 @@ export default function SectionDetailPage() {
       )}
 
       <div className="quarter-bar">
-        <span className="quarter-bar-label">Quarter</span>
-        {["1", "2", "3", "4"].map((q) => (
+        <span className="quarter-bar-label">{isCollege ? "Term" : "Quarter"}</span>
+        {quarterTabs.map((q) => (
           <button
             key={q}
             className={`q-tab${q === viewQuarter ? " viewing" : ""}${q === currentQuarter ? " active-q" : ""}`}
             onClick={() => setViewQuarter(q)}
           >
-            Q{q}
+            {qLabel(q)}
           </button>
         ))}
         {quarterLocked && (
           <>
             <span className="lock-banner" style={{ display: "inline-flex" }}>
-              <i className="fa-solid fa-lock" /> Q{viewQuarter} is not yet active.
+              <i className="fa-solid fa-lock" /> {qLabel(viewQuarter)} is not yet active.
             </span>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
-              {activatingQ ? "Saving..." : `Activate Q${viewQuarter}`}
+              {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
             </button>
           </>
         )}

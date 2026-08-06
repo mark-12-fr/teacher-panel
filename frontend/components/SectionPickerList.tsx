@@ -106,6 +106,20 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
+const QUARTER_OPTS =
+  form.school_level === "College"
+    ? [
+        { value: "Prelim", label: "Prelim" },
+        { value: "Midterm", label: "Midterm" },
+        { value: "Final", label: "Final" },
+      ]
+    : [
+        { value: "1", label: "Q1 - First Quarter" },
+        { value: "2", label: "Q2 - Second Quarter" },
+        { value: "3", label: "Q3 - Third Quarter" },
+        { value: "4", label: "Q4 - Fourth Quarter" },
+      ];
+
   function openAdd() {
     setEditingId(null);
     setForm({ ...EMPTY });
@@ -227,7 +241,7 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
                     <span className="tag tag-room"><i className="fa-solid fa-building" /> {sec.room}</span>
                     <span className="tag tag-sem"><i className="fa-solid fa-calendar" /> {sec.semester || "1st Sem"}</span>
                     {sec.school_level && <span className="tag tag-sem"><i className="fa-solid fa-school" /> {sec.school_level}</span>}
-                    <span className="tag tag-quarter"><i className="fa-solid fa-bookmark" /> {sec.quarter ? `Q${sec.quarter}` : "Q1"}</span>
+                    <span className="tag tag-quarter"><i className="fa-solid fa-bookmark" /> {sec.school_level === "College" ? sec.quarter || "Prelim" : `Q${sec.quarter || "1"}`}</span>
                     <span className="tag tag-year"><i className="fa-solid fa-graduation-cap" /> {sec.school_year || "N/A"}</span>
                   </div>
                 </div>
@@ -292,11 +306,10 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
               <option value="2nd Sem">2nd Semester</option>
             </select>
             <select className="modal-input" value={form.quarter} onChange={(e) => setForm({ ...form, quarter: e.target.value })}>
-              <option value="" disabled>Select Quarter</option>
-              <option value="1">Q1 - First Quarter</option>
-              <option value="2">Q2 - Second Quarter</option>
-              <option value="3">Q3 - Third Quarter</option>
-              <option value="4">Q4 - Fourth Quarter</option>
+              <option value="" disabled>{form.school_level === "College" ? "Select Term" : "Select Quarter"}</option>
+              {QUARTER_OPTS.map((q) => (
+                <option key={q.value} value={q.value}>{q.label}</option>
+              ))}
             </select>
             <select className="modal-input" value={form.school_year} onChange={(e) => setForm({ ...form, school_year: e.target.value })}>
               <option value="" disabled>Select School Year</option>
