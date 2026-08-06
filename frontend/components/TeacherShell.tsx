@@ -69,6 +69,7 @@ export default function TeacherShell({
   const [uploading, setUploading] = useState(false);
   const [schoolYear, setSchoolYear] = useState("");
   const [isDark, setIsDark] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Read cache synchronously before first paint (hydration may strip SSR defaults)
@@ -260,7 +261,7 @@ export default function TeacherShell({
             }} className="theme-btn" style={{ marginBottom: 5 }}>
             <i className={`fa-solid ${isDark ? "fa-sun" : "fa-moon"}`} /> <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
           </button>
-          <button onClick={signOut} className="logout-btn">
+          <button onClick={() => setConfirmLogout(true)} className="logout-btn">
             <i className="fa-solid fa-right-from-bracket" /> Log out
           </button>
         </div>
@@ -284,6 +285,24 @@ export default function TeacherShell({
 
       <QuickAddFab />
       <AIAssistant />
+
+      {confirmLogout && (
+        <div className="modal-overlay" style={{ display: "flex" }} onClick={() => setConfirmLogout(false)}>
+          <div className="modal-content" style={{ maxWidth: 360, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, margin: "0 auto 12px", borderRadius: "50%", background: "rgba(239,68,68,0.12)", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+              <i className="fa-solid fa-right-from-bracket" />
+            </div>
+            <h4 style={{ marginBottom: 6, color: "var(--text-dark)", fontSize: "1.15rem" }}>Are you sure you want to log out?</h4>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: 18 }}>You will be signed out of your account.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmLogout(false)} style={{ flex: 1, padding: 12, borderRadius: 8, border: "none", cursor: "pointer", background: "var(--input-bg)", color: "var(--text-dark)", fontWeight: 500 }}>Cancel</button>
+              <button onClick={signOut} style={{ flex: 1, background: "#ef4444", color: "white", padding: 12, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
