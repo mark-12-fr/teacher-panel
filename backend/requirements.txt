@@ -12,6 +12,9 @@ greenlet==3.1.1
 # against request storms / AI-cost abuse (see ratelimit.py).
 slowapi==0.1.9
 
+# Redis — optional cache layer (fail-open: app runs fine without REDIS_URL)
+redis==5.2.1
+
 # Config / validation
 # pydantic v2 — installs from prebuilt cp312 wheels on the pinned Python 3.12.9
 # (runtime.txt), so no Rust build is needed. The routers rely on v2's

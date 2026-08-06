@@ -18,7 +18,10 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from redis import asyncio as aioredis
+try:
+    from redis import asyncio as aioredis
+except ImportError:  # fail-open: no Redis package, app runs without caching
+    aioredis = None
 
 _redis: Optional[aioredis.Redis] = None
 
