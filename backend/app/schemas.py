@@ -20,6 +20,7 @@ class SectionIn(BaseModel):
     semester: Optional[str] = None
     school_year: Optional[str] = None
     quarter: Optional[str] = None
+    school_level: Optional[str] = None
 
 
 class SectionUpdate(BaseModel):
@@ -29,6 +30,7 @@ class SectionUpdate(BaseModel):
     semester: Optional[str] = None
     school_year: Optional[str] = None
     quarter: Optional[str] = None
+    school_level: Optional[str] = None
 
     class Config:
         extra = "ignore"

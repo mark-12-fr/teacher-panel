@@ -188,6 +188,7 @@ export default function SectionDetailPage() {
         <div className="dashboard-wrapper">
           <div className="dash-wrap"><h3>SEMESTER</h3><h4>{currentSemester}</h4></div>
           <div className="dash-wrap"><h3>QUARTER</h3><h4 className="badge">Q{currentQuarter}</h4></div>
+          <div className="dash-wrap"><h3>LEVEL</h3><h4>{section?.school_level || "JHS"}</h4></div>
           <div className="dash-wrap"><h3>SUBJECT</h3><h4>{section?.subject || "--"}</h4></div>
           <div className="dash-wrap"><h3>TOTAL STUDENTS</h3><h4>{students.length}</h4></div>
           <div className="dash-wrap"><h3>SECTION</h3><h4 className="badge">{section?.title || "--"}</h4></div>

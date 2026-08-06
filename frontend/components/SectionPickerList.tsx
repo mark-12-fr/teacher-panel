@@ -13,7 +13,7 @@ import { useCachedData } from "@/hooks/use-cached-data";
 import { SkeletonSectionCards } from "@/components/Skeleton";
 import "@/app/(teacher)/section/section.css";
 
-const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "" };
+const EMPTY = { title: "", subject: "", room: "", semester: "", quarter: "", school_year: "", school_level: "" };
 
 interface SectionPickerListProps {
   pageTitle: string;
@@ -134,17 +134,18 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
       semester: s.semester || "1st Sem",
       quarter: s.quarter ? String(s.quarter) : "",
       school_year: s.school_year || "",
+      school_level: s.school_level || "",
     });
     setModal(true);
   }
 
   async function save() {
-    const { title, subject, room, semester, quarter, school_year } = form;
+    const { title, subject, room, semester, quarter, school_year, school_level } = form;
     if (!title.trim() || !subject || !room.trim() || !semester || !quarter || !school_year) {
       showToast("Please fill in all fields including Semester and Quarter!", true);
       return;
     }
-    const payload = { title: title.trim(), subject, room: room.trim(), semester, quarter, school_year };
+    const payload = { title: title.trim(), subject, room: room.trim(), semester, quarter, school_year, school_level };
     const prevSections = sections;
     setModal(false);
     setSearch("");
@@ -225,6 +226,7 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
                     <span className="tag tag-students"><i className="fa-solid fa-user" /> {sec.student_count ?? 0} Students</span>
                     <span className="tag tag-room"><i className="fa-solid fa-building" /> {sec.room}</span>
                     <span className="tag tag-sem"><i className="fa-solid fa-calendar" /> {sec.semester || "1st Sem"}</span>
+                    {sec.school_level && <span className="tag tag-sem"><i className="fa-solid fa-school" /> {sec.school_level}</span>}
                     <span className="tag tag-quarter"><i className="fa-solid fa-bookmark" /> {sec.quarter ? `Q${sec.quarter}` : "Q1"}</span>
                     <span className="tag tag-year"><i className="fa-solid fa-graduation-cap" /> {sec.school_year || "N/A"}</span>
                   </div>
@@ -278,6 +280,12 @@ export default function SectionPickerList({ pageTitle, cacheKey, viewPath }: Sec
               ))}
             </select>
             <input type="text" className="modal-input" placeholder="Room (e.g. BLANCO-200)" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} />
+            <select className="modal-input" value={form.school_level} onChange={(e) => setForm({ ...form, school_level: e.target.value })}>
+              <option value="" disabled>Select School Level</option>
+              <option value="JHS">JHS - Junior High School</option>
+              <option value="SHS">SHS - Senior High School</option>
+              <option value="College">College</option>
+            </select>
             <select className="modal-input" value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })}>
               <option value="" disabled>Select Semester</option>
               <option value="1st Sem">1st Semester</option>

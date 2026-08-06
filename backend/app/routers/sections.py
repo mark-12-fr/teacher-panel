@@ -111,6 +111,7 @@ async def create_section(
         semester=body.semester,
         school_year=body.school_year,
         quarter=body.quarter,
+        school_level=body.school_level,
     )
     db.add(row)
     await db.commit()
