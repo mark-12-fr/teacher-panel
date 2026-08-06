@@ -275,6 +275,16 @@
             transition: opacity 0.15s ease-out, transform 0.15s ease-out;
         }
 
+        /* ── Smooth content swap when switching quarter/semester tabs ── */
+        .fade-swap {
+            animation: fadeSwap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeSwap {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -1185,3 +1195,32 @@
                 bottom: 158px;
             }
         }
+
+        /* ── Smooth tap feedback (kept on top of the original design) ── */
+        .sidebar-menu a,
+        .logout-btn,
+        .theme-btn,
+        .delete-btn,
+        .ai-floating-btn,
+        .quick-add-fab,
+        .ai-chat-input-area button,
+        .q-tab,
+        .s-tab,
+        .q-activate-btn,
+        .view-btn,
+        .fab-add-btn {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sidebar-menu a:active { transform: scale(0.96); }
+        .logout-btn:active,
+        .theme-btn:active { transform: scale(0.96); }
+        .delete-btn:active { transform: scale(0.9); }
+        .ai-floating-btn:active,
+        .quick-add-fab:active,
+        .fab-add-btn:active { transform: scale(0.92); }
+        .ai-chat-input-area button:active { transform: scale(0.92); }
+        .q-tab:active,
+        .s-tab:active { transform: scale(0.95); }
+        .q-activate-btn:active,
+        .view-btn:active { transform: scale(0.94); }
