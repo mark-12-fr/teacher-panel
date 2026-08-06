@@ -363,7 +363,7 @@ export default function AttendanceGridPage() {
           </div>
         </div>
 
-        <div className="table-responsive fade-swap" key={`${year}-${month}`}>
+        <div className="table-responsive">
           <table className="record-table">
             <thead>
               <tr>

@@ -1,24 +1,24 @@
-﻿/* Ported from facilitators.html <style> (page-specific; shell base is in teacher-shell.css). */
+/* Ported from facilitators.html <style> (page-specific; shell base is in teacher-shell.css). */
 
 :root {
 
-            --sidebar-bg: #0b1220;
-            --main-bg: #f3f5fa;
-            --accent-blue: #4f46e5;
+            --sidebar-bg: #111827;
+            --main-bg: #eef2ff;
+            --accent-blue: #3b82f6;
             --white: #ffffff;
-            --text-dark: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e7eaf3;
+            --text-dark: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
             --card-bg: #ffffff;
-            --input-bg: #f6f8fc;
-            --shadow-color: rgba(15, 23, 42, 0.06);
-            --hover-bg: #f1f4fa;
-            --table-header: #f5f7fc;
+            --input-bg: #f8faff;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --hover-bg: #f1f5f9;
+            --table-header: #f9fafb;
 
 
-            --btn-edit-bg: rgba(79, 70, 229, 0.1);
-            --btn-edit-hover: rgba(79, 70, 229, 0.2);
-            --btn-edit-text: #4f46e5;
+            --btn-edit-bg: rgba(59, 130, 246, 0.1);
+            --btn-edit-hover: rgba(59, 130, 246, 0.2);
+            --btn-edit-text: #3b82f6;
             --btn-delete-bg: rgba(239, 68, 68, 0.1);
             --btn-delete-hover: rgba(239, 68, 68, 0.2);
             --btn-delete-text: #ef4444;
@@ -26,21 +26,21 @@
 
 
         [data-theme="dark"] {
-            --sidebar-bg: #080d18;
-            --main-bg: #0f1526;
-            --card-bg: #161f33;
-            --text-dark: #e8ecf6;
-            --text-muted: #94a3b8;
-            --border-color: #26304a;
-            --input-bg: #1b2540;
-            --shadow-color: rgba(0, 0, 0, 0.35);
-            --hover-bg: #1e2946;
-            --table-header: #121a2e;
+            --sidebar-bg: #0b0f19;
+            --main-bg: #111827;
+            --card-bg: #1f2937;
+            --text-dark: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+            --input-bg: #374151;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --hover-bg: #4b5563;
+            --table-header: #111827;
 
 
-            --btn-edit-bg: #232e4d;
-            --btn-edit-hover: #2a3a63;
-            --btn-edit-text: #818cf8;
+            --btn-edit-bg: #27374D;
+            --btn-edit-hover: #1E293B;
+            --btn-edit-text: #3b82f6;
             --btn-delete-bg: #3F2C33;
             --btn-delete-hover: #4C1D28;
             --btn-delete-text: #ef4444;
@@ -370,12 +370,12 @@
         .table-card {
             background: var(--card-bg);
             padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+            border-radius: 12px;
+            box-shadow: 0 2px 4px var(--shadow-color);
             border: 1px solid var(--border-color);
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            transition: background 0.3s, border 0.3s, box-shadow 0.3s;
+            transition: background 0.3s, border 0.3s;
         }
 
         table {
@@ -437,12 +437,13 @@
 
         .badge-section {
             display: inline-block;
-            background: var(--accent-blue);
-            color: #fff;
-            padding: 5px 12px;
-            border-radius: 999px;
+            background: var(--input-bg);
+            color: var(--accent-blue);
+            padding: 5px 10px;
+            border-radius: 6px;
             font-size: 0.85rem;
             font-weight: 600;
+            border: 1px solid var(--border-color);
         }
 
 
@@ -492,20 +493,17 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: var(--accent-blue);
+            background-color: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
+            transition: transform 0.3s;
             border: none;
-            -webkit-tap-highlight-color: transparent;
         }
-        .fab-add-btn:hover { transform: translateY(-2px) scale(1.05); }
-        .fab-add-btn:active { transform: scale(0.92); }
 
         .fab-add-btn:hover {
             transform: scale(1.1);
@@ -610,7 +608,7 @@
         }
 
         .ai-chat-header {
-            background: var(--accent-blue);
+            background: linear-gradient(-45deg, #3b82f6, #6366f1);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -639,7 +637,7 @@
         }
 
         .chat-msg.user {
-            background: var(--accent-blue);
+            background: #3b82f6;
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -675,7 +673,7 @@
         }
 
         .ai-chat-input-area button {
-            background: var(--accent-blue);
+            background: #3b82f6;
             color: white;
             border: none;
             width: 40px;

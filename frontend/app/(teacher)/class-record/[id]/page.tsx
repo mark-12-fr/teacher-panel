@@ -866,7 +866,7 @@ export default function ClassRecordGridPage() {
           </div>
         )}
 
-        <div className="table-responsive fade-swap" key={`${viewSemester}-${viewQuarter}`}>
+        <div className="table-responsive">
           <table id="recordTable">
             <thead>
               <tr>
