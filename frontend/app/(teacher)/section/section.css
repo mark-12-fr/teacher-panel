@@ -1,4 +1,4 @@
-/* Ported from section.html <style> (page-specific; shell base in teacher-shell.css). */
+﻿/* Ported from section.html <style> (page-specific; shell base in teacher-shell.css). */
 
 :root {
             --sidebar-bg: #0b1220;
@@ -340,27 +340,15 @@
             align-items: flex-start;
             gap: 18px;
             height: 100%;
-            transition: transform 0.2s, box-shadow 0.2s, background 0.3s, border-color 0.2s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s, background 0.3s, border-color 0.25s;
             position: relative;
             overflow: hidden;
         }
 
-        .section-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 90px;
-            height: 90px;
-            border-radius: 0 0 0 100%;
-            background: radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.07), transparent 70%);
-            pointer-events: none;
-        }
-
         .section-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(99, 102, 241, 0.4);
-            box-shadow: 0 2px 4px var(--shadow-color), 0 18px 38px -14px var(--shadow-color);
+            transform: translateY(-2px);
+            border-color: rgba(99, 102, 241, 0.35);
+            box-shadow: 0 2px 4px var(--shadow-color), 0 14px 32px -14px var(--shadow-color);
         }
 
         .section-title {
@@ -539,7 +527,7 @@
         }
 
         .view-btn {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: white;
             border: none;
             padding: 9px 26px;
@@ -547,15 +535,11 @@
             font-weight: 600;
             font-family: 'Inter', sans-serif;
             cursor: pointer;
-            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.5);
+            transition: background 0.2s, transform 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        .view-btn:hover {
-            background: linear-gradient(135deg, #4f46e5, #4338ca);
-            transform: translateY(-1px);
-            box-shadow: 0 8px 18px -6px rgba(79, 70, 229, 0.55);
-        }
+        .view-btn:hover { background: #4338ca; }
+        .view-btn:active { transform: scale(0.96); }
 
 
         .fab-add-btn {
@@ -565,16 +549,24 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
+            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
             border: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fab-add-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.5);
+        }
+        .fab-add-btn:active {
+            transform: scale(0.92);
         }
 
         .fab-add-btn:hover {
@@ -693,7 +685,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(-45deg, #3b82f6, #6366f1);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -722,7 +714,7 @@
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -758,7 +750,7 @@
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;

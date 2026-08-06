@@ -333,14 +333,15 @@
             padding: 7px 16px; border-radius: 999px; border: 1px solid var(--border-color);
             background: var(--card-bg); color: var(--text-dark); font-weight: 600;
             font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-            transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.12s, box-shadow 0.18s;
+            transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.22s, border-color 0.22s, transform 0.15s ease;
             font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
         .q-tab:hover { background: var(--hover-bg); border-color: rgba(99, 102, 241, 0.4); }
+        .q-tab:active { transform: scale(0.95); }
         .q-tab.viewing {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: #fff; border-color: transparent;
-            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.55);
         }
         .q-tab.active-q::after {
             content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;
@@ -352,13 +353,14 @@
             padding: 7px 18px; border-radius: 999px;
             font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
             cursor: pointer; color: var(--text-dark);
-            transition: all 0.18s;
+            transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.22s, border-color 0.22s, transform 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         .s-tab:hover { background: var(--hover-bg); border-color: rgba(139, 92, 246, 0.4); }
+        .s-tab:active { transform: scale(0.95); }
         .s-tab.viewing-s {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            background: #7c3aed;
             color: #fff; border-color: transparent;
-            box-shadow: 0 4px 12px -4px rgba(124, 58, 237, 0.55);
         }
         .s-tab.active-s::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; }
         .s-tab.viewing-s.active-s::after { background: #ddd6fe; }
@@ -372,7 +374,7 @@
             white-space: nowrap;
         }
         .q-activate-btn {
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: #10b981;
             color: #fff;
             border: none;
             padding: 6px 14px;
@@ -381,22 +383,22 @@
             font-weight: 600;
             cursor: pointer;
             font-family: 'Inter', sans-serif;
-            box-shadow: 0 4px 10px -4px rgba(16, 185, 129, 0.5);
-            transition: transform 0.15s, box-shadow 0.2s;
+            transition: background 0.2s, transform 0.15s ease;
             white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
         }
-        .q-activate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -4px rgba(16, 185, 129, 0.6); }
+        .q-activate-btn:hover { background: #059669; }
+        .q-activate-btn:active { transform: scale(0.94); }
         @media (max-width: 640px) { .quarter-bar { flex-wrap: wrap; } }
 
         .badge {
             display: inline-block;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: #fff;
             padding: 5px 15px;
             border-radius: 999px;
             font-size: 0.95rem;
             font-weight: 700;
-            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45);
         }
 
 
@@ -523,7 +525,7 @@
 
         .editBtn-trigger {
             background: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
+            color: var(--accent-blue);
             border-radius: 6px;
             border: none;
             padding: 6px 15px;
@@ -704,7 +706,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -733,7 +735,7 @@
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -769,7 +771,7 @@
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;
@@ -959,7 +961,7 @@
         }
         .icon-btn-edit {
             background: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
+            color: var(--accent-blue);
         }
         .icon-btn-edit:hover {
             background: rgba(59, 130, 246, 0.2);

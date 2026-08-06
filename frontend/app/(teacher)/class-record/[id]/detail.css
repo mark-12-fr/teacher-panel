@@ -1,4 +1,4 @@
-/* Ported from class-record(2).html <style> (page-specific; shell base in teacher-shell.css). */
+﻿/* Ported from class-record(2).html <style> (page-specific; shell base in teacher-shell.css). */
 
         :root {
             --sidebar-bg: #0b1220;
@@ -354,7 +354,6 @@
             padding: 6px 16px;
             border-radius: 999px;
             font-weight: 700;
-            box-shadow: 0 4px 10px -4px rgba(79, 70, 229, 0.5);
         }
 
 
@@ -456,7 +455,7 @@
         }
 
 
-        /* ── Quarter selector + locked (past-quarter) history ── */
+        /* â”€â”€ Quarter selector + locked (past-quarter) history â”€â”€ */
         .quarter-bar {
             display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
         }
@@ -465,14 +464,15 @@
             padding: 7px 16px; border-radius: 999px; border: 1px solid var(--border-color);
             background: var(--card-bg); color: var(--text-dark); font-weight: 600;
             font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-            transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.12s, box-shadow 0.18s;
+            transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.22s, border-color 0.22s, transform 0.15s ease;
             font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
         .q-tab:hover { background: var(--hover-bg); border-color: rgba(99, 102, 241, 0.4); }
+        .q-tab:active { transform: scale(0.95); }
         .q-tab.viewing {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: #fff; border-color: transparent;
-            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.55);
         }
         .q-tab.active-q::after {
             content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block;
@@ -484,18 +484,19 @@
             padding: 7px 18px; border-radius: 999px;
             font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
             cursor: pointer; color: var(--text-dark);
-            transition: all 0.18s;
+            transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.22s, border-color 0.22s, transform 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         .s-tab:hover { background: var(--hover-bg); border-color: rgba(139, 92, 246, 0.4); }
+        .s-tab:active { transform: scale(0.95); }
         .s-tab.viewing-s {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            background: #7c3aed;
             color: #fff; border-color: transparent;
-            box-shadow: 0 4px 12px -4px rgba(124, 58, 237, 0.55);
         }
         .s-tab.active-s::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; }
         .s-tab.viewing-s.active-s::after { background: #ede9fe; }
 
-        /* Manual "Save Scores" bar — edits are staged locally and written only
+        /* Manual "Save Scores" bar â€” edits are staged locally and written only
            when this is pressed, so entering scores stays smooth. */
         .save-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 2px 10px; }
         .save-scores-btn {
@@ -613,21 +614,26 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
+            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
             border: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .ai-floating-btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 14px 30px -6px rgba(79, 70, 229, 0.65);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.5);
+        }
+
+        .ai-floating-btn:active {
+            transform: scale(0.92);
         }
 
         .ai-chat-widget {
@@ -654,7 +660,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -683,7 +689,7 @@
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -719,7 +725,7 @@
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;
@@ -961,7 +967,7 @@
         }
         .editable-score:focus { animation: cellFocusPulse 0.4s ease-out; }
 
-        /* ── Colored header groups (UI #2) ── */
+        /* â”€â”€ Colored header groups (UI #2) â”€â”€ */
         .header-group.header-modules   { background: rgba(59, 130, 246, 0.10); color: #1e40af; }
         .header-group.header-activities{ background: rgba(34, 197, 94, 0.10);  color: #15803d; }
         .header-group.header-at        { background: rgba(245, 158, 11, 0.14); color: #a16207; }
@@ -979,7 +985,7 @@
         /* The "sub" row (1..25, 1..10) gets a soft tint that matches its parent */
         #subHeaderRow th { background: var(--input-bg); }
 
-        /* ── Sticky first 2 columns + header ── */
+        /* â”€â”€ Sticky first 2 columns + header â”€â”€ */
         .sticky-col {
             position: sticky !important;
             background: var(--card-bg);
@@ -1014,7 +1020,7 @@
 
         tbody tr:hover .sticky-col { background: var(--hover-bg) !important; }
 
-        /* ── Rounded rows + hover + alternating tint (UI #4) ── */
+        /* â”€â”€ Rounded rows + hover + alternating tint (UI #4) â”€â”€ */
         #recordTable {
             border-collapse: separate;
             border-spacing: 0 6px;
@@ -1059,7 +1065,7 @@
             background-color: var(--card-bg);
         }
 
-        /* ── Tap a student's name → grade breakdown modal ── */
+        /* â”€â”€ Tap a student's name â†’ grade breakdown modal â”€â”€ */
         /* A real <button> (not a clickable <td>) so it's reachable and
            activatable by keyboard/screen readers, styled to look identical to
            the plain <strong> name it replaces. */
@@ -1176,7 +1182,7 @@
         .grade-quarter-final.pass { color: #16a34a; }
         .grade-quarter-final.fail { color: #dc2626; }
         /* The headline is now a raw point total, not a grade, so it stays a
-           neutral strong colour — pass/fail lives on the Average Grade row. */
+           neutral strong colour â€” pass/fail lives on the Average Grade row. */
         .grade-quarter-final.total { color: var(--text-dark); }
         .grade-quarter-final.empty { color: var(--text-muted); font-size: 0.95rem; font-weight: 600; }
         .grade-component-row {

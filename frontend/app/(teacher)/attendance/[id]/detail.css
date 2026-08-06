@@ -352,12 +352,11 @@
 
         .badge {
             display: inline-block;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: #fff;
             padding: 5px 15px;
             border-radius: 999px;
             font-weight: 700;
-            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45);
         }
 
         .inf-summary {
@@ -387,13 +386,13 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            height: 3px;
+            background: var(--accent-blue);
         }
 
-        .dat-box:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
-        .dat-box:nth-child(3)::before { background: linear-gradient(90deg, #ef4444, #f87171); }
-        .dat-box:nth-child(4)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .dat-box:nth-child(2)::before,
+        .dat-box:nth-child(3)::before,
+        .dat-box:nth-child(4)::before { background: var(--accent-blue); }
 
         .dat-box:hover { transform: translateY(-2px); }
 
@@ -682,21 +681,26 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
+            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
             border: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .ai-floating-btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 14px 30px -6px rgba(79, 70, 229, 0.65);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.5);
+        }
+
+        .ai-floating-btn:active {
+            transform: scale(0.92);
         }
 
         .ai-chat-widget {
@@ -723,7 +727,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -752,7 +756,7 @@
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -788,7 +792,7 @@
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;
@@ -916,7 +920,7 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
-            background: linear-gradient(135deg, #2563eb, #1e40af);
+            background: var(--accent-blue);
             color: #fff;
             flex-shrink: 0;
         }

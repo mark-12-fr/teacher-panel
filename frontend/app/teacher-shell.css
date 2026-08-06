@@ -4,8 +4,7 @@
 :root {
     --sidebar-bg: #0b1220;
     --main-bg: #f3f5fa;
-    --main-bg-grad: radial-gradient(1200px 600px at 80% -10%, rgba(99, 102, 241, 0.06), transparent 60%),
-                    radial-gradient(900px 500px at -10% 110%, rgba(59, 130, 246, 0.05), transparent 55%),
+    --main-bg-grad: radial-gradient(1000px 500px at 80% -10%, rgba(99, 102, 241, 0.05), transparent 60%),
                     #f3f5fa;
     --accent-blue: #4f46e5;
     --accent-blue-soft: rgba(79, 70, 229, 0.12);
@@ -24,8 +23,7 @@
 [data-theme="dark"] {
     --sidebar-bg: #080d18;
     --main-bg: #0f1526;
-    --main-bg-grad: radial-gradient(1200px 600px at 80% -10%, rgba(99, 102, 241, 0.09), transparent 60%),
-                    radial-gradient(900px 500px at -10% 110%, rgba(59, 130, 246, 0.07), transparent 55%),
+    --main-bg-grad: radial-gradient(1000px 500px at 80% -10%, rgba(99, 102, 241, 0.07), transparent 60%),
                     #0f1526;
     --card-bg: #161f33;
     --text-dark: #e8ecf6;
@@ -60,7 +58,6 @@ html {
 
         .sidebar {
             width: 268px;
-            background: linear-gradient(180deg, #0d1526 0%, #0a1120 100%);
             background-color: var(--sidebar-bg);
             color: white;
             padding: 22px 0 18px;
@@ -140,10 +137,7 @@ html {
             font-weight: 700;
             margin-bottom: 3px;
             letter-spacing: 0.02em;
-            background: linear-gradient(90deg, #fbbf24, #f59e0b 45%, #fde68a);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: #fbbf24;
         }
 
         .sidebar-username {
@@ -186,8 +180,9 @@ html {
             border-radius: 10px;
             font-size: 0.9rem;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s ease, box-shadow 0.2s;
             position: relative;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .sidebar-menu a i,
@@ -205,12 +200,15 @@ html {
             transform: translateX(2px);
         }
 
+        .sidebar-menu a:active {
+            transform: scale(0.96);
+        }
+
         .sidebar-menu a.active {
-            background: linear-gradient(90deg, rgba(79, 70, 229, 0.28), rgba(99, 102, 241, 0.12));
-            border: 1px solid rgba(129, 140, 248, 0.35);
+            background: rgba(79, 70, 229, 0.22);
+            border: 1px solid rgba(129, 140, 248, 0.3);
             color: #e0e7ff;
             font-weight: 600;
-            box-shadow: 0 6px 18px -6px rgba(79, 70, 229, 0.5);
         }
 
         .sidebar-menu a.active::before {
@@ -221,7 +219,7 @@ html {
             bottom: 20%;
             width: 3px;
             border-radius: 0 3px 3px 0;
-            background: linear-gradient(180deg, #fbbf24, #f59e0b);
+            background: #f59e0b;
         }
 
         .sidebar-menu a.active i {
@@ -244,18 +242,24 @@ html {
             border-radius: 10px;
             font-size: 0.9rem;
             font-weight: 500;
-            transition: 0.2s;
+            transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s ease;
             cursor: pointer;
             border: none;
             background: none;
             width: 100%;
             font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .logout-btn:hover,
         .theme-btn:hover {
             color: #fff;
             background: rgba(255, 255, 255, 0.06);
+        }
+
+        .logout-btn:active,
+        .theme-btn:active {
+            transform: scale(0.96);
         }
 
         .logout-btn i,
@@ -309,13 +313,13 @@ html {
                `backwards` gives the same fade+slide-in but reverts to
                transform:none afterwards, keeping fixed overlays viewport-fixed. */
             opacity: 1;
-            animation: fadeInContent 0.25s ease-out backwards;
+            animation: fadeInContent 0.32s cubic-bezier(0.4, 0, 0.2, 1) backwards;
         }
 
         @keyframes fadeInContent {
             0% {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(8px);
             }
 
             100% {
@@ -324,10 +328,20 @@ html {
             }
         }
 
+        /* Smooth content swap when switching quarter/semester tabs */
+        .fade-swap {
+            animation: fadeSwap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeSwap {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .main-content.page-leave {
             opacity: 0 !important;
-            transform: translateY(10px);
-            transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+            transform: translateY(8px);
+            transition: opacity 0.22s ease-out, transform 0.22s ease-out;
         }
 
         .topbar {
@@ -377,7 +391,7 @@ html {
             bottom: 4px;
             width: 4px;
             border-radius: 4px;
-            background: linear-gradient(180deg, #fbbf24, #f59e0b);
+            background: #f59e0b;
         }
         .topbar-title p {
             color: var(--text-muted);
@@ -390,106 +404,36 @@ html {
             gap: 20px;
         }
 
-        @keyframes gradientMove {
-            0%   { background-position: 0% 60%; }
-            33%  { background-position: 60% 100%; }
-            66%  { background-position: 100% 30%; }
-            100% { background-position: 0% 60%; }
-        }
-
-        @keyframes orb-drift {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50%       { transform: translate(28px, -32px) scale(1.12); }
-        }
-
-        @keyframes orb-drift-2 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50%       { transform: translate(-22px, 20px) scale(0.9); }
-        }
-
-        @keyframes shine-slide {
-            0%   { transform: translateX(-100%) skewX(-15deg); }
-            100% { transform: translateX(400%) skewX(-15deg); }
-        }
-
         .div-banner {
             grid-column: span 8;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(
-                135deg,
-                #070b1a 0%,
-                #0d1638 28%,
-                #1a1448 52%,
-                #101a44 76%,
-                #070b1a 100%
-            );
-            background-size: 400% 400%;
-            animation: gradientMove 18s ease infinite;
+            background: #101a33;
             border-radius: 20px;
             color: white;
             padding: 32px 36px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow:
-                0 24px 50px -14px rgba(49, 46, 129, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.09);
+            box-shadow: 0 14px 34px -12px rgba(8, 12, 26, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             margin-bottom: 10px;
         }
 
-        /* Large indigo/violet orb — top right */
+        /* Soft single-tone corner glow — keeps the banner airy without
+           animated gradients. */
         .div-banner::before {
             content: '';
             position: absolute;
-            width: 480px;
-            height: 480px;
+            width: 420px;
+            height: 420px;
             border-radius: 50%;
             background: radial-gradient(circle,
-                rgba(99, 102, 241, 0.5)  0%,
-                rgba(139, 92, 246, 0.25) 40%,
-                transparent              70%);
-            top: -190px;
-            right: -70px;
-            animation: orb-drift 13s ease-in-out infinite;
-            pointer-events: none;
-        }
-
-        /* Smaller cyan/blue orb — bottom centre-left */
-        .div-banner::after {
-            content: '';
-            position: absolute;
-            width: 320px;
-            height: 320px;
-            border-radius: 50%;
-            background: radial-gradient(circle,
-                rgba(56, 189, 248, 0.28)  0%,
-                rgba(59, 130, 246, 0.12)  40%,
+                rgba(99, 102, 241, 0.22)  0%,
                 transparent               70%);
-            bottom: -120px;
-            left: 28%;
-            animation: orb-drift-2 19s ease-in-out infinite;
+            top: -170px;
+            right: -60px;
             pointer-events: none;
-        }
-
-        /* Subtle one-shot shine sweep */
-        .div-banner .banner-shine {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-            border-radius: inherit;
-        }
-        .div-banner .banner-shine::after {
-            content: '';
-            position: absolute;
-            top: 0; bottom: 0;
-            width: 60px;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(255, 255, 255, 0.06),
-                transparent);
-            animation: shine-slide 8s ease-in-out infinite 2s;
         }
 
         .welcome-text h2 {
@@ -509,7 +453,7 @@ html {
             padding: 22px;
             box-shadow: 0 1px 2px var(--shadow-color), 0 8px 24px -12px var(--shadow-color);
             border: 1px solid var(--border-color);
-            transition: background 0.3s, box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+            transition: background 0.3s, box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s;
         }
 
         .dash-card h4 {
@@ -519,8 +463,9 @@ html {
         }
 
         .dash-card:hover {
-            border-color: rgba(99, 102, 241, 0.35);
+            border-color: rgba(99, 102, 241, 0.3);
             box-shadow: 0 2px 4px var(--shadow-color), 0 14px 30px -12px var(--shadow-color);
+            transform: translateY(-2px);
         }
 
         .stat-card {
@@ -539,27 +484,9 @@ html {
             align-items: center;
             justify-content: center;
             font-size: 1.15rem;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-        }
-
-        .stat-icon-blue {
-            background: linear-gradient(135deg, #dbeafe, #c7d2fe);
-            color: #4f46e5;
-        }
-
-        .stat-icon-green {
-            background: linear-gradient(135deg, #d1fae5, #bbf7d0);
-            color: #059669;
-        }
-
-        .stat-icon-yellow {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            color: #d97706;
-        }
-
-        .stat-icon-purple {
-            background: linear-gradient(135deg, #ede9fe, #ddd6fe);
-            color: #7c3aed;
+            background: var(--accent-blue-soft);
+            color: var(--accent-blue);
+            box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.08);
         }
 
         .stat-title {
@@ -620,8 +547,7 @@ html {
             line-height: 1;
             letter-spacing: -0.02em;
             font-variant-numeric: tabular-nums;
-            text-shadow: 0 2px 12px rgba(245, 158, 11, 0.25);
-            color: #fde68a;
+            color: #fbbf24;
         }
 
         .time-container small {
@@ -641,7 +567,7 @@ html {
             align-items: center;
             padding: 10px 5px;
             border-bottom: 1px solid var(--border-color);
-            transition: background 0.15s;
+            transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .item-row:hover {
@@ -654,11 +580,16 @@ html {
             border: none;
             background: none;
             font-size: 0.9rem;
-            transition: 0.2s;
+            transition: transform 0.2s, color 0.2s;
         }
 
         .delete-btn:hover {
             transform: scale(1.1);
+            color: #dc2626;
+        }
+
+        .delete-btn:active {
+            transform: scale(0.9);
         }
 
         .notice-item {
@@ -839,21 +770,26 @@ html {
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
+            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
             border: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .ai-floating-btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 14px 30px -6px rgba(79, 70, 229, 0.65);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.5);
+        }
+
+        .ai-floating-btn:active {
+            transform: scale(0.92);
         }
 
         .ai-chat-widget {
@@ -880,7 +816,7 @@ html {
         }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -923,7 +859,7 @@ html {
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
@@ -969,7 +905,7 @@ html {
             color: white;
             border-color: var(--accent-blue);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
         }
 
         .ai-suggestion-chip i.fa-star,
@@ -1008,7 +944,7 @@ html {
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;
@@ -1018,11 +954,17 @@ html {
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: 0.2s;
+            transition: transform 0.2s, background 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .ai-chat-input-area button:hover {
             transform: scale(1.05);
+            background: #4338ca;
+        }
+
+        .ai-chat-input-area button:active {
+            transform: scale(0.92);
         }
 
         .ai-list {
@@ -1036,23 +978,17 @@ html {
             word-break: break-word;
         }
 
-        /* ── Stat card color accents ── */
+        /* ── Stat card accent: single indigo top bar, all cards uniform ── */
         .stat-card { position: relative; overflow: hidden; }
         .stat-card::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 4px;
+            height: 3px;
             border-radius: 16px 16px 0 0;
+            background: #4f46e5;
         }
-        .stat-card-blue::before  { background: linear-gradient(90deg, #4f46e5, #818cf8); }
-        .stat-card-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
-        .stat-card-yellow::before{ background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-        .stat-card-purple::before{ background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-        .stat-card-blue  { background: linear-gradient(160deg, var(--card-bg) 72%, rgba(79,70,229,0.06) 100%); }
-        .stat-card-green { background: linear-gradient(160deg, var(--card-bg) 72%, rgba(16,185,129,0.06) 100%); }
-        .stat-card-yellow{ background: linear-gradient(160deg, var(--card-bg) 72%, rgba(245,158,11,0.07) 100%); }
-        .stat-card-purple{ background: linear-gradient(160deg, var(--card-bg) 72%, rgba(139,92,246,0.06) 100%); }
+        [data-theme="dark"] .stat-card::before { background: #6366f1; }
 
         /* ── Attendance rate badge ── */
         .attend-rate {
@@ -1244,22 +1180,27 @@ html {
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 22px;
-            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
+            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
             cursor: pointer;
             z-index: 9998;
             border: none;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .quick-add-fab:hover {
-            transform: scale(1.08);
-            box-shadow: 0 14px 30px -6px rgba(79, 70, 229, 0.65);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.5);
+        }
+
+        .quick-add-fab:active {
+            transform: scale(0.92);
         }
 
         .quick-add-fab.open {

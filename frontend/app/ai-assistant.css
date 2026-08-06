@@ -1,5 +1,5 @@
-/*
- * MJR AI Assistant — shared UI styles.
+﻿/*
+ * MJR AI Assistant â€” shared UI styles.
  *
  * Loaded from each page's <head> via <link rel="stylesheet">, so the
  * polished look is applied during the initial render (no flash when 
@@ -15,7 +15,7 @@
     width: 60px !important;
     height: 60px !important;
     border-radius: 50% !important;
-    background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+    background: var(--accent-blue) !important;
     color: #fff !important;
     border: none !important;
     box-shadow: 0 12px 28px rgba(30, 64, 175, 0.35) !important;
@@ -69,7 +69,7 @@
 }
 
 .ai-chat-header {
-    background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+    background: var(--accent-blue) !important;
     color: #fff !important;
     padding: 14px 18px !important;
     display: flex !important;
@@ -172,7 +172,7 @@
     animation: mjrAiMsgIn 0.22s ease both !important;
 }
 .chat-msg.user {
-    background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+    background: var(--accent-blue) !important;
     color: #fff !important;
     align-self: flex-end !important;
     border-bottom-right-radius: 5px !important;
@@ -272,7 +272,7 @@
     box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.15) !important;
 }
 .ai-chat-input-area button {
-    background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+    background: var(--accent-blue) !important;
     color: #fff !important;
     border: none !important;
     width: 40px !important;
@@ -339,14 +339,14 @@
 /* === Floating buttons: high-specificity so page-level !important rules cannot
    re-cover the View / delete controls. Brain sits in the corner, the plus
    sits above it, and content gets enough bottom room to scroll clear.
-   Z-index MUST stay under .ai-chat-widget / .modal-overlay's 9999 — the "+"
+   Z-index MUST stay under .ai-chat-widget / .modal-overlay's 9999 â€” the "+"
    button's footprint (bottom:96, right:24) overlaps the open chat widget's
    bottom-right corner (widget bottom is overridden to 96px below), which is
    exactly where the chat's send button sits. Any z-index at or above the
    widget's puts the "+" ON TOP of that corner and swallows the send-button
    click ("indi ako maka send"). Keeping this stack below 9999 lets the
    widget/modal correctly cover the FABs in that shared corner when open,
-   and they're still fully usable — same spot, same look — whenever nothing
+   and they're still fully usable â€” same spot, same look â€” whenever nothing
    else occupies it. === */
 button.ai-floating-btn,
 .ai-floating-btn {

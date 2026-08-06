@@ -384,13 +384,12 @@
 
         .badge {
             display: inline-block;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: #fff;
             padding: 5px 15px;
             border-radius: 999px;
             font-size: 0.95rem;
             font-weight: 700;
-            box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.45);
         }
 
 
@@ -418,13 +417,13 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            height: 3px;
+            background: var(--accent-blue);
         }
 
-        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #10b981, #34d399); }
-        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .stat-card:nth-child(2)::before,
+        .stat-card:nth-child(3)::before,
+        .stat-card:nth-child(4)::before { background: var(--accent-blue); }
 
         .stat-card:hover { transform: translateY(-2px); }
 
@@ -729,21 +728,26 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--accent-blue);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.55);
+            box-shadow: 0 8px 20px -6px rgba(79, 70, 229, 0.45);
             cursor: pointer;
             z-index: 9998;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
             border: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .ai-floating-btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 14px 30px -6px rgba(79, 70, 229, 0.65);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.5);
+        }
+
+        .ai-floating-btn:active {
+            transform: scale(0.92);
         }
 
         .ai-chat-widget {
@@ -770,7 +774,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -799,7 +803,7 @@
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -835,7 +839,7 @@
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;
@@ -847,24 +851,6 @@
             align-items: center;
         }
 
-
-        /* â”€â”€ Stat card color accents â”€â”€ */
-        .stat-card { position: relative; overflow: hidden; }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            border-radius: 12px 12px 0 0;
-        }
-        .stat-card-blue::before   { background: linear-gradient(90deg, #3b82f6, #6366f1); }
-        .stat-card-green::before  { background: linear-gradient(90deg, #22c55e, #16a34a); }
-        .stat-card-yellow::before { background: linear-gradient(90deg, #f59e0b, #f97316); }
-        .stat-card-red::before    { background: linear-gradient(90deg, #ef4444, #dc2626); }
-        .stat-card-blue   { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(59,130,246,0.05) 100%); }
-        .stat-card-green  { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(34,197,94,0.05) 100%); }
-        .stat-card-yellow { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(245,158,11,0.05) 100%); }
-        .stat-card-red    { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(239,68,68,0.05) 100%); }
 
         /* â”€â”€ Failing students alert â”€â”€ */
         .failing-alert {

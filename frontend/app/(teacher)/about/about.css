@@ -1,4 +1,4 @@
-/* Ported from about.html <style> (page-specific; shell base in teacher-shell.css). */
+﻿/* Ported from about.html <style> (page-specific; shell base in teacher-shell.css). */
 
         :root {
 
@@ -426,7 +426,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(-45deg, #3b82f6, #6366f1);
+            background: var(--accent-blue);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -455,7 +455,7 @@
         }
 
         .chat-msg.user {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
@@ -491,7 +491,7 @@
         }
 
         .ai-chat-input-area button {
-            background: #3b82f6;
+            background: var(--accent-blue);
             color: white;
             border: none;
             width: 40px;
