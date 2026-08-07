@@ -73,3 +73,61 @@ export const apiPatch = <T = any>(p: string, b?: any, o: ApiOptions = {}) =>
   api<T>(p, { ...o, method: "PATCH", body: b });
 export const apiDelete = <T = any>(p: string, o: ApiOptions = {}) =>
   api<T>(p, { ...o, method: "DELETE" });
+
+// ── Stale-while-revalidate data cache ────────────────────────────────────
+// Returns the last-known snapshot of a GET instantly (repeat visits to the
+// heavy detail pages feel near-instant) while the network refreshes the copy
+// in the background for the next load. Pass key=null to bypass caching
+// (realtime-triggered reloads must read fresh). Every write must call
+// invalidateCached(key) so the next load re-reads from the API.
+const CACHE_PREFIX = "data_cache_";
+
+function readCache<T>(key: string): T | undefined {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCache(key: string, val: unknown) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(val));
+  } catch {
+    // localStorage full or unavailable
+  }
+}
+
+export function cachedGet<T = any>(key: string | null, path: string, opts?: ApiOptions): Promise<T> {
+  if (key !== null) {
+    const cached = readCache<T>(key);
+    if (cached !== undefined) {
+      apiGet<T>(path, opts)
+        .then((fresh) => writeCache(key, fresh))
+        .catch(() => {});
+      return Promise.resolve(cached);
+    }
+  }
+  return apiGet<T>(path, opts).then((fresh) => {
+    if (key !== null) writeCache(key, fresh);
+    return fresh;
+  });
+}
+
+export function invalidateCached(key?: string) {
+  try {
+    if (key) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+      return;
+    }
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+}

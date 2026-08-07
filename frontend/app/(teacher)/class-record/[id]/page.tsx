@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useParams } from "next/navigation";
-import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { apiGet, apiPost, apiPatch, cachedGet, invalidateCached } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
@@ -215,9 +215,9 @@ export default function ClassRecordGridPage() {
     setRecords(next);
   }, []);
 
-  const loadDetails = useCallback(async () => {
+  const loadDetails = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}`);
+      const r = await cachedGet(fresh ? null : `sec_${sectionId}`, `/api/sections/${sectionId}`);
       const sec = r.section;
       setSection(sec);
       const cs = sec.semester || "1st Sem";
@@ -232,16 +232,16 @@ export default function ClassRecordGridPage() {
     }
   }, [sectionId]);
 
-  const loadStudents = useCallback(async () => {
+  const loadStudents = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}/students`);
+      const r = await cachedGet(fresh ? null : `stud_${sectionId}`, `/api/sections/${sectionId}/students`);
       setStudents(r.students || []);
     } catch {}
   }, [sectionId]);
 
-  const loadRecords = useCallback(async () => {
+  const loadRecords = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}/class-records`);
+      const r = await cachedGet(fresh ? null : `rec_${sectionId}`, `/api/sections/${sectionId}/class-records`);
       commitRecords(r.records || []);
       setDataVersion((v) => v + 1);
     } catch {}
@@ -253,11 +253,11 @@ export default function ClassRecordGridPage() {
   // weights / 100% attendance, same as Performance does).
   const loadGradingInputs = useCallback(async () => {
     try {
-      const subj = await apiGet(`/api/subjects`);
+      const subj = await cachedGet("subjects", `/api/subjects`);
       setSubjectConfigs(subj.subjects || []);
     } catch {}
     try {
-      const att = await apiGet(`/api/sections/${sectionId}/attendance`);
+      const att = await cachedGet(`att_${sectionId}`, `/api/sections/${sectionId}/attendance`);
       setAttendance(att.attendance || []);
     } catch {}
   }, [sectionId]);
@@ -289,7 +289,7 @@ export default function ClassRecordGridPage() {
         .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
           const row = payload.new || payload.old;
           if (String(row?.section_id) !== String(sectionId)) return;
-          loadStudents();
+          loadStudents(true);
         })
         .subscribe();
     } catch {}
@@ -313,7 +313,7 @@ export default function ClassRecordGridPage() {
           const sid = rec?.section_id;
           if (String(sid) !== String(sectionId)) return;
           if (Date.now() - lastLocalSave.current < 2000) return;
-          loadRecords();
+          loadRecords(true);
           showToast("Records have been updated by a Facilitator!");
         })
         .subscribe();
@@ -442,6 +442,7 @@ export default function ClassRecordGridPage() {
     setActivatingQ(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { quarter: viewQuarter });
+      invalidateCached(`sec_${sectionId}`);
       setCurrentQuarter(viewQuarter);
       setDataVersion((v) => v + 1);
       showToast(`Section updated to ${qLabel(viewQuarter)}!`);
@@ -458,6 +459,7 @@ export default function ClassRecordGridPage() {
     setActivatingS(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { semester: viewSemester, quarter: newQuarter });
+      invalidateCached(`sec_${sectionId}`);
       setCurrentSemester(viewSemester);
       setCurrentQuarter(newQuarter);
       setViewQuarter(newQuarter);
@@ -589,6 +591,7 @@ export default function ClassRecordGridPage() {
         scores: p.scores,
       }));
       await apiPost(`/api/sections/${sectionId}/class-records`, payload);
+      invalidateCached(`rec_${sectionId}`);
       lastLocalSave.current = Date.now();
       for (const { sid, field } of entries) flashCell(cellEl(sid, field), "ok");
       undoStack.current.push({

@@ -8,7 +8,7 @@
 // history, live cross-panel updates (Supabase realtime), and Excel export.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, cachedGet, invalidateCached } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
@@ -70,25 +70,25 @@ export default function AttendanceGridPage() {
     setAttendance(next);
   }, []);
 
-  const loadDetails = useCallback(async () => {
+  const loadDetails = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}`);
+      const r = await cachedGet(fresh ? null : `sec_${sectionId}`, `/api/sections/${sectionId}`);
       setSection(r.section);
     } catch {
       showToast("Unauthorized or Section not found", true);
     }
   }, [sectionId]);
 
-  const loadStudents = useCallback(async () => {
+  const loadStudents = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}/students`);
+      const r = await cachedGet(fresh ? null : `stud_${sectionId}`, `/api/sections/${sectionId}/students`);
       setStudents(r.students || []);
     } catch {}
   }, [sectionId]);
 
-  const loadAttendance = useCallback(async () => {
+  const loadAttendance = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}/attendance`);
+      const r = await cachedGet(fresh ? null : `att_${sectionId}`, `/api/sections/${sectionId}/attendance`);
       const rows: Att[] = (r.attendance || []).map((a: any) => ({ student_name: a.student_name, date: a.date, status: a.status }));
       setAtt(rows);
     } catch {}
@@ -108,7 +108,7 @@ export default function AttendanceGridPage() {
         .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
           const row = payload.new || payload.old;
           if (String(row?.section_id) !== String(sectionId)) return;
-          loadStudents();
+          loadStudents(true);
         })
         .subscribe();
     } catch {}
@@ -197,6 +197,7 @@ export default function AttendanceGridPage() {
         quarter: normQ(section?.quarter, section?.school_level === "College", section?.semester || "1st Sem"),
         items,
       });
+      invalidateCached(`att_${sectionId}`);
     } catch {
       apply(original); // revert only this cell, not the whole array
       showToast("Save failed. Check your connection or permissions.", true);

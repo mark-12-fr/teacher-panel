@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
+import { apiDelete, apiGet, apiPost, apiPatch, cachedGet, invalidateCached } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
@@ -65,9 +65,9 @@ export default function SectionDetailPage() {
     }
   }, []);
 
-  const loadDetails = useCallback(async () => {
+  const loadDetails = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}`);
+      const r = await cachedGet(fresh ? null : `sec_${sectionId}`, `/api/sections/${sectionId}`);
       const sec = r.section;
       setSection(sec);
       const cs = sec.semester || "1st Sem";
@@ -82,9 +82,9 @@ export default function SectionDetailPage() {
     }
   }, [sectionId]);
 
-  const loadStudents = useCallback(async () => {
+  const loadStudents = useCallback(async (fresh = false) => {
     try {
-      const r = await apiGet(`/api/sections/${sectionId}/students`);
+      const r = await cachedGet(fresh ? null : `stud_${sectionId}`, `/api/sections/${sectionId}/students`);
       setStudents(r.students || []);
     } catch {}
   }, [sectionId]);
@@ -104,7 +104,7 @@ export default function SectionDetailPage() {
         .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
           const row = payload.new || payload.old;
           if (String(row?.section_id) !== String(sectionId)) return;
-          loadStudents();
+          loadStudents(true);
         })
         .subscribe();
     } catch {}
@@ -126,6 +126,7 @@ export default function SectionDetailPage() {
     setActivatingQ(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { quarter: viewQuarter });
+      invalidateCached(`sec_${sectionId}`);
       setCurrentQuarter(viewQuarter);
       showToast(`Section updated to ${qLabel(viewQuarter)}!`);
     } catch {
@@ -141,6 +142,7 @@ export default function SectionDetailPage() {
     setActivatingS(true);
     try {
       await apiPatch(`/api/sections/${sectionId}`, { semester: viewSemester, quarter: newQuarter });
+      invalidateCached(`sec_${sectionId}`);
       setCurrentSemester(viewSemester);
       setCurrentQuarter(newQuarter);
       setViewQuarter(newQuarter);
@@ -162,7 +164,8 @@ export default function SectionDetailPage() {
     showToast("Student added successfully!");
     try {
       await apiPost(`/api/sections/${sectionId}/students`, { full_name: entry.full_name, id_no: entry.id_no });
-      loadStudents();
+      invalidateCached(`stud_${sectionId}`);
+      loadStudents(true);
     } catch (e: any) {
       setStudents((prev) => prev.filter((s) => s.id !== entry.id));
       showToast(e?.message || "Failed to add student", true);
@@ -178,6 +181,7 @@ export default function SectionDetailPage() {
     showToast("Student updated successfully!");
     try {
       await apiPatch(`/api/students/${editId}`, { full_name: editName.trim(), id_no: editIdNo.trim() });
+      invalidateCached(`stud_${sectionId}`);
     } catch {
       setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: oldName, id_no: oldIdNo } : s));
       showToast("Failed to update student", true);
@@ -190,6 +194,7 @@ export default function SectionDetailPage() {
     showToast("Student removed.");
     try {
       await apiDelete(`/api/students/${id}`);
+      invalidateCached(`stud_${sectionId}`);
     } catch {
       if (removed) setStudents((prev) => [removed, ...prev]);
       showToast("Failed to delete student", true);

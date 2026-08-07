@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
-import { apiGet } from "@/lib/api";
+import { apiGet, cachedGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { setSubjectConfigs, passingFor, finalGrade } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
@@ -65,20 +65,20 @@ export default function PerformanceDetailPage() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 4000);
   }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     try {
-      const sec = (await apiGet(`/api/sections/${sectionId}`)).section;
+      const sec = (await cachedGet(fresh ? null : `sec_${sectionId}`, `/api/sections/${sectionId}`)).section;
       setSection(sec);
       const [stu, rec, subj] = await Promise.all([
-        apiGet(`/api/sections/${sectionId}/students`),
-        apiGet(`/api/sections/${sectionId}/class-records`),
-        apiGet(`/api/subjects`),
+        cachedGet(fresh ? null : `stud_${sectionId}`, `/api/sections/${sectionId}/students`),
+        cachedGet(fresh ? null : `rec_${sectionId}`, `/api/sections/${sectionId}/class-records`),
+        cachedGet(fresh ? null : "subjects", `/api/subjects`),
       ]);
       setSubjectConfigs(subj.subjects || []); // weights/passing before any grade calc
       setStudents(stu.students || []);
       setRecords(rec.records || []);
       try {
-        const att = await apiGet(`/api/sections/${sectionId}/attendance`);
+        const att = await cachedGet(fresh ? null : `att_${sectionId}`, `/api/sections/${sectionId}/attendance`);
         setAttendance(att.attendance || []);
       } catch {}
       setReady(true);
@@ -101,11 +101,11 @@ export default function PerformanceDetailPage() {
         .channel("teacher-perf-" + sectionId)
         .on("postgres_changes", { event: "*", schema: "public", table: "students" }, (payload: any) => {
           const row = payload.new || payload.old;
-          if (String(row?.section_id) === String(sectionId)) load();
+          if (String(row?.section_id) === String(sectionId)) load(true);
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "class_records" }, (payload: any) => {
           const row = payload.new || payload.old;
-          if (String(row?.section_id) === String(sectionId)) load();
+          if (String(row?.section_id) === String(sectionId)) load(true);
         })
         .subscribe();
     } catch {}
