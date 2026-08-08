@@ -149,8 +149,8 @@ Open `http://localhost:3000` — sign in with your Supabase Auth credentials.
 | Property | URL |
 |----------|-----|
 | Frontend | [https://www.acadtrack.asia](https://www.acadtrack.asia) |
-| API Docs | [https://teacher-panel-hej2.onrender.com/docs](https://teacher-panel-hej2.onrender.com/docs) |
-| Health | [https://teacher-panel-hej2.onrender.com/api/ping](https://teacher-panel-hej2.onrender.com/api/ping) |
+| API Docs | [https://teacher-panel-api-production-1085.up.railway.app/docs](https://teacher-panel-api-production-1085.up.railway.app/docs) |
+| Health | [https://teacher-panel-api-production-1085.up.railway.app/api/ping](https://teacher-panel-api-production-1085.up.railway.app/api/ping) |
 
 ---
 

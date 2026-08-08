@@ -1,8 +1,9 @@
 name: Keep backend warm
 
-# The AI assistant runs on a free Render service that "sleeps" after ~15 minutes
-# of inactivity, which causes a slow 30-60s cold start on the next request.
-# This scheduled ping keeps the service awake so the AI responds quickly.
+# The AI assistant runs on a Railway service. Railway only bills for actual
+# usage, but the free $5 trial credit gets drained faster the busier the
+# service is; this keeps the traffic steady rather than bursty. Also keeps the
+# service from ever being scaled down between uses.
 #
 # NOTE: GitHub's scheduled runs can be delayed by several minutes. For the most
 # reliable keep-alive, ALSO add a free monitor at https://uptimerobot.com that
@@ -10,7 +11,7 @@ name: Keep backend warm
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # every 5 minutes (Render sleeps at ~15 min idle)
+    - cron: '*/5 * * * *'   # every 5 minutes
   workflow_dispatch: {}        # also lets you run it manually from the Actions tab
 
 permissions:
@@ -26,7 +27,7 @@ jobs:
     steps:
       - name: Wake the backend (/api/ping)
         run: |
-          URL="https://teacher-panel-hej2.onrender.com/api/ping"
+          URL="https://teacher-panel-api-production-1085.up.railway.app/api/ping"
           for i in 1 2 3; do
             if curl -fsS --max-time 90 "$URL"; then
               echo ""
