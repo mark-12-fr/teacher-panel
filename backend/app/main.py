@@ -13,9 +13,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
+from sqlalchemy import text as sa_text
 
 from .cache import close_redis, init_redis
 from .config import settings
+from .database import engine
 from .ratelimit import limiter
 from .routers import ai, dashboard, facilitators, grading, push, records, sections
 
@@ -99,3 +101,25 @@ async def ping():
     # Exempt from rate limiting: the health check and uptime monitors poll this
     # constantly; a 429 here would make the service look Down.
     return {"ok": True}
+
+
+@app.api_route("/api/health/db", methods=["GET"])
+@limiter.exempt
+async def health_db():
+    """Database connectivity probe — the deploy docs and this dev workflow use
+    it to tell apart "app down" from "database unreachable". Runs a SELECT 1
+    through the real async engine. Never returns the connection string."""
+    if engine is None:
+        return JSONResponse(
+            {"db": False, "reason": "DATABASE_URL is not configured."},
+            status_code=503,
+        )
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(sa_text("SELECT 1"))
+        return {"db": True}
+    except Exception as e:
+        return JSONResponse(
+            {"db": False, "reason": type(e).__name__, "detail": str(e)[:300]},
+            status_code=503,
+        )
