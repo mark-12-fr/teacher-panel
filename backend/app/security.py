@@ -27,6 +27,13 @@ from .models import Profile
 
 _bearer = HTTPBearer(auto_error=False)
 
+# Small TTL cache for the per-request profile lookup — removes one DB round
+# trip (a fresh connection + dialect init queries, ~1.5s through the pooler)
+# from every request. Profile rows are only written by /api/me PATCH and the
+# dashboard reset; 30s staleness there is acceptable.
+_PROFILE_TTL = 30.0
+_profile_cache: dict[str, tuple[Optional[Profile], float]] = {}
+
 _JWKS_CLIENT: PyJWKClient | None = None
 
 
@@ -102,7 +109,12 @@ async def get_current_teacher(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.")
 
-    profile = (
-        await db.execute(select(Profile).where(Profile.id == uid))
-    ).scalar_one_or_none()
-    return CurrentTeacher(user_id=str(uid), email=payload.get("email"), profile=profile)
+    profile = _profile_cache.get(str(uid))
+    if profile is not None and time.monotonic() - profile[1] < _PROFILE_TTL:
+        cached = profile[0]
+    else:
+        cached = (
+            await db.execute(select(Profile).where(Profile.id == uid))
+        ).scalar_one_or_none()
+        _profile_cache[str(uid)] = (cached, time.monotonic())
+    return CurrentTeacher(user_id=str(uid), email=payload.get("email"), profile=cached)

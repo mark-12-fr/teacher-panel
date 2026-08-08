@@ -8,10 +8,11 @@ Supabase connection pooler (Supavisor / PgBouncer in transaction mode):
   * `statement_cache_size=0` disables asyncpg's own prepared-statement cache
   * a per-statement unique name avoids "prepared statement already exists"
     errors when the pooler hands the connection to a different backend
-  * `NullPool` lets Supavisor own the pooling
-
-These settings are also harmless on a direct (non-pooled) connection, so the
-same config works whichever connection string the operator supplies.
+  * a real (QueuePool) pool reuses warm connections — with NullPool every
+    request paid a full new-connection setup (TLS + pooler session + SQLAlchemy
+    dialect init queries) against the pooler, ~2.5s per request
+  * `pool_recycle` stays under the pooler's idle timeout so we never check
+    out a session the pooler already dropped
 """
 from uuid import uuid4
 
@@ -21,7 +22,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 from .config import settings
 
@@ -37,8 +37,10 @@ def _make_engine():
         return None
     return create_async_engine(
         settings.DATABASE_URL,
-        poolclass=NullPool,
-        pool_pre_ping=True,
+        pool_size=4,
+        max_overflow=6,
+        pool_timeout=30,
+        pool_recycle=60,
         connect_args={
             "statement_cache_size": 0,
             "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",

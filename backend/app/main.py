@@ -31,6 +31,12 @@ app = FastAPI(
 @app.on_event("startup")
 async def _startup():
     await init_redis(settings.REDIS_URL)
+    if engine is not None:
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(sa_text("SELECT 1"))
+        except Exception:
+            pass
 
 
 @app.on_event("shutdown")
