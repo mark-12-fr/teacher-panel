@@ -543,6 +543,7 @@ export default function DashboardPage() {
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
     const entry = { id: tempId(), subject: sched.subject.trim(), time: `${hour12}:${m} ${ampm}`, details: sched.details.trim() };
+    schedCache.abortInFlight();
     setSchedules((prev) => [entry, ...prev]);
     setSched({ subject: "", time: "", details: "" });
     setSchedModal(false);
@@ -556,6 +557,7 @@ export default function DashboardPage() {
   }
   async function deleteSchedule(id: string) {
     const removed = schedules.find((x) => x.id === id);
+    schedCache.abortInFlight();
     setSchedules((prev) => prev.filter((x) => x.id !== id));
     try {
       await apiDelete(`/api/schedules/${id}`);
@@ -569,6 +571,7 @@ export default function DashboardPage() {
     if (!notice.text.trim() || !notice.date) return showToast("Please fill in the notice and date.", true);
     const colors = ["blue", "orange", "green"];
     const entry = { id: tempId(), text: notice.text.trim(), date: notice.date, time: notice.time || null, color: colors[Math.floor(Math.random() * colors.length)] };
+    noticeCache.abortInFlight();
     setNotices((prev) => [entry, ...prev]);
     setNotice({ text: "", date: "", time: "" });
     setNoticeModal(false);
@@ -582,6 +585,7 @@ export default function DashboardPage() {
   }
   async function deleteNotice(id: string) {
     const removed = notices.find((x) => x.id === id);
+    noticeCache.abortInFlight();
     setNotices((prev) => prev.filter((x) => x.id !== id));
     try {
       await apiDelete(`/api/notices/${id}`);
@@ -595,6 +599,7 @@ export default function DashboardPage() {
     const t = noteInput.trim();
     if (!t) return;
     const entry = { id: tempId(), content: t };
+    noteCache.abortInFlight();
     setNotes((prev) => [entry, ...prev]);
     setNoteInput("");
     try {
@@ -607,6 +612,7 @@ export default function DashboardPage() {
   }
   async function deleteNote(id: string) {
     const removed = notes.find((x) => x.id === id);
+    noteCache.abortInFlight();
     setNotes((prev) => prev.filter((x) => x.id !== id));
     try {
       await apiDelete(`/api/notes/${id}`);

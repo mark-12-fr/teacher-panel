@@ -162,6 +162,9 @@ const QUARTER_OPTS =
     }
     const payload = { title: title.trim(), subject, room: room.trim(), semester, quarter, school_year, school_level };
     const prevSections = sections;
+    // Kill any in-flight refresh (mount/TTL/realtime) so it can't roll this
+    // list back to a pre-mutation snapshot when it lands mid-save.
+    sectionCache.abortInFlight();
     setModal(false);
     setSearch("");
     if (editingId) {
@@ -195,6 +198,7 @@ const QUARTER_OPTS =
   async function del(id: string) {
     if (!window.confirm("Delete this section and ALL of its data? This permanently removes its students, class records, and attendance too — this cannot be undone.")) return;
     const deleted = sections.find((s) => s.id === id);
+    sectionCache.abortInFlight();
     setSections((prev) => prev.filter((s) => s.id !== id));
     showToast("Section and all its data deleted.");
     setSearch("");

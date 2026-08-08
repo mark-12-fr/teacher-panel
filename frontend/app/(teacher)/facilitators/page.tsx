@@ -121,6 +121,7 @@ export default function FacilitatorsPage() {
     }
     setSaving(true);
     try {
+      faciCache.abortInFlight();
       if (editingId) {
         const payload: any = { full_name: form.name.trim(), section: form.section, subject };
         if (form.password.trim()) payload.password = form.password.trim();
@@ -150,6 +151,7 @@ export default function FacilitatorsPage() {
     const id = deleteTarget.id;
     setDeleteTarget(null);
     try {
+      faciCache.abortInFlight();
       await apiDelete(`/api/facilitators/${id}`);
       faciCache.refresh();
       showToast("Facilitator access removed.");

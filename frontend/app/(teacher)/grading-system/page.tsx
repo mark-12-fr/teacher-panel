@@ -141,6 +141,7 @@ export default function GradingSystemPage() {
       passing_grade: form.passing,
     };
     try {
+      subjCache.abortInFlight();
       if (editingId) await apiPatch(`/api/subjects/${editingId}`, payload);
       else await apiPost("/api/subjects", payload);
       setModal(false);
@@ -158,6 +159,7 @@ export default function GradingSystemPage() {
     const id = deleteTarget.id;
     setDeleteTarget(null);
     try {
+      subjCache.abortInFlight();
       await apiDelete(`/api/subjects/${id}`);
       subjCache.refresh();
       showToast("Subject deleted.");

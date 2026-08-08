@@ -74,6 +74,18 @@ export function useCachedData<T>(
     }
   };
 
+  /**
+   * Discard any refresh that started before a mutation. Without this, a
+   * slow in-flight GET (mount refresh, realtime-triggered refresh) can
+   * resolve AFTER the mutation's optimistic update with a pre-mutation
+   * snapshot and briefly roll the UI back (new item "disappears" then
+   * returns when the mutation's own refresh lands). Call at the very
+   * start of a save/delete, before touching local state.
+   */
+  const abortInFlight = () => {
+    fetchIdRef.current++;
+  };
+
   useEffect(() => {
     mountedRef.current = true;
     // If no cached data, must fetch (loading stays true)
@@ -94,5 +106,5 @@ export function useCachedData<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, refresh, abortInFlight };
 }
