@@ -10,6 +10,7 @@ ECC P-256, matching this project's tokens) and resolve the authenticated teacher
 bcrypt helpers are used when the teacher creates/updates facilitator accounts
 (whose passwords are bcrypt-hashed, compatible with the old Flask backend).
 """
+import time
 from typing import Optional
 from uuid import UUID
 
