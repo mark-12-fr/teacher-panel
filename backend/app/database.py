@@ -6,6 +6,10 @@ data migration is needed. The engine is configured to work through the
 Supabase connection pooler (Supavisor / PgBouncer in transaction mode):
 
   * `statement_cache_size=0` disables asyncpg's own prepared-statement cache
+  * `prepared_statement_cache_size=0` disables the SQLAlchemy dialect's own
+    per-connection prepared-statement cache — without this, a pooled
+    connection whose backend Supavisor recycled still re-executes a cached
+    prepared statement and dies with InvalidSQLStatementNameError (500s)
   * a per-statement unique name avoids "prepared statement already exists"
     errors when the pooler hands the connection to a different backend
   * a real (QueuePool) pool reuses warm connections — with NullPool every
@@ -43,6 +47,7 @@ def _make_engine():
         pool_recycle=60,
         connect_args={
             "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
             "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
         },
     )
