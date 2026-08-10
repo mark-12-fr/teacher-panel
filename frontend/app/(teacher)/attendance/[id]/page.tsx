@@ -1,7 +1,7 @@
 ﻿"use client";
 
 // Per-section attendance grid (ported from attendance(2).html). A month-at-a-
-// time spreadsheet: click a cell to cycle P â†’ A â†’ L â†’ (clear), or type P/A/L.
+// time spreadsheet: click a cell to cycle P → A → L → (clear), or type P/A/L.
 // Every edit persists the whole day through POST /api/sections/{id}/attendance
 // (which replaces that date's rows), so the end state matches the legacy
 // per-cell upsert. Includes today's summary, month navigation, per-student
@@ -48,7 +48,7 @@ export default function AttendanceGridPage() {
   const [loading, setLoading] = useState(true);
   const [attendance, setAttendance] = useState<Att[]>([]);
   const attRef = useRef<Att[]>([]);
-  // Dates with a save in flight â€” our own realtime echoes for these are ignored
+  // Dates with a save in flight — our own realtime echoes for these are ignored
   // so the whole-day rewrite doesn't flicker the optimistic UI.
   const savingDates = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -150,7 +150,7 @@ export default function AttendanceGridPage() {
   const isCurrentMonth = month === now.getMonth() && year === now.getFullYear();
   const todayDay = now.getDate();
 
-  // (student_name|date) â†’ status, for O(1) cell lookup.
+  // (student_name|date) → status, for O(1) cell lookup.
   const attMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of attendance) m.set(`${a.student_name}__${a.date}`, a.status);
@@ -207,7 +207,7 @@ export default function AttendanceGridPage() {
     }
   }
 
-  // Click cycles P â†’ A â†’ L â†’ (clear) â†’ P.
+  // Click cycles P → A → L → (clear) → P.
   function onCellClick(name: string, date: string) {
     const cur = attMap.get(`${name}__${date}`);
     const nextStatus = cur === "Present" ? "Absent" : cur === "Absent" ? "Late" : cur === "Late" ? null : "Present";
@@ -261,7 +261,7 @@ export default function AttendanceGridPage() {
       const sectionName = section?.title || "Section";
       const subjectName = section?.subject || "";
       const rows: any[][] = [];
-      rows.push([`Attendance Report â€” ${sectionName}${subjectName ? " â€” " + subjectName : ""}`]);
+      rows.push([`Attendance Report — ${sectionName}${subjectName ? " — " + subjectName : ""}`]);
       rows.push([`Month: ${monthLabel}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
 
@@ -440,7 +440,7 @@ export default function AttendanceGridPage() {
           <div className="history-panel-header">
             <div>
               <h3>{history.name}</h3>
-              <p>{(section?.title || "Section") + (section?.subject ? " Â· " + section.subject : "")}</p>
+              <p>{(section?.title || "Section") + (section?.subject ? " · " + section.subject : "")}</p>
             </div>
             <button className="history-close-btn" onClick={() => setHistory({ open: false, name: "" })}>
               <i className="fa-solid fa-times" />
@@ -468,9 +468,9 @@ export default function AttendanceGridPage() {
                     {historyData.rows.map((m, idx) => (
                       <tr key={idx}>
                         <td>{m.label}</td>
-                        <td className={m.p ? "hist-p" : ""}>{m.p || "â€”"}</td>
-                        <td className={m.a ? "hist-a" : ""}>{m.a || "â€”"}</td>
-                        <td className={m.l ? "hist-l" : ""}>{m.l || "â€”"}</td>
+                        <td className={m.p ? "hist-p" : ""}>{m.p || "—"}</td>
+                        <td className={m.a ? "hist-a" : ""}>{m.a || "—"}</td>
+                        <td className={m.l ? "hist-l" : ""}>{m.l || "—"}</td>
                       </tr>
                     ))}
                   </tbody>

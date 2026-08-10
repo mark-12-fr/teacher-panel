@@ -297,7 +297,7 @@ export default function SectionDetailPage() {
                   <tr key={s.id}>
                     <td style={{ textAlign: "center", fontWeight: 700, color: "var(--text-sub)", fontSize: "0.85rem" }}>{i + 1}</td>
                     <td>{s.full_name}</td>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{s.id_no || "â€”"}</td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{s.id_no || "—"}</td>
                     <td>
                       <div className="action-btns">
                         <button className="icon-btn icon-btn-edit" data-tip="Edit" onClick={() => { setEditId(s.id); setEditName(s.full_name); setEditIdNo(s.id_no || ""); }}>
@@ -336,7 +336,7 @@ export default function SectionDetailPage() {
       {/* Edit modal */}
       <div className="modal" style={{ display: editId ? "flex" : "none" }} onClick={(e) => e.target === e.currentTarget && setEditId(null)}>
         <div className="modal-content">
-          <span style={{ position: "absolute", right: 15, top: 10, cursor: "pointer", fontSize: 24, color: "var(--text-muted)" }} onClick={() => setEditId(null)}>Ã—</span>
+          <span style={{ position: "absolute", right: 15, top: 10, cursor: "pointer", fontSize: 24, color: "var(--text-muted)" }} onClick={() => setEditId(null)}>×</span>
           <h3>Edit Student Info</h3>
           <input type="text" placeholder="Full Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
           <input type="text" placeholder="ID Number" value={editIdNo} onChange={(e) => setEditIdNo(e.target.value)} style={{ marginTop: 8 }} />

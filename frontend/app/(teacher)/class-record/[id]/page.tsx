@@ -1,13 +1,13 @@
 ﻿"use client";
 
-// Per-section class record â€” the grade spreadsheet (ported from
+// Per-section class record — the grade spreadsheet (ported from
 // class-record(2).html). Columns: 25 Modules + 10 Activities (Written Work),
 // AT, PT 1, PT 2, QE. Each cell is a contentEditable that saves on blur to
 // POST /api/sections/{id}/class-records (upsert by record id). A Quarter /
 // Semester bar mirrors the Section detail page: viewing a non-active quarter
 // shows a read-only history; only the active quarter is editable. Includes
 // per-student search, live facilitator updates (Supabase realtime), and Excel
-// export. There is no computed-grade column here â€” grades live on Performance.
+// export. There is no computed-grade column here — grades live on Performance.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useParams } from "next/navigation";
@@ -80,7 +80,7 @@ const COLLEGE_TERMS: { db: string; label: string }[] = [
 ];
 const isCollegeTerm = (v: string) => v === "Prelim" || v === "Midterm" || v === "Final";
 // Unlike normQ (used for the single active grid view), this does NOT default a
-// missing quarter to "1" â€” needed to tell "genuinely untagged legacy record"
+// missing quarter to "1" — needed to tell "genuinely untagged legacy record"
 // apart from "a real Q1 record" when building the multi-quarter breakdown.
 const exactQ = (q: any): string | null => {
   if (q === null || q === undefined || q === "") return null;
@@ -96,7 +96,7 @@ const newId = () =>
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
 
-// â”€â”€ Grid helpers (spreadsheet keyboard nav + paste). Pure DOM, client-only. â”€â”€
+// ── Grid helpers (spreadsheet keyboard nav + paste). Pure DOM, client-only. ──
 const fieldLabel = (field: string): string => {
   if (field.startsWith("module_")) return "M" + field.slice(7);
   if (field.startsWith("activity_")) return "A" + field.slice(9);
@@ -124,7 +124,7 @@ const focusEl = (el: HTMLElement | null) => {
     sel?.addRange(r);
   } catch {}
 };
-// Caret at the very start / end of a single-line cell â†’ arrow keys jump cells
+// Caret at the very start / end of a single-line cell → arrow keys jump cells
 // instead of moving the caret within the text.
 const caretAtBoundary = (el: HTMLElement, atEnd: boolean): boolean => {
   const sel = window.getSelection();
@@ -166,7 +166,7 @@ export default function ClassRecordGridPage() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
 
-  // Bumps only on (re)load and quarter/semester view change â†’ forces the
+  // Bumps only on (re)load and quarter/semester view change → forces the
   // uncontrolled cells to remount with fresh values. Per-cell saves never bump
   // it, so they can't clobber an in-progress edit elsewhere in the grid.
   const [dataVersion, setDataVersion] = useState(0);
@@ -248,7 +248,7 @@ export default function ClassRecordGridPage() {
   }, [sectionId, commitRecords]);
 
   // Grade weights + attendance, so the per-student breakdown modal computes the
-  // SAME final grade the Performance page would show â€” neither is essential to
+  // SAME final grade the Performance page would show — neither is essential to
   // the spreadsheet itself, so both fail silently (falls back to default
   // weights / 100% attendance, same as Performance does).
   const loadGradingInputs = useCallback(async () => {
@@ -325,7 +325,7 @@ export default function ClassRecordGridPage() {
     };
   }, [sectionId, loadRecords]);
 
-  // Ctrl/Cmd+Z anywhere on the page â†’ undo the last score change. A focused
+  // Ctrl/Cmd+Z anywhere on the page → undo the last score change. A focused
   // grid cell handles it first (and preventDefaults); this catches the case
   // where focus has left the grid. Never hijacks undo inside a text input.
   useEffect(() => {
@@ -362,7 +362,7 @@ export default function ClassRecordGridPage() {
     [records, viewQuarter, viewSemester, college]
   );
 
-  // Attendance tallies keyed by student name (mirrors the Performance page â€”
+  // Attendance tallies keyed by student name (mirrors the Performance page —
   // teacher-entered students have no id_no to join on).
   const attByName = useMemo(() => {
     const map: Record<string, { present: number; late: number; excused: number; total: number }> = {};
@@ -387,10 +387,10 @@ export default function ClassRecordGridPage() {
 
   // One card per quarter for the grade-breakdown modal: each quarter's OWN
   // record only (never merged across quarters, unlike the Performance page's
-  // single "current" snapshot) so a genuine Q1â†’Q2â†’Q3â†’Q4 progression shows.
+  // single "current" snapshot) so a genuine Q1→Q2→Q3→Q4 progression shows.
   // A pre-quarter-tagging legacy record (quarter is null) has no quarter of its
-  // own, so it's shown under Q1 â€” the one existing fallback recForView() also
-  // uses â€” rather than appearing (identically) under all four cards.
+  // own, so it's shown under Q1 — the one existing fallback recForView() also
+  // uses — rather than appearing (identically) under all four cards.
   function quarterBreakdown(sid: string, fullName: string): GradeQuarterCard[] {
     const subjectName = section?.subject || "";
     const att100 = attendanceScoreFor(fullName);
@@ -408,7 +408,7 @@ export default function ClassRecordGridPage() {
       return { ...dq, hasData: true as const, grade, comp, delta: null };
     });
     // Quarter-over-quarter change, only between consecutive quarters that both
-    // have real data (so a gap â€” e.g. Q2 skipped â€” doesn't produce a delta).
+    // have real data (so a gap — e.g. Q2 skipped — doesn't produce a delta).
     let prevGrade: number | null = null;
     for (const c of cards) {
       if (!c.hasData) continue;
@@ -472,14 +472,14 @@ export default function ClassRecordGridPage() {
     }
   }
 
-  // â”€â”€ Manual save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Edits are STAGED locally (optimistic â€” the row's GRADE and the live preview
+  // ── Manual save ───────────────────────────────────────────────────────────
+  // Edits are STAGED locally (optimistic — the row's GRADE and the live preview
   // update at once) and only written to the server when "Save Scores" is
   // pressed. This keeps score entry smooth instead of firing a network
   // round-trip every time you leave a cell.
 
   // Record an edited cell in the pending map (or drop it when it's back to its
-  // saved value). `savedVal` â€” the last SAVED value â€” is only used the FIRST
+  // saved value). `savedVal` — the last SAVED value — is only used the FIRST
   // time a cell becomes dirty, so undo/Save always restore the right baseline
   // even after several edits to the same cell before saving.
   function markPending(sid: string, field: string, value: string, savedVal: string) {
@@ -508,7 +508,7 @@ export default function ClassRecordGridPage() {
     else arr.push({ id, student_id: sid, section_id: sectionId, quarter: quarterToSave, [field]: val });
   }
 
-  // Stage a single edited cell â€” fired on blur / spreadsheet navigation.
+  // Stage a single edited cell — fired on blur / spreadsheet navigation.
   function stageScore(sid: string, field: string, cell: HTMLTableCellElement) {
     const newValue = cell.innerText.trim();
     const oldVal = cell.dataset.oldVal ?? "";
@@ -528,7 +528,7 @@ export default function ClassRecordGridPage() {
     markPending(sid, field, newValue, savedVal);
   }
 
-  // Stage many cells at once (Excel paste, or an undo that restores several) â€”
+  // Stage many cells at once (Excel paste, or an undo that restores several) —
   // same optimistic local update, batched; the write still waits for Save.
   function stageMany(entries: { sid: string; field: string; value: string }[]) {
     if (quarterLocked || entries.length === 0) return;
@@ -596,7 +596,7 @@ export default function ClassRecordGridPage() {
       for (const { sid, field } of entries) flashCell(cellEl(sid, field), "ok");
       undoStack.current.push({
         items: undoItems,
-        label: entries.length > 1 ? `${entries.length} scores` : `${students.find((x) => x.id === entries[0].sid)?.full_name || "score"} Â· ${fieldLabel(entries[0].field)}`,
+        label: entries.length > 1 ? `${entries.length} scores` : `${students.find((x) => x.id === entries[0].sid)?.full_name || "score"} · ${fieldLabel(entries[0].field)}`,
       });
       pendingRef.current.clear();
       setDirtyCount(0);
@@ -614,7 +614,7 @@ export default function ClassRecordGridPage() {
     const set = undoStack.current.pop();
     if (!set) return showToast("Nothing to undo.");
     stageMany(set.items);
-    showToast(`Undid: ${set.label} â€” press Save to keep it.`);
+    showToast(`Undid: ${set.label} — press Save to keep it.`);
   }
 
   // Spreadsheet-style keyboard navigation between editable cells.
@@ -629,7 +629,7 @@ export default function ClassRecordGridPage() {
     if (e.key === "Enter" || e.key === "ArrowDown") {
       e.preventDefault();
       const next = siblingRowCell(cur, field, 1);
-      cur.blur(); // fires onBlur â†’ stageScore
+      cur.blur(); // fires onBlur → stageScore
       focusEl(next);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -653,8 +653,8 @@ export default function ClassRecordGridPage() {
     }
   }
 
-  // Paste a block copied from Excel/Sheets: rows split on newlines (â†’ students),
-  // columns on tabs (â†’ score fields), starting at the pasted cell. Non-numeric
+  // Paste a block copied from Excel/Sheets: rows split on newlines (→ students),
+  // columns on tabs (→ score fields), starting at the pasted cell. Non-numeric
   // cells are skipped so a stray header/name doesn't land in a score box.
   function handleGridPaste(e: ReactClipboardEvent<HTMLTableCellElement>, field: string) {
     if (quarterLocked) return;
@@ -687,7 +687,7 @@ export default function ClassRecordGridPage() {
     }
     if (entries.length) {
       stageMany(entries);
-      showToast(`Pasted ${entries.length} score${entries.length === 1 ? "" : "s"} â€” press Save to keep ${entries.length === 1 ? "it" : "them"}.`);
+      showToast(`Pasted ${entries.length} score${entries.length === 1 ? "" : "s"} — press Save to keep ${entries.length === 1 ? "it" : "them"}.`);
     }
   }
 
@@ -700,7 +700,7 @@ export default function ClassRecordGridPage() {
 
   // Raw point total for the viewed quarter: every entered score added up
   // (all 25 modules + 10 activities + AT + PT 1 + PT 2 + QE). null when the
-  // student has no scores yet, so the cell shows "â€”" like the GRADE column.
+  // student has no scores yet, so the cell shows "—" like the GRADE column.
   function totalScoreFor(sid: string): number | null {
     const rec = recForView(sid);
     if (!rec) return null;
@@ -723,7 +723,7 @@ export default function ClassRecordGridPage() {
       const sectionName = section?.title || "Section";
       const subjectName = section?.subject || "";
       const rows: any[][] = [];
-      rows.push([`Class Record â€” ${sectionName}${subjectName ? " â€” " + subjectName : ""}`]);
+      rows.push([`Class Record — ${sectionName}${subjectName ? " — " + subjectName : ""}`]);
       rows.push([`${qLabel(currentQuarter)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
       const headers: any[] = ["Student Name"];
@@ -881,17 +881,17 @@ export default function ClassRecordGridPage() {
               title={dirtyCount > 0 ? "Save your entered scores" : "No new scores to save"}
             >
               <i className="fa-solid fa-floppy-disk" />
-              {saving ? "Savingâ€¦" : dirtyCount > 0 ? `Save ${dirtyCount} score${dirtyCount === 1 ? "" : "s"}` : "All saved"}
+              {saving ? "Saving…" : dirtyCount > 0 ? `Save ${dirtyCount} score${dirtyCount === 1 ? "" : "s"}` : "All saved"}
             </button>
             {dirtyCount > 0 && (
-              <span className="unsaved-note">Unsaved â€” press Save (scores are not saved automatically).</span>
+              <span className="unsaved-note">Unsaved — press Save (scores are not saved automatically).</span>
             )}
             <span
               className="grid-hint"
               style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginLeft: "auto" }}
             >
-              <span><b>Enter</b> / <b>â†‘ â†“</b> students</span>
-              <span><b>Tab</b> / <b>â† â†’</b> columns</span>
+              <span><b>Enter</b> / <b>↑ ↓</b> students</span>
+              <span><b>Tab</b> / <b>← →</b> columns</span>
               <span>Paste from <b>Excel</b></span>
               <span><b>Ctrl</b>+<b>Z</b> undo</span>
             </span>
@@ -943,7 +943,7 @@ export default function ClassRecordGridPage() {
                         <button
                           type="button"
                           className="student-name-btn"
-                          title={`${s.full_name} â€” tap to view grade breakdown`}
+                          title={`${s.full_name} — tap to view grade breakdown`}
                           onClick={() => setDetailStudent(s)}
                         >
                           <strong>{s.full_name}</strong>
@@ -960,7 +960,7 @@ export default function ClassRecordGridPage() {
                             title={t === null ? "No scores yet" : "Sum of all entered scores"}
                             style={{ fontWeight: 700, textAlign: "center", color: t === null ? "var(--text-muted)" : "var(--text-dark)" }}
                           >
-                            {t === null ? "â€”" : t}
+                            {t === null ? "—" : t}
                           </td>
                         );
                       })()}
@@ -978,7 +978,7 @@ export default function ClassRecordGridPage() {
                               background: g === null ? undefined : pass ? "rgba(16,185,129,0.10)" : "rgba(239,68,68,0.10)",
                             }}
                           >
-                            {g === null ? "â€”" : g}
+                            {g === null ? "—" : g}
                           </td>
                         );
                       })()}
@@ -1034,7 +1034,7 @@ function StudentGradeModal({
             <h3>{student.full_name}</h3>
             <p>
               {section?.title || "Section"}
-              {section?.subject ? ` â€¢ ${section.subject}` : ""}
+              {section?.subject ? ` • ${section.subject}` : ""}
             </p>
           </div>
           <button className="grade-modal-close" onClick={onClose} aria-label="Close">
@@ -1052,7 +1052,7 @@ function StudentGradeModal({
                       <span>{c.label}</span>
                       {c.hasData && c.delta !== null && (
                         <span className={`grade-delta ${c.delta >= 0 ? "up" : "down"}`}>
-                          {c.delta >= 0 ? "â–²" : "â–¼"} {Math.abs(c.delta)}
+                          {c.delta >= 0 ? "▲" : "▼"} {Math.abs(c.delta)}
                         </span>
                       )}
                     </div>
