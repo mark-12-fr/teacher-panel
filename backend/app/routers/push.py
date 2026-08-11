@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database import SessionLocal, get_db
-from ..models import ClassRecord, Facilitator, PushSubscription, Section, Student
+from ..models import PushSubscription, Section
 from ..schemas import PushSubscribeIn
 from ..security import CurrentTeacher, get_current_teacher
 
@@ -242,13 +242,7 @@ async def webhook(
                 section = res.scalars().first()
             if not section:
                 return {"skipped": "unknown section"}
-            targets = {"teacher": str(section.teacher_id)} if section.teacher_id else {}
-            facis = await db.execute(
-                select(Facilitator).where(Facilitator.section == record.get("section"))
-            )
-            for f in facis.scalars().all():
-                if f.account_id:
-                    targets["faci:" + f.account_id] = ("faci", f.account_id)
+            targets = {"teacher": ("teacher", str(section.teacher_id))} if section.teacher_id else {}
             faci_name = None
             if record.get("facilitator_id"):
                 f = await db.execute(select(Facilitator).where(Facilitator.id == record["facilitator_id"]))
@@ -275,11 +269,7 @@ async def webhook(
                 section = res.scalars().first()
             if not section:
                 return {"skipped": "unknown section_id"}
-            targets = {"teacher": str(section.teacher_id)} if section.teacher_id else {}
-            facis = await db.execute(select(Facilitator).where(Facilitator.section == section.title))
-            for f in facis.scalars().all():
-                if f.account_id:
-                    targets["faci:" + f.account_id] = ("faci", f.account_id)
+            targets = {"teacher": ("teacher", str(section.teacher_id))} if section.teacher_id else {}
             batch_key = f"cr:{section.id}:{record.get('quarter') or ''}"
             await _collect({
                 "batch_key": batch_key,
