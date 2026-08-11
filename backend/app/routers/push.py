@@ -218,7 +218,9 @@ async def webhook(
     db: AsyncSession = Depends(get_db),
 ):
     if settings.PUSH_WEBHOOK_SECRET:
-        if not x_mjr_secret or x_mjr_secret != settings.PUSH_WEBHOOK_SECRET:
+        secret_ok = bool(x_mjr_secret) and x_mjr_secret == settings.PUSH_WEBHOOK_SECRET
+        if not secret_ok:
+            print(f"[webhook] BAD SECRET received={x_mjr_secret!r} len={len(x_mjr_secret or '')}")
             return {"skipped": "bad secret"}
     try:
         body = await request.json()
@@ -231,6 +233,7 @@ async def webhook(
     etype = body.get("type") or body.get("eventType")
     record = body.get("record") or body.get("new") or {}
     old = body.get("old_record") or body.get("old")
+    print(f"[webhook] {etype} {table} record_keys={list(record.keys()) if isinstance(record, dict) else type(record).__name__}")
     if not table or not record:
         return {"skipped": "no payload"}
 
