@@ -116,6 +116,17 @@ export default function PerformanceDetailPage() {
     };
   }, [sectionId, load]);
 
+  // Polling fallback: if Supabase realtime isn't enabled for this DB these
+  // analytics would never notice facilitator submissions. Refresh every 20s
+  // while the tab is visible — the backend cache is invalidated by the push
+  // webhook, so these reads always return the latest data.
+  useEffect(() => {
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") load(true);
+    }, 20000);
+    return () => clearInterval(poll);
+  }, [load]);
+
   const subject = section?.subject || "";
   const semester = section?.semester || "1st Sem";
   const college = section?.school_level === "College";

@@ -325,6 +325,17 @@ export default function ClassRecordGridPage() {
     };
   }, [sectionId, loadRecords]);
 
+  // Polling fallback: if Supabase realtime isn't enabled for this DB the page
+  // would never notice facilitator submissions. Refresh every 20s while the
+  // tab is visible — the backend cache is invalidated by the push webhook, so
+  // these reads always return the latest scores.
+  useEffect(() => {
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") loadRecords(true);
+    }, 20000);
+    return () => clearInterval(poll);
+  }, [loadRecords]);
+
   // Ctrl/Cmd+Z anywhere on the page → undo the last score change. A focused
   // grid cell handles it first (and preventDefaults); this catches the case
   // where focus has left the grid. Never hijacks undo inside a text input.

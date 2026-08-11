@@ -80,12 +80,23 @@ export const apiDelete = <T = any>(p: string, o: ApiOptions = {}) =>
 // in the background for the next load. Pass key=null to bypass caching
 // (realtime-triggered reloads must read fresh). Every write must call
 // invalidateCached(key) so the next load re-reads from the API.
+// Entries carry a TTL: once expired the cache is skipped entirely, so stale
+// facilitator-submitted data can never linger past ~20s — a reload always
+// shows the latest scores even without realtime.
 const CACHE_PREFIX = "data_cache_";
+const CACHE_TTL_MS = 20000;
 
-function readCache<T>(key: string): T | undefined {
+interface CacheEntry<T> {
+  ts: number;
+  v: T;
+}
+
+function readCache<T>(key: string): CacheEntry<T> | undefined {
   try {
     const raw = localStorage.getItem(CACHE_PREFIX + key);
-    return raw ? (JSON.parse(raw) as T) : undefined;
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && "ts" in parsed && "v" in parsed ? (parsed as CacheEntry<T>) : undefined;
   } catch {
     return undefined;
   }
@@ -93,7 +104,7 @@ function readCache<T>(key: string): T | undefined {
 
 function writeCache(key: string, val: unknown) {
   try {
-    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(val));
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), v: val }));
   } catch {
     // localStorage full or unavailable
   }
@@ -102,11 +113,11 @@ function writeCache(key: string, val: unknown) {
 export function cachedGet<T = any>(key: string | null, path: string, opts?: ApiOptions): Promise<T> {
   if (key !== null) {
     const cached = readCache<T>(key);
-    if (cached !== undefined) {
+    if (cached !== undefined && Date.now() - cached.ts < CACHE_TTL_MS) {
       apiGet<T>(path, opts)
         .then((fresh) => writeCache(key, fresh))
         .catch(() => {});
-      return Promise.resolve(cached);
+      return Promise.resolve(cached.v);
     }
   }
   return apiGet<T>(path, opts).then((fresh) => {

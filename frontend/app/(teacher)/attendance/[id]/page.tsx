@@ -145,6 +145,18 @@ export default function AttendanceGridPage() {
     };
   }, [sectionTitle, sectionId, setAtt]);
 
+  // Polling fallback: if Supabase realtime isn't enabled for this DB the grid
+  // would never notice facilitator submissions. Refresh every 20s while the
+  // tab is visible — the backend cache is invalidated by the push webhook, so
+  // these reads always return the latest data.
+  useEffect(() => {
+    if (!sectionTitle) return;
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") loadAttendance(true);
+    }, 20000);
+    return () => clearInterval(poll);
+  }, [sectionTitle, sectionId, loadAttendance]);
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthLabel = `${MONTHS_UP[month]} ${year}`;
   const isCurrentMonth = month === now.getMonth() && year === now.getFullYear();

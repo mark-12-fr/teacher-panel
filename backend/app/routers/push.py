@@ -251,6 +251,9 @@ async def webhook(
                 section = res.scalars().first()
             if not section:
                 return {"skipped": "unknown section"}
+            if section.teacher_id:
+                from ..cache import cache_invalidate
+                await cache_invalidate(f"tp:{section.teacher_id}:*")
             targets = {"teacher": ("teacher", str(section.teacher_id))} if section.teacher_id else {}
             faci_name = None
             if record.get("facilitator_id"):
@@ -279,6 +282,9 @@ async def webhook(
                 section = res.scalars().first()
             if not section:
                 return {"skipped": "unknown section_id"}
+            if section.teacher_id:
+                from ..cache import cache_invalidate
+                await cache_invalidate(f"tp:{section.teacher_id}:*")
             targets = {"teacher": ("teacher", str(section.teacher_id))} if section.teacher_id else {}
             batch_key = f"cr:{section.id}:{record.get('quarter') or ''}"
             await _collect({
