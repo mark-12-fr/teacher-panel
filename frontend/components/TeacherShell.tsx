@@ -4,14 +4,13 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { API_BASE } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase";
 import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
 import { applyTheme, currentTheme, pullTheme } from "@/lib/theme";
 import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
-import NotificationBell from "@/components/NotificationBell";
 import QuickAddFab from "@/components/QuickAddFab";
 import "@/app/teacher-shell.css";
 
@@ -50,6 +49,52 @@ function activeFromPath(path: string): MenuKey {
   if (seg === "about") return "about";
   if (seg === "help") return "help";
   return "dashboard";
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+// Auto-enable push notifications on first load: register the service worker,
+// ask once for permission, subscribe, and store the subscription server-side.
+// Silent — the teacher never has to touch a bell again.
+let pushAttempted = false;
+async function autoEnablePush() {
+  if (pushAttempted) return;
+  pushAttempted = true;
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+
+    let permission = Notification.permission;
+    if (permission === "denied") return;
+    if (permission !== "granted") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") return;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (sub) return; // already subscribed
+
+    const { key } = await apiGet<{ key: string }>("/api/push/vapid-public-key");
+    if (!key) return;
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    });
+    await apiPost("/api/push/subscribe", {
+      endpoint: sub.endpoint,
+      subscription: JSON.parse(JSON.stringify(sub)),
+    });
+  } catch {
+    // Push is best-effort — never block the app on it.
+  }
 }
 
 export default function TeacherShell({
@@ -166,6 +211,7 @@ export default function TeacherShell({
   // ── Server heartbeat + warmup ─────────────────────────────────────────────
   useEffect(() => {
     if (!ready) return;
+    autoEnablePush();
     const warmup = async () => {
       // Warm up Render server + cache initial data
       try { await apiGet("/api/ping") } catch {}
@@ -278,7 +324,6 @@ export default function TeacherShell({
               <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: 5 }}>{title}</h1>
               {subtitle && <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>{subtitle}</p>}
             </div>
-            <NotificationBell />
           </div>
           {action}
         </div>
