@@ -19,7 +19,7 @@ from .cache import close_redis, init_redis
 from .config import settings
 from .database import engine
 from .ratelimit import limiter
-from .routers import ai, dashboard, facilitators, grading, push, records, sections, telegram
+from .routers import ai, dashboard, facilitators, grading, push, records, sections
 
 app = FastAPI(
     title="AcadTrack Teacher API",
@@ -37,20 +37,6 @@ async def _startup():
                 await conn.execute(sa_text("SELECT 1"))
         except Exception:
             pass
-    from .database import SessionLocal
-    from .routers.telegram import ensure_table
-    from .telegram import register_webhook
-    if SessionLocal is not None:
-        try:
-            async with SessionLocal() as db:
-                await ensure_table(db)
-        except Exception:
-            pass
-    try:
-        url = await register_webhook()
-        print(f"[telegram] webhook -> {url}" if url else "[telegram] not configured")
-    except Exception:
-        pass
 
 
 @app.on_event("shutdown")
@@ -103,7 +89,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(ForceCORSMiddleware)
 
-for r in (dashboard, sections, grading, facilitators, records, ai, push, telegram):
+for r in (dashboard, sections, grading, facilitators, records, ai, push):
     app.include_router(r.router)
 
 
