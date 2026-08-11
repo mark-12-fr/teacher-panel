@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy import and_, delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text as sa_text
 
 from ..config import settings
 from ..database import SessionLocal, get_db
@@ -129,6 +130,36 @@ async def _flush_batch(db: AsyncSession, batch_key: str):
         if await _send_one(db, sub, payload):
             ok += 1
     print(f"[push] {payload['title']} — {payload['body']} → {ok}/{len(subs)} sent")
+
+    await _send_telegram(info, title, body)
+
+
+async def _send_telegram(info: dict, title: str, body: str):
+    """Fallback channel: forward the same notification to the teacher's
+    linked Telegram chat (works with every browser closed)."""
+    from ..telegram import esc, is_configured, send_message
+
+    if not is_configured():
+        return
+    teacher_id = None
+    for user_type, user_id in info.get("targets", {}).values():
+        if user_type == "teacher":
+            teacher_id = user_id
+            break
+    if not teacher_id:
+        return
+    try:
+        async with SessionLocal() as db:
+            res = await db.execute(
+                sa_text("SELECT chat_id FROM telegram_links WHERE teacher_id = :tid").bindparams(tid=teacher_id)
+            )
+            row = res.first()
+        if not row:
+            return
+        text = f"<b>{esc(title)}</b>\n{esc(body)}"
+        await send_message(row[0], text)
+    except Exception:
+        return
 
 
 async def _collect(entry: dict):

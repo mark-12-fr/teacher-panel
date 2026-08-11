@@ -13,6 +13,7 @@ import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
 import NotificationBell from "@/components/NotificationBell";
 import QuickAddFab from "@/components/QuickAddFab";
+import TelegramLink from "@/components/TelegramLink";
 import "@/app/teacher-shell.css";
 
 export type MenuKey =
@@ -279,6 +280,7 @@ export default function TeacherShell({
               {subtitle && <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>{subtitle}</p>}
             </div>
             <NotificationBell />
+            <TelegramLink />
           </div>
           {action}
         </div>
