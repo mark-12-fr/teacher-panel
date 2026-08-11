@@ -59,6 +59,7 @@ class Settings:
     VAPID_PUBLIC_KEY: str = ""
     VAPID_PRIVATE_KEY: str = ""
     VAPID_SUBJECT: str = "mailto:admin@acadtrack.app"
+    PUSH_WEBHOOK_SECRET: str = ""
 
     def __init__(self) -> None:
         self.DATABASE_URL = _sanitize_db_url(os.getenv("DATABASE_URL", ""))
@@ -78,6 +79,7 @@ class Settings:
         self.VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
         self.VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
         self.VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "mailto:admin@acadtrack.app")
+        self.PUSH_WEBHOOK_SECRET = os.getenv("PUSH_WEBHOOK_SECRET", "").strip()
 
 
 settings = Settings()
