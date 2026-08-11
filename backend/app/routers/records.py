@@ -1,7 +1,8 @@
 """
 records.py — attendance + class_records for a teacher's section.
-==============================================================
+=================================================================
 """
+import asyncio
 from typing import List, Optional
 from uuid import UUID
 
@@ -20,6 +21,12 @@ from ..utils import orm_list
 
 router = APIRouter(prefix="/api/sections", tags=["records"])
 _ALLOWED = set(CLASS_RECORD_SCORE_FIELDS)
+
+
+def _teacher_name(teacher: CurrentTeacher) -> str:
+    if teacher.profile and teacher.profile.full_name:
+        return teacher.profile.full_name
+    return "The teacher"
 
 
 # ── Attendance ──────────────────────────────────────────────────────────────
@@ -84,6 +91,14 @@ async def save_attendance(
         )
     await db.commit()
     await cache_invalidate(f"tp:{teacher.id}:attendance:{section_id}:*")
+    from ..routers.push import notify_facis_of_section
+    n = len(body.items)
+    asyncio.create_task(notify_facis_of_section(
+        section.title,
+        f"Attendance Updated — {section.title}",
+        f"{_teacher_name(teacher)} updated attendance for {n} student" + ("s" if n != 1 else "") + f" on {body.date}",
+        "/attendance",
+    ))
     return {"message": "Attendance saved", "count": len(body.items)}
 
 
@@ -142,4 +157,12 @@ async def upsert_records(
         written += 1
     await db.commit()
     await cache_invalidate(f"tp:{teacher.id}:records:{section_id}")
+    from ..routers.push import notify_facis_of_section
+    n = len(records)
+    asyncio.create_task(notify_facis_of_section(
+        section.title,
+        f"Class Record Updated — {section.title}",
+        f"{_teacher_name(teacher)} updated scores for {n} student" + ("s" if n != 1 else ""),
+        "/record",
+    ))
     return {"message": "Records saved", "count": written}

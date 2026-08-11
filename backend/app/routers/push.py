@@ -89,6 +89,35 @@ async def _send_one(db: AsyncSession, sub: PushSubscription, payload: dict) -> b
         return False
 
 
+async def notify_facis_of_section(section_title: str, title: str, body: str, url: str):
+    """Teacher → facilitator direction: push every facilitator subscribed to a
+    section when the teacher updates attendance or class records. Runs in a
+    background task so API responses are never slowed by push delivery."""
+    try:
+        async with SessionLocal() as db:
+            facis = (
+                await db.execute(select(Facilitator).where(Facilitator.section == section_title))
+            ).scalars().all()
+            faci_ids = [str(f.id) for f in facis if f.id]
+            if not faci_ids:
+                return
+            subs = (
+                await db.execute(
+                    select(PushSubscription).where(
+                        PushSubscription.user_type == "faci",
+                        PushSubscription.user_id.in_(faci_ids),
+                    )
+                )
+            ).scalars().all()
+            if not subs:
+                return
+            payload = {"title": title, "body": body, "tag": "teacher:" + section_title, "url": url}
+            for sub in subs:
+                await _send_one(db, sub, payload)
+    except Exception:
+        pass
+
+
 async def _flush_batch(db: AsyncSession, batch_key: str):
     info = _pending.pop(batch_key, None)
     if not info:
