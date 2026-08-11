@@ -15,8 +15,24 @@ self.addEventListener("push", (event) => {
     /* non-JSON payload — ignore */
   }
   const title = data.title || "AcadTrack";
+  let body = data.body || "";
+  if (data.submitted_at) {
+    try {
+      const t = new Date(data.submitted_at);
+      const when = t.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      if (body) body += " · " + when;
+    } catch (e) {
+      /* keep body as-is */
+    }
+  }
   const options = {
-    body: data.body || "",
+    body: body,
     icon: "/logo-192.png",
     badge: "/logo-192.png",
     tag: data.tag || "acadtrack",

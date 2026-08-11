@@ -112,15 +112,18 @@ async def _flush_batch(db: AsyncSession, batch_key: str):
         return
 
     if info["table"] == "attendance":
-        title = f"Attendance — {info['section_label']}"
-        body = (info["faci_name"] or "A facilitator") + " marked " + str(info["count"]) + " student" + ("s " if info["count"] != 1 else " ") + "as " + (info["status"] or "updated") + (" on " + info["date"] if info["date"] else "")
+        title = f"Attendance Submitted — {info['section_label']}"
+        body = (info["faci_name"] or "A facilitator") + " marked " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "") + " as " + (info["status"] or "updated")
     else:
-        title = f"Class Record — {info['section_label']}"
-        body = (info["faci_name"] or "A facilitator") + " updated scores for " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "") + (f" — {info['subject']}" if info["subject"] else "")
+        title = f"Class Record Submitted — {info['section_label']}"
+        body = (info["faci_name"] or "A facilitator") + " submitted scores for " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "")
+        if info.get("subject"):
+            body += " · " + info["subject"]
 
     payload = {
         "title": title,
         "body": body,
+        "submitted_at": info.get("submitted_at"),
         "tag": f"{info['table']}:{batch_key}",
         "url": info["url"] or "/",
     }
@@ -146,6 +149,7 @@ async def _collect(entry: dict):
                 "faci_name": entry.get("faci_name"),
                 "status": entry.get("status"),
                 "date": entry.get("date"),
+                "submitted_at": entry.get("submitted_at"),
                 "count": 0,
                 "url": entry.get("url"),
                 "targets": entry["targets"],
@@ -156,6 +160,8 @@ async def _collect(entry: dict):
             info["status"] = info["status"] or entry.get("status")
             info["date"] = info["date"] or entry.get("date")
             info["url"] = info["url"] or entry.get("url")
+            if not info.get("submitted_at") and entry.get("submitted_at"):
+                info["submitted_at"] = entry["submitted_at"]
             if entry.get("targets"):
                 info["targets"].update(entry["targets"])
         info["count"] += 1
@@ -260,6 +266,7 @@ async def webhook(
                 "faci_name": faci_name,
                 "status": record.get("status"),
                 "date": record.get("date"),
+                "submitted_at": record.get("created_at"),
                 "url": f"/attendance/{section.id}",
                 "targets": dict(targets),
             })
@@ -281,6 +288,7 @@ async def webhook(
                 "subject": section.subject,
                 "faci_name": None,
                 "date": record.get("date"),
+                "submitted_at": record.get("created_at"),
                 "url": f"/class-record/{section.id}",
                 "targets": dict(targets),
             })
