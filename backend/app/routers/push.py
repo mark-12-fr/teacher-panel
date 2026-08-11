@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database import SessionLocal, get_db
-from ..models import PushSubscription, Section
+from ..models import Facilitator, PushSubscription, Section
 from ..schemas import PushSubscribeIn
 from ..security import CurrentTeacher, get_current_teacher
 
