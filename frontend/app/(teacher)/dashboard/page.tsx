@@ -399,7 +399,7 @@ export default function DashboardPage() {
             pointBorderColor: isDark ? "#1f2937" : "#ffffff",
             pointBorderWidth: 3,
             pointRadius: 6,
-            pointHoverRadius: 9,
+            pointHoverRadius: 10,
             fill: true,
             tension: 0.4,
             spanGaps: true,
@@ -462,7 +462,8 @@ export default function DashboardPage() {
                 el = document.createElement("div");
                 el.id = "dashQTooltip";
                 el.style.cssText =
-                  "position:fixed;z-index:2147483200;pointer-events:none;opacity:0;transition:opacity .12s ease;" +
+                  "position:fixed;z-index:2147483200;pointer-events:none;opacity:0;transform:translateY(6px);" +
+                  "transition:opacity .3s cubic-bezier(.22,1,.36,1),transform .3s cubic-bezier(.22,1,.36,1);" +
                   "min-width:235px;max-width:305px;background:var(--card-bg);color:var(--text-dark);" +
                   "border:1px solid var(--border-color);border-radius:12px;box-shadow:0 14px 34px rgba(15,23,42,.28);" +
                   "font-family:Inter,sans-serif;font-size:.8rem;overflow:hidden";
@@ -470,11 +471,13 @@ export default function DashboardPage() {
               }
               if (!tooltip || tooltip.opacity === 0) {
                 el.style.opacity = "0";
+                el.style.transform = "translateY(6px)";
                 return;
               }
               const idx = tooltip.dataPoints?.[0]?.dataIndex;
               if (idx == null) {
                 el.style.opacity = "0";
+                el.style.transform = "translateY(6px)";
                 return;
               }
               const avgVal = chartData[idx];
@@ -520,6 +523,7 @@ export default function DashboardPage() {
               el.style.left = left + "px";
               el.style.top = top + "px";
               el.style.opacity = "1";
+              el.style.transform = "translateY(0)";
             },
           },
         },
