@@ -189,61 +189,117 @@ export default function AttendanceGridPage() {
     return { present, absent, late };
   }, [attendance]);
 
-  // Persist one full day (replace-that-date semantics of the bulk endpoint).
-  async function setCell(name: string, date: string, nextStatus: string | null) {
-    const original = attRef.current.find((a) => a.student_name === name && a.date === date)?.status ?? null;
-    const apply = (status: string | null) => {
-      const base = attRef.current.filter((a) => !(a.student_name === name && a.date === date));
-      if (status) base.push({ student_name: name, date, status });
-      setAtt(base);
-      return base;
-    };
-    const next = apply(nextStatus);
-    const items = students
-      .map((s) => {
-        const st = next.find((a) => a.student_name === s.full_name && a.date === date)?.status;
-        return st ? { student_name: s.full_name, student_id_no: "", status: st } : null;
-      })
-      .filter(Boolean);
-    savingDates.current.add(date);
-    const post = () =>
-      apiPost(`/api/sections/${sectionId}/attendance`, {
-        section: section?.title || "",
-        date,
-        subject: section?.subject || "",
-        quarter: normQ(section?.quarter, section?.school_level === "College", section?.semester || "1st Sem"),
-        items,
-      });
-    let lastErr: any = null;
+  // ── Persistence ──────────────────────────────────────────────────────────
+  // Every click updates the optimistic grid instantly, but the whole day is
+  // only POSTed once the user stops clicking for a moment (debounce), and
+  // saves per date are serialized — one POST in flight at a time, always with
+  // the LATEST snapshot. Rapid bursts (tapping P/A/L down a roster) now commit
+  // in order, so a slow earlier request can never land after a newer one and
+  // silently undo newer edits (the old per-click POSTs raced and the DB ended
+  // up with an older snapshot, which realtime/polling then "reverted" to).
+  const SAVE_DEBOUNCE_MS = 350;
+  const saveState = useRef(new Map<string, { timer: any; inFlight: boolean; dirty: boolean }>());
+
+  function scheduleSave(date: string) {
+    const st = saveState.current.get(date) || { timer: null, inFlight: false, dirty: false };
+    if (st.timer) clearTimeout(st.timer);
+    st.timer = setTimeout(() => flushSave(date), SAVE_DEBOUNCE_MS);
+    saveState.current.set(date, st);
+  }
+
+  async function flushSave(date: string) {
+    const st = saveState.current.get(date);
+    if (!st) return;
+    if (st.timer) {
+      clearTimeout(st.timer);
+      st.timer = null;
+    }
+    if (st.inFlight) {
+      st.dirty = true; // a save is running; this one runs right after it
+      return;
+    }
+    st.inFlight = true;
     try {
-      await post();
-      invalidateCached(`att_${sectionId}`);
-    } catch (e: any) {
-      // One retry for transient failures (pool pressure / connection blips) —
-      // the endpoint replaces the whole date's rows, so re-sending is idempotent.
-      if (!e?.status || e?.status >= 500) {
-        try {
-          await post();
-          invalidateCached(`att_${sectionId}`);
-        } catch (e2: any) {
-          lastErr = e2;
+      // Snapshot the CURRENT optimistic grid — always the newest state.
+      const items = students
+        .map((s) => {
+          const rec = attRef.current.find((a) => a.student_name === s.full_name && a.date === date);
+          return rec?.status ? { student_name: s.full_name, student_id_no: "", status: rec.status } : null;
+        })
+        .filter(Boolean);
+      savingDates.current.add(date);
+      const post = () =>
+        apiPost(`/api/sections/${sectionId}/attendance`, {
+          section: section?.title || "",
+          date,
+          subject: section?.subject || "",
+          quarter: normQ(section?.quarter, section?.school_level === "College", section?.semester || "1st Sem"),
+          items,
+        });
+      let lastErr: any = null;
+      try {
+        await post();
+        invalidateCached(`att_${sectionId}`);
+      } catch (e: any) {
+        // One retry for transient failures (pool pressure / connection blips) —
+        // the endpoint replaces the whole date's rows, so re-sending is idempotent.
+        if (!e?.status || e?.status >= 500) {
+          try {
+            await post();
+            invalidateCached(`att_${sectionId}`);
+          } catch (e2: any) {
+            lastErr = e2;
+          }
+        } else {
+          lastErr = e;
         }
-      } else {
-        lastErr = e;
-      }
-      if (lastErr) {
-        apply(original); // revert only this cell, not the whole array
-        const status = lastErr?.status;
-        const detail = lastErr?.message;
-        const msg = status
-          ? "Save failed (" + status + "): " + (detail || "server error")
-          : "Save failed. Check your connection, CORS, or permissions.";
-        showToast(msg, true);
+        if (lastErr) {
+          const status = lastErr?.status;
+          const detail = lastErr?.message;
+          showToast(
+            status
+              ? "Save failed (" + status + "): " + (detail || "server error")
+              : "Save failed. Check your connection, CORS, or permissions.",
+            true
+          );
+          loadAttendance(true); // reconcile with whatever actually reached the DB
+        }
       }
     } finally {
-      // Small grace period so trailing echoes from our own write are ignored.
-      setTimeout(() => savingDates.current.delete(date), 1200);
+      st.inFlight = false;
+      const st2 = saveState.current.get(date);
+      if (st2 && st2.dirty) {
+        st2.dirty = false;
+        scheduleSave(date); // clicks landed during the save — flush them next
+      }
+      // Keep ignoring our own echoes a while longer so trailing DELETE/INSERT
+      // events from this save can't flicker the optimistic grid.
+      setTimeout(() => {
+        const s = saveState.current.get(date);
+        if (!s || (!s.inFlight && !s.dirty && !s.timer)) savingDates.current.delete(date);
+      }, 1500);
     }
+  }
+
+  // Flush anything still pending (debounce window or queued) if the page
+  // unmounts, so a quick click-then-navigate never silently drops a save.
+  useEffect(() => {
+    return () => {
+      for (const [date, st] of saveState.current) {
+        if (st.timer) {
+          clearTimeout(st.timer);
+          saveState.current.delete(date);
+          flushSave(date);
+        }
+      }
+    };
+  }, []);
+
+  function setCell(name: string, date: string, nextStatus: string | null) {
+    const base = attRef.current.filter((a) => !(a.student_name === name && a.date === date));
+    if (nextStatus) base.push({ student_name: name, date, status: nextStatus });
+    setAtt(base);
+    scheduleSave(date);
   }
 
   // Click cycles P → A → L → (clear) → P.
