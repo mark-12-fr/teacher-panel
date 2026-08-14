@@ -4,6 +4,7 @@ import json
 import time
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy import and_, delete, select
@@ -89,14 +90,21 @@ async def _send_one(db: AsyncSession, sub: PushSubscription, payload: dict) -> b
         return False
 
 
-async def notify_facis_of_section(section_title: str, title: str, body: str, url: str):
+async def notify_facis_of_section(teacher_id: str, section_title: str, title: str, body: str, url: str):
     """Teacher → facilitator direction: push every facilitator subscribed to a
-    section when the teacher updates attendance or class records. Runs in a
-    background task so API responses are never slowed by push delivery."""
+    section when the teacher updates attendance or class records. Scoped to the
+    owning teacher (by teacher_id) so identically-named sections belonging to a
+    different teacher are never notified. Runs in a background task so API
+    responses are never slowed by push delivery."""
     try:
         async with SessionLocal() as db:
             facis = (
-                await db.execute(select(Facilitator).where(Facilitator.section == section_title))
+                await db.execute(
+                    select(Facilitator).where(
+                        Facilitator.section == section_title,
+                        Facilitator.teacher_id == UUID(teacher_id),
+                    )
+                )
             ).scalars().all()
             faci_ids = [str(f.id) for f in facis if f.id]
             if not faci_ids:

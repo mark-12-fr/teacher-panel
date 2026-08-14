@@ -62,7 +62,7 @@ export function useRequireAuth() {
  * changes (login as a different account, signup, logout).
  */
 export function clearUserCache() {
-  ["cached_user_name", "cached_user_avatar", "cached_user_id"].forEach((k) => {
+  ["cached_user_name", "cached_user_avatar", "cached_user_id", "cached_user_title"].forEach((k) => {
     try {
       localStorage.removeItem(k);
     } catch {}
