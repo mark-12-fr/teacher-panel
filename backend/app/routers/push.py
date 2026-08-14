@@ -69,8 +69,14 @@ _pending: dict = {}  # key -> {ts, table, section_label, subject, faci_name, sta
 _pending_lock = asyncio.Lock()
 
 
-async def _send_one(db: AsyncSession, sub: PushSubscription, payload: dict) -> bool:
-    """Send a single push; drop the subscription on 404/410. Returns True on success."""
+async def _send_one(sub: PushSubscription, payload: dict):
+    """Send a single push WITH NO DATABASE SESSION. The network push can take up
+    to 10s per subscription, so it must never run while holding a pooled
+    connection — that's what starves the API's connection pool (QueuePool
+    exhaustion → "connection timed out" 500s) under bursts of saves + push
+    fan-out. Returns True when sent, "stale" when the push server reports the
+    subscription is gone (404/410, callers should clean it up), or False on any
+    other failure."""
     from pywebpush import WebPushException, webpush
 
     try:
@@ -85,9 +91,25 @@ async def _send_one(db: AsyncSession, sub: PushSubscription, payload: dict) -> b
     except WebPushException as exc:
         status = getattr(getattr(exc, "response", None), "status_code", None)
         if status in (404, 410):
-            await db.execute(delete(PushSubscription).where(PushSubscription.id == sub.id))
-            await db.commit()
+            return "stale"
         return False
+    except Exception:
+        return False
+
+
+async def _delete_stale_subscriptions(stale_ids):
+    """Remove push subscriptions the push server no longer accepts. Uses a fresh,
+    short-lived session so callers are never holding a connection while sending."""
+    if not stale_ids:
+        return
+    try:
+        async with SessionLocal() as db:
+            await db.execute(
+                delete(PushSubscription).where(PushSubscription.id.in_(stale_ids))
+            )
+            await db.commit()
+    except Exception:
+        pass
 
 
 async def notify_facis_of_section(teacher_id: str, section_title: str, title: str, body: str, url: str):
@@ -95,7 +117,10 @@ async def notify_facis_of_section(teacher_id: str, section_title: str, title: st
     section when the teacher updates attendance or class records. Scoped to the
     owning teacher (by teacher_id) so identically-named sections belonging to a
     different teacher are never notified. Runs in a background task so API
-    responses are never slowed by push delivery."""
+    responses are never slowed by push delivery. The DB session is closed BEFORE
+    the network pushes so a slow push never holds a pooled connection (that
+    would starve the API pool and cause QueuePool 500s)."""
+    stale_ids = []
     try:
         async with SessionLocal() as db:
             facis = (
@@ -117,58 +142,69 @@ async def notify_facis_of_section(teacher_id: str, section_title: str, title: st
                     )
                 )
             ).scalars().all()
-            if not subs:
-                return
-            payload = {"title": title, "body": body, "tag": "teacher:" + section_title, "url": url}
-            for sub in subs:
-                await _send_one(db, sub, payload)
+        # Session closed above — push OUTSIDE the session context manager.
+        if not subs:
+            return
+        payload = {"title": title, "body": body, "tag": "teacher:" + section_title, "url": url}
+        for sub in subs:
+            if await _send_one(sub, payload) == "stale":
+                stale_ids.append(sub.id)
     except Exception:
         pass
+    await _delete_stale_subscriptions(stale_ids)
 
 
-async def _flush_batch(db: AsyncSession, batch_key: str):
+async def _flush_batch(batch_key: str):
     info = _pending.pop(batch_key, None)
     if not info:
         return
     target_ids = list(info.get("targets", {}).values())  # [(user_type, user_id)]
     if not target_ids:
         return
+    stale_ids = []
     try:
-        subs = []
-        for user_type, user_id in target_ids:
-            res = await db.execute(
-                select(PushSubscription).where(
-                    PushSubscription.user_type == user_type,
-                    PushSubscription.user_id == user_id,
+        async with SessionLocal() as db:
+            subs = []
+            for user_type, user_id in target_ids:
+                res = await db.execute(
+                    select(PushSubscription).where(
+                        PushSubscription.user_type == user_type,
+                        PushSubscription.user_id == user_id,
+                    )
                 )
-            )
-            subs.extend(res.scalars().all())
+                subs.extend(res.scalars().all())
+        # Session closed — push OUTSIDE the session so network latency never
+        # holds a pooled connection (prevents QueuePool exhaustion / 500s).
+        if not subs:
+            return
+
+        if info["table"] == "attendance":
+            title = f"Attendance Submitted — {info['section_label']}"
+            body = (info["faci_name"] or "A facilitator") + " marked " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "") + " as " + (info["status"] or "updated")
+        else:
+            title = f"Class Record Submitted — {info['section_label']}"
+            body = (info["faci_name"] or "A facilitator") + " submitted scores for " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "")
+            if info.get("subject"):
+                body += " · " + info["subject"]
+
+        payload = {
+            "title": title,
+            "body": body,
+            "submitted_at": info.get("submitted_at"),
+            "tag": f"{info['table']}:{batch_key}",
+            "url": info["url"] or "/",
+        }
+        ok = 0
+        for sub in subs:
+            result = await _send_one(sub, payload)
+            if result is True:
+                ok += 1
+            elif result == "stale":
+                stale_ids.append(sub.id)
+        print(f"[push] {payload['title']} — {payload['body']} → {ok}/{len(subs)} sent")
     except Exception:
-        return
-    if not subs:
-        return
-
-    if info["table"] == "attendance":
-        title = f"Attendance Submitted — {info['section_label']}"
-        body = (info["faci_name"] or "A facilitator") + " marked " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "") + " as " + (info["status"] or "updated")
-    else:
-        title = f"Class Record Submitted — {info['section_label']}"
-        body = (info["faci_name"] or "A facilitator") + " submitted scores for " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "")
-        if info.get("subject"):
-            body += " · " + info["subject"]
-
-    payload = {
-        "title": title,
-        "body": body,
-        "submitted_at": info.get("submitted_at"),
-        "tag": f"{info['table']}:{batch_key}",
-        "url": info["url"] or "/",
-    }
-    ok = 0
-    for sub in subs:
-        if await _send_one(db, sub, payload):
-            ok += 1
-    print(f"[push] {payload['title']} — {payload['body']} → {ok}/{len(subs)} sent")
+        pass
+    await _delete_stale_subscriptions(stale_ids)
 
 
 async def _collect(entry: dict):
@@ -213,15 +249,13 @@ async def _flush_after(batch_key: str, delay: float):
             entry = _pending[batch_key]
             elapsed = time.monotonic() - entry["ts"]
             if elapsed >= _COALESCE_WINDOW_S:
-                async with SessionLocal() as db:
-                    await _flush_batch(db, batch_key)
+                await _flush_batch(batch_key)
                 return
     # More rows arrived — schedule another flush for the remaining window.
     await asyncio.sleep(_COALESCE_WINDOW_S)
     async with _pending_lock:
         if batch_key in _pending:
-            async with SessionLocal() as db:
-                await _flush_batch(db, batch_key)
+            await _flush_batch(batch_key)
 
 
 def _pretty_field(key: str) -> str:
