@@ -612,9 +612,14 @@ export default function ClassRecordGridPage() {
       pendingRef.current.clear();
       setDirtyCount(0);
       showToast(`Saved ${entries.length} score${entries.length === 1 ? "" : "s"}.`);
-    } catch {
+    } catch (e: any) {
       for (const { sid, field } of entries) flashCell(cellEl(sid, field), "err");
-      showToast("Failed to save. Check your connection and press Save again.", true);
+      const status = e?.status;
+      const detail = e?.message;
+      const msg = status
+        ? "Failed to save (" + status + "): " + (detail || "server error")
+        : "Failed to save. Check your connection, CORS, or permissions.";
+      showToast(msg, true);
     } finally {
       setSaving(false);
     }

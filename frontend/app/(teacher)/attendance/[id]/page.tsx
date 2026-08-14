@@ -210,9 +210,14 @@ export default function AttendanceGridPage() {
         items,
       });
       invalidateCached(`att_${sectionId}`);
-    } catch {
+    } catch (e: any) {
       apply(original); // revert only this cell, not the whole array
-      showToast("Save failed. Check your connection or permissions.", true);
+      const status = e?.status;
+      const detail = e?.message;
+      const msg = status
+        ? "Save failed (" + status + "): " + (detail || "server error")
+        : "Save failed. Check your connection, CORS, or permissions.";
+      showToast(msg, true);
     } finally {
       // Small grace period so trailing echoes from our own write are ignored.
       setTimeout(() => savingDates.current.delete(date), 1200);
