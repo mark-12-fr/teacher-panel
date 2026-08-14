@@ -94,6 +94,7 @@ async def save_attendance(
     from ..routers.push import notify_facis_of_section
     n = len(body.items)
     asyncio.create_task(notify_facis_of_section(
+        teacher.id,
         section.title,
         f"Attendance Updated — {section.title}",
         f"{_teacher_name(teacher)} updated attendance for {n} student" + ("s" if n != 1 else "") + f" on {body.date}",
@@ -160,6 +161,7 @@ async def upsert_records(
     from ..routers.push import notify_facis_of_section
     n = len(records)
     asyncio.create_task(notify_facis_of_section(
+        teacher.id,
         section.title,
         f"Class Record Updated — {section.title}",
         f"{_teacher_name(teacher)} updated scores for {n} student" + ("s" if n != 1 else ""),

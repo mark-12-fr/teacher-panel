@@ -50,7 +50,7 @@ Traditional classroom management relies on paper-based grade books, manual atten
                       │ HTTPS / JWT Bearer Token
                       ▼
 ┌────────────────────────────────────────────────────────────┐
-│                    Backend (Render)                         │
+│       Backend (Railway / Render alternative)                    │
 │  FastAPI · Python 3.12 · Uvicorn · SQLAlchemy 2 (async)    │
 │  asyncpg · PyJWT · bcrypt · httpx · python-multipart       │
 │  Groq SDK · Google Generative AI · pywebpush (VAPID)       │
@@ -76,7 +76,8 @@ Traditional classroom management relies on paper-based grade books, manual atten
 | Layer | Platform | Config |
 |-------|----------|--------|
 | Frontend | Vercel | `rootDirectory: frontend`, auto-detects Next.js |
-| Backend | Render | `render.yaml` Blueprint → `uvicorn app.main:app` |
+| Backend | Railway (live) | `backend/railway.json` → `uvicorn app.main:app` |
+|         | Render (alternative) | `render.yaml` Blueprint → `uvicorn app.main:app` |
 | Database | Supabase | Managed PostgreSQL with connection pooler |
 
 ---
@@ -96,8 +97,8 @@ teacher-panel/
 │       ├── models.py  # SQLAlchemy models
 │       └── main.py    # FastAPI app entry point
 ├── docs/              # Architecture, codebase & deployment docs
-├── render.yaml        # Render Blueprint config
-└── vercel.json        # Vercel deployment config
+├── render.yaml        # Render Blueprint config (alternative deployment)
+└── backend/railway.json  # Railway deploy config (currently live)
 ```
 
 ---

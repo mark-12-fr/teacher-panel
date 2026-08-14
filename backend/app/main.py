@@ -43,13 +43,20 @@ async def _startup():
 async def _shutdown():
     await close_redis()
 
-# Force CORS headers on every response (bypass any middleware issues)
-ALLOWED_ORIGINS = [
-    "https://teacher-panel-phi.vercel.app",
-    "https://acadtrack.asia",
-    "https://www.acadtrack.asia",
-    "https://teacher-panel-mjrvertex-7104s-projects.vercel.app",
-]
+# Force CORS headers on every response (bypass any middleware issues).
+# Production origins stay as a hardcoded safety net; local/dev origins come from
+# settings.CORS_ORIGINS (config.py, overridable via the CORS_ORIGINS env var).
+ALLOWED_ORIGINS = sorted(
+    set(
+        [
+            "https://teacher-panel-phi.vercel.app",
+            "https://acadtrack.asia",
+            "https://www.acadtrack.asia",
+            "https://teacher-panel-mjrvertex-7104s-projects.vercel.app",
+            *settings.CORS_ORIGINS,
+        ]
+    )
+)
 
 class ForceCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
