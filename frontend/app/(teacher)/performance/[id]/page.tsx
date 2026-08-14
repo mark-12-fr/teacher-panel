@@ -34,7 +34,7 @@ const qSortKey = (q: any, college?: boolean) =>
   college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
 const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
-type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean };
+type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean; ww: number; pt: number; qe: number };
 type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
 
 export default function PerformanceDetailPage() {
@@ -166,11 +166,10 @@ export default function PerformanceDetailPage() {
       const att100 = att && att.total > 0 ? Math.round(((att.present + 0.5 * (att.late + att.excused)) / att.total) * 100) : 100;
       const final = finalGrade(merged, subject, att100);
 
-      // Same capped / QE-scaled component values the grade-breakdown modal
-      // shows — raw sums (modules can exceed 100, QE is out of 50) would
-      // mismatch the modal and clip the bar chart, whose axis maxes at 100.
+      // Capped / QE-scaled components drive the grade AND the chart averages
+      // (WW/PT can exceed 100 and QE is out of 50 — the bar axis maxes at 100).
+      // The table itself shows the raw earned totals, like the legacy page.
       const comp = componentScores(merged);
-
       // Per-quarter trend: each quarter's own record, only if it has a real score.
       studentRecords.forEach((rec) => {
         let hasScore = false;
@@ -201,7 +200,7 @@ export default function PerformanceDetailPage() {
         }
       }
 
-      return { full_name: student.full_name || "No Name", written_works: comp.ww, perf_task: comp.pt, quarterly_exam: comp.qe, final_grade: final, has_data: hasData };
+      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe };
     });
 
     let totalGrade = 0;
@@ -221,9 +220,9 @@ export default function PerformanceDetailPage() {
       if (g >= passing) passed++;
       if (g > highest) highest = g;
       if (g < lowest) lowest = g;
-      totalWW += s.written_works || 0;
-      totalPT += s.perf_task || 0;
-      totalExam += s.quarterly_exam || 0;
+      totalWW += s.ww || 0;
+      totalPT += s.pt || 0;
+      totalExam += s.qe || 0;
       if (g >= 90) dist["90+"]++;
       else if (g >= 85) dist["85-89"]++;
       else if (g >= 80) dist["80-84"]++;
