@@ -240,6 +240,12 @@ export default function ClassRecordGridPage() {
   }, [sectionId]);
 
   const loadRecords = useCallback(async (fresh = false) => {
+    // Never clobber the grid while the teacher has unsaved staged edits — a
+    // poll/reload here would replace them with the DB values and make the
+    // typed scores "disappear" (they'd still be pending for Save, but the
+    // grid would show empty cells). Reloads resume once Save clears the
+    // pending map.
+    if (pendingRef.current.size > 0) return;
     try {
       const r = await cachedGet(fresh ? null : `rec_${sectionId}`, `/api/sections/${sectionId}/class-records`);
       commitRecords(r.records || []);
@@ -313,6 +319,7 @@ export default function ClassRecordGridPage() {
           const sid = rec?.section_id;
           if (String(sid) !== String(sectionId)) return;
           if (Date.now() - lastLocalSave.current < 2000) return;
+          if (pendingRef.current.size > 0) return; // keep unsaved edits; they win until Saved
           loadRecords(true);
           showToast("Records have been updated by a Facilitator!");
         })
