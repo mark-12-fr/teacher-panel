@@ -118,6 +118,7 @@ async def create_section(
     await db.refresh(row)
     await cache_invalidate(f"tp:{teacher.id}:sections:*")
     await cache_invalidate(f"tp:{teacher.id}:school_year*")
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
     return {"section": orm_to_dict(row)}
 
 
@@ -136,6 +137,7 @@ async def update_section(
     await cache_invalidate(f"tp:{teacher.id}:sections:*")
     await cache_invalidate(f"tp:{teacher.id}:section:{section_id}")
     await cache_invalidate(f"tp:{teacher.id}:school_year*")
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
     return {"section": orm_to_dict(section)}
 
 
@@ -161,6 +163,10 @@ async def delete_section(
     await cache_invalidate(f"tp:{teacher.id}:section:{section_id}")
     await cache_invalidate(f"tp:{teacher.id}:students:*")
     await cache_invalidate(f"tp:{teacher.id}:school_year*")
+    # The dashboard's bulk endpoint caches section counts for 30s; an empty
+    # section delete fires no row webhooks, so without this the dashboard
+    # shows the old count until the cache expires.
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
     return {"ok": True}
 
 

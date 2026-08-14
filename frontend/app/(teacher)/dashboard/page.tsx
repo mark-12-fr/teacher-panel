@@ -353,6 +353,18 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Polling fallback: if Supabase realtime isn't enabled for this DB the stat
+  // cards would never notice a section/roster change made elsewhere. Refresh
+  // every 30s while the tab is visible — the backend cache is invalidated by
+  // every mutation, so these reads always return the latest data.
+  useEffect(() => {
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") statsCache.refresh();
+    }, 30000);
+    return () => clearInterval(poll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Chart ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
