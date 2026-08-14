@@ -316,6 +316,14 @@ async def webhook(
 
     try:
         if table == "attendance":
+            # The teacher's own whole-day saves (rows carry teacher_id and no
+            # facilitator_id) already invalidate the direct cache key and push
+            # facilitators from the save endpoint itself. Skipping them here
+            # stops the per-student webhook storm (a whole-day save rewrites
+            # every row → ~N webhook calls per click) and the teacher receiving
+            # a push notification about their own edit.
+            if record.get("teacher_id") and not record.get("facilitator_id"):
+                return {"skipped": "teacher's own write"}
             section = None
             if record.get("section"):
                 res = await db.execute(select(Section).where(Section.title == record["section"]))

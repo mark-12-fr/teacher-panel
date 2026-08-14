@@ -91,6 +91,11 @@ async def save_attendance(
         )
     await db.commit()
     await cache_invalidate(f"tp:{teacher.id}:attendance:{section_id}:*")
+    # The webhook no longer re-invalidates the whole teacher cache for the
+    # teacher's own writes (they were flooding it), so the dashboard's bulk
+    # endpoint must be invalidated here too or its 30s cache would show stale
+    # "today" counts after an attendance edit.
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
     from ..routers.push import notify_facis_of_section
     n = len(body.items)
     asyncio.create_task(notify_facis_of_section(

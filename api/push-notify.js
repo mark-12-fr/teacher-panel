@@ -228,6 +228,14 @@ module.exports = async (req, res) => {
 
     if (!table || !data) return res.status(200).json({ skipped: 'no payload' });
 
+    // Teacher-panel saves (rows carry teacher_id, no facilitator_id) already
+    // notify facilitators from the save endpoint itself. Skipping them here
+    // stops ~1 webhook per student (a whole-day save rewrites every row) and
+    // the teacher receiving a push for their own edit.
+    if (table === 'attendance' && data.teacher_id && !data.facilitator_id) {
+        return res.status(200).json({ skipped: "teacher's own write" });
+    }
+
     const targets = [];
     let title = 'MJR Update';
     let body_text = '';

@@ -121,7 +121,12 @@ export default function AttendanceGridPage() {
 
   // Live cross-panel updates: a facilitator (or another tab) writing attendance
   // for this section reflects here. No-op if realtime isn't enabled on the DB.
+  // Echoes are debounced into ONE reload of the true DB state instead of being
+  // applied row-by-row: a whole-day save arrives as many DELETE+INSERT echoes,
+  // and replaying them incrementally can transiently blank cells or restore a
+  // half-applied day. A reload can never show anything but the committed state.
   const sectionTitle = section?.title;
+  const attRefreshTimer = useRef<any>(null);
   useEffect(() => {
     if (!sectionTitle) return;
     let channel: any;
@@ -132,18 +137,18 @@ export default function AttendanceGridPage() {
           const rec = payload.new || payload.old;
           if (!rec || rec.section !== sectionTitle) return;
           if (savingDates.current.has(rec.date)) return; // our own in-flight write
-          const base = attRef.current.filter((a) => !(a.student_name === rec.student_name && a.date === rec.date));
-          if (payload.eventType !== "DELETE" && rec.status) base.push({ student_name: rec.student_name, date: rec.date, status: rec.status });
-          setAtt(base);
+          clearTimeout(attRefreshTimer.current);
+          attRefreshTimer.current = setTimeout(() => loadAttendance(true), 150);
         })
         .subscribe();
     } catch {}
     return () => {
+      clearTimeout(attRefreshTimer.current);
       try {
         if (channel) getSupabase().removeChannel(channel);
       } catch {}
     };
-  }, [sectionTitle, sectionId, setAtt]);
+  }, [sectionTitle, sectionId, loadAttendance]);
 
   // Polling fallback: if Supabase realtime isn't enabled for this DB the grid
   // would never notice facilitator submissions. Refresh every 20s while the
@@ -201,23 +206,40 @@ export default function AttendanceGridPage() {
       })
       .filter(Boolean);
     savingDates.current.add(date);
-    try {
-      await apiPost(`/api/sections/${sectionId}/attendance`, {
+    const post = () =>
+      apiPost(`/api/sections/${sectionId}/attendance`, {
         section: section?.title || "",
         date,
         subject: section?.subject || "",
         quarter: normQ(section?.quarter, section?.school_level === "College", section?.semester || "1st Sem"),
         items,
       });
+    let lastErr: any = null;
+    try {
+      await post();
       invalidateCached(`att_${sectionId}`);
     } catch (e: any) {
-      apply(original); // revert only this cell, not the whole array
-      const status = e?.status;
-      const detail = e?.message;
-      const msg = status
-        ? "Save failed (" + status + "): " + (detail || "server error")
-        : "Save failed. Check your connection, CORS, or permissions.";
-      showToast(msg, true);
+      // One retry for transient failures (pool pressure / connection blips) —
+      // the endpoint replaces the whole date's rows, so re-sending is idempotent.
+      if (!e?.status || e?.status >= 500) {
+        try {
+          await post();
+          invalidateCached(`att_${sectionId}`);
+        } catch (e2: any) {
+          lastErr = e2;
+        }
+      } else {
+        lastErr = e;
+      }
+      if (lastErr) {
+        apply(original); // revert only this cell, not the whole array
+        const status = lastErr?.status;
+        const detail = lastErr?.message;
+        const msg = status
+          ? "Save failed (" + status + "): " + (detail || "server error")
+          : "Save failed. Check your connection, CORS, or permissions.";
+        showToast(msg, true);
+      }
     } finally {
       // Small grace period so trailing echoes from our own write are ignored.
       setTimeout(() => savingDates.current.delete(date), 1200);
