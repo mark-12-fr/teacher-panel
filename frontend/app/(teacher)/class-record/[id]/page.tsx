@@ -321,6 +321,7 @@ export default function ClassRecordGridPage() {
           if (Date.now() - lastLocalSave.current < 2000) return;
           if (pendingRef.current.size > 0) return; // keep unsaved edits; they win until Saved
           loadRecords(true);
+          loadGradingInputs(); // weights/attendance may have changed too — keep modal grades aligned
           showToast("Records have been updated by a Facilitator!");
         })
         .subscribe();
@@ -338,10 +339,13 @@ export default function ClassRecordGridPage() {
   // these reads always return the latest scores.
   useEffect(() => {
     const poll = setInterval(() => {
-      if (document.visibilityState === "visible") loadRecords(true);
+      if (document.visibilityState === "visible") {
+        loadRecords(true);
+        loadGradingInputs();
+      }
     }, 20000);
     return () => clearInterval(poll);
-  }, [loadRecords]);
+  }, [loadRecords, loadGradingInputs]);
 
   // Ctrl/Cmd+Z anywhere on the page → undo the last score change. A focused
   // grid cell handles it first (and preventDefaults); this catches the case

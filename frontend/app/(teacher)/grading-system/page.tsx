@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiDelete, apiGet, apiPost, apiPatch } from "@/lib/api";
+import { apiDelete, apiGet, apiPost, apiPatch, invalidateCached } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
@@ -145,6 +145,10 @@ export default function GradingSystemPage() {
       if (editingId) await apiPatch(`/api/subjects/${editingId}`, payload);
       else await apiPost("/api/subjects", payload);
       setModal(false);
+      // Drop the shared "subjects" cache the Performance / Class Record /
+      // dashboard pages read, so the new weights apply on their next load
+      // instead of lingering for the 20s TTL.
+      invalidateCached("subjects");
       subjCache.refresh();
       showToast(editingId ? "Subject updated!" : "Subject added!");
     } catch {
