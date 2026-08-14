@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
 import { apiGet, cachedGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
-import { setSubjectConfigs, passingFor, finalGrade } from "@/lib/grading";
+import { setSubjectConfigs, passingFor, finalGrade, componentScores } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { Skel, SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
@@ -162,17 +162,14 @@ export default function PerformanceDetailPage() {
         return acc;
       }, {});
 
-      let ww = 0;
-      let pt = 0;
-      const qe = Number(merged.qe) || 0;
-      for (const k in merged) {
-        if (k.startsWith("module_") || k.startsWith("activity_") || k === "at") ww += Number(merged[k]) || 0;
-        else if (k.startsWith("pt_")) pt += Number(merged[k]) || 0;
-      }
-
       const att = attByName[String(student.full_name || "").trim().toLowerCase()];
       const att100 = att && att.total > 0 ? Math.round(((att.present + 0.5 * (att.late + att.excused)) / att.total) * 100) : 100;
       const final = finalGrade(merged, subject, att100);
+
+      // Same capped / QE-scaled component values the grade-breakdown modal
+      // shows — raw sums (modules can exceed 100, QE is out of 50) would
+      // mismatch the modal and clip the bar chart, whose axis maxes at 100.
+      const comp = componentScores(merged);
 
       // Per-quarter trend: each quarter's own record, only if it has a real score.
       studentRecords.forEach((rec) => {
@@ -204,7 +201,7 @@ export default function PerformanceDetailPage() {
         }
       }
 
-      return { full_name: student.full_name || "No Name", written_works: ww, perf_task: pt, quarterly_exam: qe, final_grade: final, has_data: hasData };
+      return { full_name: student.full_name || "No Name", written_works: comp.ww, perf_task: comp.pt, quarterly_exam: comp.qe, final_grade: final, has_data: hasData };
     });
 
     let totalGrade = 0;
@@ -313,7 +310,7 @@ export default function PerformanceDetailPage() {
         type: "bar",
         data: {
           labels: ["WW", "PT", "Exam"],
-          datasets: [{ label: "Average Raw Score", data: [Number((stats.totalWW / n).toFixed(2)), Number((stats.totalPT / n).toFixed(2)), Number((stats.totalExam / n).toFixed(2))], backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"], borderRadius: 4, maxBarThickness: 40 }],
+          datasets: [{ label: "Average Score", data: [Number((stats.totalWW / n).toFixed(2)), Number((stats.totalPT / n).toFixed(2)), Number((stats.totalExam / n).toFixed(2))], backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"], borderRadius: 4, maxBarThickness: 40 }],
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } },
       });
