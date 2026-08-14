@@ -34,7 +34,7 @@ const qSortKey = (q: any, college?: boolean) =>
   college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
 const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
-type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number };
+type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean };
 type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
 
 export default function PerformanceDetailPage() {
@@ -192,7 +192,19 @@ export default function PerformanceDetailPage() {
         }
       });
 
-      return { full_name: student.full_name || "No Name", written_works: ww, perf_task: pt, quarterly_exam: qe, final_grade: final };
+      // Has any real score? Students with no scores yet must NOT pull the
+      // class average / pass rate / component averages down (finalGrade of an
+      // empty record is 0, and counting those zeros made the stats look broken
+      // whenever most of the class had no entries).
+      let hasData = false;
+      for (const k in merged) {
+        if ((k.startsWith("module_") || k.startsWith("activity_") || k.startsWith("pt_") || k === "at" || k === "qe") && filled(merged[k]) && Number(merged[k]) > 0) {
+          hasData = true;
+          break;
+        }
+      }
+
+      return { full_name: student.full_name || "No Name", written_works: ww, perf_task: pt, quarterly_exam: qe, final_grade: final, has_data: hasData };
     });
 
     let totalGrade = 0;
@@ -202,15 +214,16 @@ export default function PerformanceDetailPage() {
     let totalWW = 0;
     let totalPT = 0;
     let totalExam = 0;
+    let scored = 0;
     const dist = { "90+": 0, "85-89": 0, "80-84": 0, "<80": 0 };
     rows.forEach((s) => {
       const g = s.final_grade || 0;
+      if (!s.has_data) return; // no real scores — excluded from all stats
+      scored++;
       totalGrade += g;
       if (g >= passing) passed++;
-      if (g > 0) {
-        if (g > highest) highest = g;
-        if (g < lowest) lowest = g;
-      }
+      if (g > highest) highest = g;
+      if (g < lowest) lowest = g;
       totalWW += s.written_works || 0;
       totalPT += s.perf_task || 0;
       totalExam += s.quarterly_exam || 0;
@@ -220,12 +233,10 @@ export default function PerformanceDetailPage() {
       else dist["<80"]++;
     });
 
-    return { rows, stats: { totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist, qBuckets } };
+    return { rows, stats: { totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist, qBuckets, scored } };
   }, [students, records, attendance, subject, passing, college]);
 
-  const num = perf.rows.length;
   const stats = perf.stats;
-
   // ── Charts ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!ready) return;
@@ -233,7 +244,7 @@ export default function PerformanceDetailPage() {
     const neutral = isDark ? "#818cf8" : "#3b82f6";
     const up = "#22c55e";
     const down = "#ef4444";
-    const n = num || 1;
+    const n = stats.scored || 1;
 
     // Line: class average per quarter (this semester's quarters + any with data).
     const semQ = college ? COLLEGE_TERMS : SEMESTER_QUARTERS[semester] || ["1", "2"];
@@ -314,7 +325,7 @@ export default function PerformanceDetailPage() {
       charts.current.bar?.destroy();
       charts.current = {};
     };
-  }, [ready, perf, passing, semester, num, stats, college]);
+  }, [ready, perf, passing, semester, stats, college]);
 
   // ── Ranking table ────────────────────────────────────────────────────────────
   const tieBreak = (a: Row, b: Row) => {
@@ -388,8 +399,8 @@ export default function PerformanceDetailPage() {
     }
   }
 
-  const classAvg = num > 0 ? (stats.totalGrade / num).toFixed(2) : "—";
-  const passRate = num > 0 ? ((stats.passed / num) * 100).toFixed(0) + "%" : "—";
+  const classAvg = stats.scored > 0 ? (stats.totalGrade / stats.scored).toFixed(2) : "—";
+  const passRate = stats.scored > 0 ? ((stats.passed / stats.scored) * 100).toFixed(0) + "%" : "—";
   const failingCount = perf.rows.filter((s) => (s.final_grade || 0) > 0 && (s.final_grade || 0) < passing).length;
 
   const actions = (
