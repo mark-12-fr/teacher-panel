@@ -20,6 +20,8 @@ Supabase connection pooler (Supavisor / PgBouncer in transaction mode):
 """
 from uuid import uuid4
 
+import os
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -41,9 +43,14 @@ def _make_engine():
         return None
     return create_async_engine(
         settings.DATABASE_URL,
-        pool_size=4,
-        max_overflow=6,
-        pool_timeout=30,
+        # Pool sizing is bumped above the old 4+6 because the API, the frontend's
+        # parallel loads + 20s polling, and the push background tasks can all grab
+        # connections at once — the old pool exhausted ("QueuePool limit of size 4
+        # overflow 6 reached, connection timed out") and 500'd saves. All three are
+        # overridable via env for deployments with stricter connection limits.
+        pool_size=int(os.getenv("DB_POOL_SIZE", "8")),
+        max_overflow=int(os.getenv("DB_POOL_MAX_OVERFLOW", "12")),
+        pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),
         pool_recycle=60,
         connect_args={
             "statement_cache_size": 0,
