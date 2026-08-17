@@ -1,0 +1,11 @@
+-- 002_secure_telegram_links.sql
+-- Security fix (from the Supabase security advisor: rls_disabled_in_public).
+--
+-- The `telegram_links` table is exposed through PostgREST but had NO Row-Level
+-- Security, so anyone holding the public anon key could read or write it.
+-- Neither app (teacher panel nor facilitator panel) references this table, so
+-- turning RLS on with no policy denies all anon/authenticated access — only the
+-- service_role reaches it — which closes the hole without affecting either app.
+--
+-- Idempotent: safe to run more than once. Run once in the Supabase SQL editor.
+ALTER TABLE public.telegram_links ENABLE ROW LEVEL SECURITY;
