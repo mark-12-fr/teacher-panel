@@ -756,15 +756,16 @@ export default function ClassRecordGridPage() {
       const headers: any[] = ["Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
-      headers.push("AT", "PT 1", "PT 2", "QE");
-      headers.push("Modules", "Activity", "Achievement Test", "Performance Task", "Quarterly Exam");
+      if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
+      headers.push("Modules", "Activity");
+      if (!college) headers.push("Achievement Test", "Performance Task", "Quarterly Exam");
       headers.push("TOTAL", "GRADE");
       rows.push(headers);
 
       students.forEach((s) => {
         const rec = recForView(s.id);
         const row: any[] = [s.full_name];
-        [...MODULES, ...ACTIVITIES, ...TAIL].forEach((f) => {
+        [...MODULES, ...ACTIVITIES, ...(college ? [] : TAIL)].forEach((f) => {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
@@ -774,10 +775,14 @@ export default function ClassRecordGridPage() {
         row.push(
           cs ? Math.round(cs.modulesOnly) : "",
           cs ? Math.round(cs.activitiesOnly) : "",
-          cs ? Math.round(cs.at) : "",
-          cs ? Math.round(cs.pt) : "",
-          cs ? Math.round(cs.qe) : "",
         );
+        if (!college) {
+          row.push(
+            cs ? Math.round(cs.at) : "",
+            cs ? Math.round(cs.pt) : "",
+            cs ? Math.round(cs.qe) : "",
+          );
+        }
         const t = totalScoreFor(s.id);
         row.push(t === null ? "" : t);
         const g = liveGradeFor(s.id, s.full_name);
@@ -933,10 +938,14 @@ export default function ClassRecordGridPage() {
                 <th rowSpan={2} className="sticky-col text-left group-divider">Student Name</th>
                 <th colSpan={25} className="header-group group-divider header-modules">MODULES</th>
                 <th colSpan={10} className="header-group group-divider header-activities">ACTIVITIES</th>
-                <th className="header-group header-at">AT</th>
-                <th className="header-group header-pt">PT 1</th>
-                <th className="header-group header-pt">PT 2</th>
-                <th className="header-group header-qe">QE</th>
+                {!college && (
+                  <>
+                    <th className="header-group header-at">AT</th>
+                    <th className="header-group header-pt">PT 1</th>
+                    <th className="header-group header-pt">PT 2</th>
+                    <th className="header-group header-qe">QE</th>
+                  </>
+                )}
                 <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 60 }}>TOTAL</th>
                 <th rowSpan={2} className="header-group" style={{ minWidth: 62 }}>GRADE</th>
               </tr>
@@ -947,18 +956,22 @@ export default function ClassRecordGridPage() {
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                   <th key={`a${n}`} className={n === 10 ? "group-divider" : undefined}>{n}</th>
                 ))}
-                <th>50</th>
-                <th>50</th>
-                <th>50</th>
-                <th>50</th>
+                {!college && (
+                  <>
+                    <th>50</th>
+                    <th>50</th>
+                    <th>50</th>
+                    <th>50</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={43} />
+                <SkeletonTableRows rows={6} cols={college ? 39 : 43} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={43} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
+                  <td colSpan={college ? 39 : 43} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>
               ) : (
                 students.map((s, idx) => {
@@ -978,7 +991,7 @@ export default function ClassRecordGridPage() {
                       </td>
                       {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 24} />)}
                       {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 9} />)}
-                      {TAIL.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
+                      {!college && TAIL.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
                       {(() => {
                         const t = totalScoreFor(s.id);
                         return (
@@ -1029,6 +1042,7 @@ export default function ClassRecordGridPage() {
           section={section}
           cards={quarterBreakdown(detailStudent.id, detailStudent.full_name)}
           passingGrade={passingFor(section?.subject || "")}
+          college={college}
           onClose={() => setDetailStudent(null)}
         />
       )}
@@ -1041,12 +1055,14 @@ function StudentGradeModal({
   section,
   cards,
   passingGrade,
+  college,
   onClose,
 }: {
   student: any;
   section: any;
   cards: GradeQuarterCard[];
   passingGrade: number;
+  college: boolean;
   onClose: () => void;
 }) {
   const bySem: Record<string, GradeQuarterCard[]> = { "1st Sem": [], "2nd Sem": [] };
@@ -1094,18 +1110,22 @@ function StudentGradeModal({
                           <span>Activity</span>
                           <b>{Math.round(c.comp.activitiesOnly)}</b>
                         </div>
-                        <div className="grade-component-row">
-                          <span>Achievement Test</span>
-                          <b>{Math.round(c.comp.at)}</b>
-                        </div>
-                        <div className="grade-component-row">
-                          <span>Performance Task</span>
-                          <b>{Math.round(c.comp.pt)}</b>
-                        </div>
-                        <div className="grade-component-row">
-                          <span>Quarterly Exam</span>
-                          <b>{Math.round(c.comp.qe)}</b>
-                        </div>
+                        {!college && (
+                          <>
+                            <div className="grade-component-row">
+                              <span>Achievement Test</span>
+                              <b>{Math.round(c.comp.at)}</b>
+                            </div>
+                            <div className="grade-component-row">
+                              <span>Performance Task</span>
+                              <b>{Math.round(c.comp.pt)}</b>
+                            </div>
+                            <div className="grade-component-row">
+                              <span>Quarterly Exam</span>
+                              <b>{Math.round(c.comp.qe)}</b>
+                            </div>
+                          </>
+                        )}
                         <div className={`grade-component-row grade-average-row ${c.grade >= passingGrade ? "pass" : "fail"}`}>
                           <span>Average Grade</span>
                           <b>{c.grade}</b>
