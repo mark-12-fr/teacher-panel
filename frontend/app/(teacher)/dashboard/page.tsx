@@ -12,7 +12,16 @@ import { Skel, SkeletonStatCard } from "@/components/Skeleton";
 Chart.register(...registerables);
 
 const filled = (v: any) => v !== null && v !== undefined && v !== "";
-const normalizeQtr = (q: any) => String(q || "1").replace(/[^1-4]/g, "") || "1";
+// College terms carry no 1–4 digit, so the plain digit-strip below collapsed
+// Prelim / Midterm / Final all into "1" — piling every college term's data into
+// Q1 on the dashboard. Map them to the matching quarter slot first so college
+// data spreads across the chart correctly (Prelim→1, Midterm→2, Final→3).
+const TERM_TO_QTR: Record<string, string> = { prelim: "1", midterm: "2", final: "3" };
+const normalizeQtr = (q: any) => {
+  const t = String(q ?? "").trim().toLowerCase();
+  if (TERM_TO_QTR[t]) return TERM_TO_QTR[t];
+  return String(q || "1").replace(/[^1-4]/g, "") || "1";
+};
 
 // Group a quarter's per-student averages into per-SECTION averages (derived
 // on the fly from qStudents so cached payloads need no new fields).
