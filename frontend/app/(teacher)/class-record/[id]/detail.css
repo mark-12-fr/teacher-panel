@@ -1181,3 +1181,37 @@
 
         /* Final grade column removed per user request. */
     
+/* ── Phone: make the wide Class Record grid actually usable ──────────────────
+   These rules are intentionally LAST in the file so they win the cascade over
+   the desktop sticky-column widths defined earlier (equal specificity → later
+   source wins). Before this, the frozen name column kept its 160px desktop
+   width on phones, leaving almost no room for score columns. Narrow the frozen
+   #/name columns, drop the keyboard-only hint line, and give score cells a
+   comfortable tap target. */
+@media (max-width: 640px) {
+    /* Keyboard shortcuts (Enter / Tab / Paste from Excel / Ctrl+Z) mean nothing
+       on a phone — hide the hint line. It's inline display:flex, so !important. */
+    .grid-hint { display: none !important; }
+
+    .sticky-col:nth-child(1) {
+        left: 0;
+        width: 26px;
+        min-width: 26px;
+        max-width: 26px;
+        padding: 6px 2px;
+    }
+    .sticky-col:nth-child(2) {
+        left: 26px !important;
+        min-width: 118px;
+        max-width: 118px;
+        font-size: 0.72rem;
+        padding-left: 6px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Score cells: readable + easy to tap, but compact enough to show several. */
+    #recordTable .editable-score { min-width: 30px; padding: 8px 3px; font-size: 0.82rem; }
+    #recordTable th, #recordTable td { font-size: 0.78rem; }
+}
