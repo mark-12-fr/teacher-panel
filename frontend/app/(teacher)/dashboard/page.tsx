@@ -367,6 +367,11 @@ export default function DashboardPage() {
   // every 30s while the tab is visible — the backend cache is invalidated by
   // every mutation, so these reads always return the latest data.
   useEffect(() => {
+    // Always fetch fresh when the dashboard opens (cached data shows instantly
+    // first) so Top Students / stats reflect scores entered since the last visit
+    // — without this the 5-min client cache could show a stale board for up to
+    // the 30s poll interval after navigating in.
+    statsCache.refresh();
     const poll = setInterval(() => {
       if (document.visibilityState === "visible") statsCache.refresh();
     }, 30000);

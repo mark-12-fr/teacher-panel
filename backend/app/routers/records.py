@@ -163,6 +163,12 @@ async def upsert_records(
         written += 1
     await db.commit()
     await cache_invalidate(f"tp:{teacher.id}:records:{section_id}")
+    # Scores drive the dashboard's Top Students, chart and class averages, so the
+    # bulk endpoint's 30s cache must be dropped here too (same reason as the
+    # attendance save above — the webhook doesn't re-invalidate the teacher's own
+    # writes). Without this the dashboard shows stale grades after a score edit
+    # and the Top Students list appears not to update.
+    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
     from ..routers.push import notify_facis_of_section
     n = len(records)
     asyncio.create_task(notify_facis_of_section(
