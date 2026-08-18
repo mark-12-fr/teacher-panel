@@ -55,16 +55,19 @@ export function passingFor(subjectName: string): number {
 }
 
 export interface ComponentScores {
-  ww: number; // Written Works incl. the AT column — this is what the grade uses.
-  wwOnly: number; // Modules + Activities combined (AT split out, for display).
+  ww: number; // Written Works = Modules + Activities (0–100). Drives the WW weight.
+  wwOnly: number; // Same as ww now (kept for callers that referenced it).
   modulesOnly: number; // Modules columns only (for display).
   activitiesOnly: number; // Activity columns only (for display).
   at: number; // The standalone AT (Achievement Test) column on its own (for display).
   pt: number;
-  qe: number;
+  qe: number; // Quarterly Exam alone as a % of 50 (for the display row).
+  exam: number; // EXAM component = AT + QE (each /50 → /100). Drives the exam weight.
   rawWW: number;
   rawPT: number;
   rawQE: number;
+  rawAT: number; // Raw Achievement Test points.
+  rawExam: number; // Raw exam points = AT + QE (out of 100).
 }
 
 /** Component scores (each capped at 100) from a merged class record. */
@@ -82,22 +85,26 @@ export function componentScores(record: any): ComponentScores {
     else if (k === "at") atTotal += num(v, 0);
     else if (k.indexOf("pt_") === 0) totalPT += num(v, 0);
   }
-  // Modules + Activities + AT all still count toward Written Works in the grade
-  // (unchanged behaviour); the breakdown modal just displays Modules, Activity
-  // and AT (Achievement Test) as separate rows.
+  // Written Works = Modules + Activities. The Achievement Test (AT) belongs to
+  // the EXAM together with the Quarterly Exam — each is scored out of 50, so the
+  // exam component is (AT + QE) as a percentage of 100. (AT is still shown as its
+  // own row in the breakdown; it just feeds the exam bucket, not Written Works.)
   const wwOnly = modulesOnly + activitiesOnly;
-  const totalWW = wwOnly + atTotal;
+  const examRaw = atTotal + totalQE; // AT (/50) + QE (/50) → out of 100
   return {
-    ww: Math.min(totalWW, 100),
+    ww: Math.min(wwOnly, 100),
     wwOnly: Math.min(wwOnly, 100),
     modulesOnly: Math.min(modulesOnly, 100),
     activitiesOnly: Math.min(activitiesOnly, 100),
     at: Math.min(atTotal, 100),
     pt: Math.min(totalPT, 100),
     qe: Math.min((totalQE / 50) * 100, 100),
-    rawWW: totalWW,
+    exam: Math.min(examRaw, 100),
+    rawWW: wwOnly,
     rawPT: totalPT,
     rawQE: totalQE,
+    rawAT: atTotal,
+    rawExam: examRaw,
   };
 }
 
@@ -131,6 +138,6 @@ export function finalGrade(record: any, subjectName: string, attendanceScore?: n
   const s = componentScores(record);
   const att = attendanceScore === null || attendanceScore === undefined ? 100 : attendanceScore;
   return Math.round(
-    s.ww * (w.ww / 100) + s.pt * (w.pt / 100) + s.qe * (w.exam / 100) + att * (w.att / 100)
+    s.ww * (w.ww / 100) + s.pt * (w.pt / 100) + s.exam * (w.exam / 100) + att * (w.att / 100)
   );
 }

@@ -34,7 +34,7 @@ const qSortKey = (q: any, college?: boolean) =>
   college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
 const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
-type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean; ww: number; pt: number; qe: number };
+type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean; ww: number; pt: number; qe: number; exam: number };
 type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
 
 export default function PerformanceDetailPage() {
@@ -200,7 +200,7 @@ export default function PerformanceDetailPage() {
         }
       }
 
-      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe };
+      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe, exam: comp.exam };
     });
 
     let totalGrade = 0;
@@ -222,7 +222,7 @@ export default function PerformanceDetailPage() {
       if (g < lowest) lowest = g;
       totalWW += s.ww || 0;
       totalPT += s.pt || 0;
-      totalExam += s.qe || 0;
+      totalExam += s.exam || 0;
       if (g >= 90) dist["90+"]++;
       else if (g >= 85) dist["85-89"]++;
       else if (g >= 80) dist["80-84"]++;
