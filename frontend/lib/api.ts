@@ -110,20 +110,32 @@ function writeCache(key: string, val: unknown) {
   }
 }
 
-export function cachedGet<T = any>(key: string | null, path: string, opts?: ApiOptions): Promise<T> {
+export async function cachedGet<T = any>(key: string | null, path: string, opts?: ApiOptions): Promise<T> {
   if (key !== null) {
     const cached = readCache<T>(key);
     if (cached !== undefined && Date.now() - cached.ts < CACHE_TTL_MS) {
       apiGet<T>(path, opts)
         .then((fresh) => writeCache(key, fresh))
         .catch(() => {});
-      return Promise.resolve(cached.v);
+      return cached.v;
     }
   }
-  return apiGet<T>(path, opts).then((fresh) => {
+  try {
+    const fresh = await apiGet<T>(path, opts);
     if (key !== null) writeCache(key, fresh);
     return fresh;
-  });
+  } catch (err) {
+    // Offline / network failure: serve the last snapshot of ANY age so the page
+    // still renders cached data instead of an error screen (like the faci panel).
+    // A real HTTP error (the server DID respond — 4xx/5xx, incl. the 401 →
+    // /login redirect) is an ApiError and is rethrown so genuine failures still
+    // surface; only network-level failures (fetch rejected) fall back to cache.
+    if (key !== null && !(err instanceof ApiError)) {
+      const stale = readCache<T>(key);
+      if (stale !== undefined) return stale.v;
+    }
+    throw err;
+  }
 }
 
 export function invalidateCached(key?: string) {

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost, cachedGet, invalidateCached } from "@/lib/api";
+import { isOffline, runWhenOnline } from "@/lib/offline";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
@@ -254,15 +255,25 @@ export default function AttendanceGridPage() {
           lastErr = e;
         }
         if (lastErr) {
-          const status = lastErr?.status;
-          const detail = lastErr?.message;
-          showToast(
-            status
-              ? "Save failed (" + status + "): " + (detail || "server error")
-              : "Save failed. Check your connection, CORS, or permissions.",
-            true
-          );
-          loadAttendance(true); // reconcile with whatever actually reached the DB
+          if (isOffline()) {
+            // Keep the optimistic marks and re-flush this date once we're back
+            // online. Deliberately DON'T reload here — offline, loadAttendance
+            // would replace the just-made marks with stale cached rows that
+            // don't include them. The endpoint replaces the date's rows, so the
+            // reconnect re-flush is idempotent.
+            runWhenOnline("attendance-save-" + date, () => flushSave(date));
+            showToast("Offline — attendance will save automatically when you reconnect.");
+          } else {
+            const status = lastErr?.status;
+            const detail = lastErr?.message;
+            showToast(
+              status
+                ? "Save failed (" + status + "): " + (detail || "server error")
+                : "Save failed. Check your connection, CORS, or permissions.",
+              true
+            );
+            loadAttendance(true); // reconcile with whatever actually reached the DB
+          }
         }
       }
     } finally {

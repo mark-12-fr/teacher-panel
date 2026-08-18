@@ -18,6 +18,7 @@ import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import LoadingBar from "@/components/LoadingBar";
 import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, type ComponentScores } from "@/lib/grading";
+import { isOffline, runWhenOnline } from "@/lib/offline";
 import "./detail.css";
 
 type Rec = any;
@@ -624,13 +625,23 @@ export default function ClassRecordGridPage() {
       setDirtyCount(0);
       showToast(`Saved ${entries.length} score${entries.length === 1 ? "" : "s"}.`);
     } catch (e: any) {
-      for (const { sid, field } of entries) flashCell(cellEl(sid, field), "err");
-      const status = e?.status;
-      const detail = e?.message;
-      const msg = status
-        ? "Failed to save (" + status + "): " + (detail || "server error")
-        : "Failed to save. Check your connection, CORS, or permissions.";
-      showToast(msg, true);
+      // Offline: keep the edits staged (pendingRef still holds them, cells still
+      // show their pending markers) and re-run this exact save automatically when
+      // the connection returns. Reusing savePending itself — rather than a second
+      // write path — means there's nothing new to keep in sync and the retry is
+      // idempotent (records upsert by id).
+      if (isOffline()) {
+        runWhenOnline("class-record-save", () => savePending());
+        showToast("Offline — your scores will save automatically when you reconnect.");
+      } else {
+        for (const { sid, field } of entries) flashCell(cellEl(sid, field), "err");
+        const status = e?.status;
+        const detail = e?.message;
+        const msg = status
+          ? "Failed to save (" + status + "): " + (detail || "server error")
+          : "Failed to save. Check your connection, CORS, or permissions.";
+        showToast(msg, true);
+      }
     } finally {
       setSaving(false);
     }
