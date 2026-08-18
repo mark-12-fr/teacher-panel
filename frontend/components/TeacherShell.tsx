@@ -12,6 +12,7 @@ import { applyTheme, currentTheme, pullTheme } from "@/lib/theme";
 import { usePageMetaValue } from "@/lib/page-meta";
 import AIAssistant from "@/components/AIAssistant";
 import QuickAddFab from "@/components/QuickAddFab";
+import OfflineBanner from "@/components/OfflineBanner";
 import "@/app/teacher-shell.css";
 
 export type MenuKey =
@@ -332,6 +333,7 @@ export default function TeacherShell({
 
       <QuickAddFab />
       <AIAssistant />
+      <OfflineBanner />
 
       {confirmLogout && (
         <div className="modal-overlay" style={{ display: "flex" }} onClick={() => setConfirmLogout(false)}>
