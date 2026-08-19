@@ -91,7 +91,19 @@ export default function AttendanceGridPage() {
     try {
       const r = await cachedGet(fresh ? null : `att_${sectionId}`, `/api/sections/${sectionId}/attendance`);
       const rows: Att[] = (r.attendance || []).map((a: any) => ({ student_name: a.student_name, date: a.date, status: a.status }));
-      setAtt(rows);
+      // Never let a reload clobber a date the user is actively editing/saving:
+      // keep the optimistic rows for those dates (a just-cleared cell must stay
+      // cleared) and take the fresh rows for every other date. Without this a
+      // poll/realtime reload reverts unsaved edits back to the pre-edit value.
+      const busy = savingDates.current;
+      if (busy.size > 0) {
+        setAtt([
+          ...rows.filter((a) => !busy.has(a.date)),
+          ...attRef.current.filter((a) => busy.has(a.date)),
+        ]);
+      } else {
+        setAtt(rows);
+      }
     } catch {}
   }, [sectionId, setAtt]);
 
@@ -204,6 +216,11 @@ export default function AttendanceGridPage() {
   function scheduleSave(date: string) {
     const st = saveState.current.get(date) || { timer: null, inFlight: false, dirty: false };
     if (st.timer) clearTimeout(st.timer);
+    // Protect this date from a poll/realtime reload the moment it's edited — not
+    // only once the POST starts. Otherwise a reload firing during the 350ms
+    // debounce overwrites the optimistic change with the pre-edit row, and the
+    // next save then persists that reverted value (a cleared cell "comes back").
+    savingDates.current.add(date);
     st.timer = setTimeout(() => flushSave(date), SAVE_DEBOUNCE_MS);
     saveState.current.set(date, st);
   }
