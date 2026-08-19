@@ -59,6 +59,9 @@ export default function PerformanceDetailPage() {
   const pieRef = useRef<HTMLCanvasElement>(null);
   const barRef = useRef<HTMLCanvasElement>(null);
   const charts = useRef<{ line?: any; pie?: any; bar?: any }>({});
+  // Signature of the last data actually rendered, so a poll/realtime refresh
+  // that returns identical data doesn't churn state (and re-draw the charts).
+  const lastSig = useRef<string>("");
 
   function showToast(msg: string, err = false) {
     setToast({ show: true, msg, err });
@@ -68,20 +71,27 @@ export default function PerformanceDetailPage() {
   const load = useCallback(async (fresh = false) => {
     try {
       const sec = (await cachedGet(fresh ? null : `sec_${sectionId}`, `/api/sections/${sectionId}`)).section;
-      setSection(sec);
       const [stu, rec, subj] = await Promise.all([
         cachedGet(fresh ? null : `stud_${sectionId}`, `/api/sections/${sectionId}/students`),
         cachedGet(fresh ? null : `rec_${sectionId}`, `/api/sections/${sectionId}/class-records`),
         cachedGet(fresh ? null : "subjects", `/api/subjects`),
       ]);
-      setSubjectConfigs(subj.subjects || []); // weights/passing before any grade calc
-      setStudents(stu.students || []);
-      setRecords(rec.records || []);
+      let att: any[] = [];
       try {
-        const att = await cachedGet(fresh ? null : `att_${sectionId}`, `/api/sections/${sectionId}/attendance`);
-        setAttendance(att.attendance || []);
+        att = (await cachedGet(fresh ? null : `att_${sectionId}`, `/api/sections/${sectionId}/attendance`)).attendance || [];
       } catch {}
       setReady(true);
+      // Bail out of the state churn when a background refresh returns the same
+      // data — without this the analytics + charts visibly re-render every 20s
+      // (and on every realtime echo) even though nothing changed.
+      const sig = JSON.stringify([sec, stu.students, rec.records, subj.subjects, att]);
+      if (sig === lastSig.current) return;
+      lastSig.current = sig;
+      setSubjectConfigs(subj.subjects || []); // weights/passing before any grade calc
+      setSection(sec);
+      setStudents(stu.students || []);
+      setRecords(rec.records || []);
+      setAttendance(att);
     } catch {
       showToast("Unauthorized or Section not found", true);
     }
