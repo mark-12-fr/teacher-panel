@@ -5,7 +5,7 @@
 // Deterministic questions are answered locally (numbers match the dashboard);
 // open-ended ones go to the backend /api/ai-evaluate with a compiled context.
 import { useEffect, useRef, useState } from "react";
-import { processSmartDBQuery, loadAIData, type AIData } from "@/lib/ai";
+import { processSmartDBQuery, loadAIData, escapeHtml, type AIData } from "@/lib/ai";
 import "@/app/ai-assistant.css";
 
 type Msg = { role: "user" | "ai"; html: string; typing?: boolean };
@@ -93,7 +93,7 @@ export default function AIAssistant() {
     if (!q || busy) return;
     setInput("");
     setBusy(true);
-    setMessages((m) => [...m, { role: "user", html: q }, { role: "ai", html: TYPING_HTML, typing: true }]);
+    setMessages((m) => [...m, { role: "user", html: escapeHtml(q) }, { role: "ai", html: TYPING_HTML, typing: true }]);
     try {
       // Reload the class data if we've never loaded it or it's older than 30s,
       // so answers reflect recent edits while rapid follow-ups reuse the cache.
