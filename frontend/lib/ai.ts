@@ -6,7 +6,7 @@
 // questions are sent to the backend /api/ai-evaluate with a compiled class-data
 // context. Grades use the shared grading.ts logic.
 import { apiGet, apiPost } from "@/lib/api";
-import { finalGrade, passingFor, setSubjectConfigs } from "@/lib/grading";
+import { componentScores, finalGrade, passingFor, setSubjectConfigs } from "@/lib/grading";
 
 export type AIData = {
   sections: any[];
@@ -18,7 +18,7 @@ export type AIData = {
 };
 
 // ── Text helpers ─────────────────────────────────────────────────────────────
-const escapeHtml = (s: any) =>
+export const escapeHtml = (s: any) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function applyStatusBadges(html: string): string {
@@ -184,8 +184,8 @@ export function buildAIContext(query: string, data: AIData): string {
     if (k.startsWith("module_")) return "Module " + k.slice(7);
     if (k.startsWith("activity_")) return "Activity " + k.slice(9);
     if (k.startsWith("pt_")) return "Performance Task " + k.slice(3);
-    if (k === "qe") return "Exam";
-    if (k === "at") return "AT";
+    if (k === "qe") return "Quarterly Exam";
+    if (k === "at") return "Achievement Test";
     return k;
   };
   const isEmpty = (v: any) => v === null || v === undefined || v === "" || Number(v) === 0;
@@ -201,16 +201,13 @@ export function buildAIContext(query: string, data: AIData): string {
 
   const analyze = (st: any) => {
     const merged = mergedRecord(data, st.id) || {};
-    let totalWW = 0;
-    let totalPT = 0;
-    const totalQE = Number(merged.qe) || 0;
-    for (const k in merged) {
-      if (k.startsWith("module_") || k.startsWith("activity_") || k === "at") totalWW += Number(merged[k]) || 0;
-      if (k.startsWith("pt_")) totalPT += Number(merged[k]) || 0;
-    }
-    const ww = Math.round(Math.min(totalWW, 100));
-    const pt = Math.round(Math.min(totalPT, 100));
-    const qe = Math.round(Math.min((totalQE / 50) * 100, 100));
+    // Use the shared grade engine so the breakdown matches the actual grade and
+    // the rest of the app: Written Works = Modules + Activities, and the Exam
+    // component = Achievement Test + Quarterly Exam.
+    const comp = componentScores(merged);
+    const ww = Math.round(comp.ww);
+    const pt = Math.round(comp.pt);
+    const exam = Math.round(comp.exam);
     const sec = sections.find((x) => x.id === st.section_id) || {};
     const grade = finalGrade(merged, sec.subject, 100);
     const passing = passingFor(sec.subject);
@@ -219,7 +216,7 @@ export function buildAIContext(query: string, data: AIData): string {
     const att = attendance.filter((a) => (a.student_name || "").toLowerCase() === (st.full_name || "").toLowerCase());
     const abs = att.filter((a) => a.status === "Absent").length;
     const late = att.filter((a) => a.status === "Late").length;
-    return { merged, active, ww, pt, qe, grade, passing, missing, abs, late };
+    return { merged, active, ww, pt, exam, grade, passing, missing, abs, late };
   };
 
   const now = new Date();
@@ -244,7 +241,7 @@ export function buildAIContext(query: string, data: AIData): string {
     });
     const tAtt = attendance.filter((x) => (x.student_name || "").toLowerCase() === (s.full_name || "").toLowerCase() && isToday(x.date));
     const todayStatus = tAtt.length ? tAtt[0].status : "no record for today";
-    return `STUDENT: ${cleanNm(s.full_name)}\nSection: ${sec.title || "N/A"} | Subject: ${sec.subject || "N/A"}\nFinal grade: ${a.grade}% (${a.grade >= a.passing ? "PASSING" : "FAILING"}; passing is ${a.passing}%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam: ${a.qe}%\nScores per assigned assessment: ${scoreLines.join("; ") || "none recorded"}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(", ") : "none"}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
+    return `STUDENT: ${cleanNm(s.full_name)}\nSection: ${sec.title || "N/A"} | Subject: ${sec.subject || "N/A"}\nFinal grade: ${a.grade}% (${a.grade >= a.passing ? "PASSING" : "FAILING"}; passing is ${a.passing}%)\nWritten Work total: ${a.ww}% | Performance Tasks total: ${a.pt}% | Exam (Achievement Test + Quarterly Exam): ${a.exam}%\nScores per assigned assessment: ${scoreLines.join("; ") || "none recorded"}\nMissing/zero items (count ${a.missing.length}): ${a.missing.length ? a.missing.join(", ") : "none"}\nAttendance: ${a.abs} absences, ${a.late} lates | Today: ${todayStatus}`;
   }
 
   const todayAbsent: string[] = [];
@@ -436,22 +433,37 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
     return res;
   }
   if ((query.includes("wala") && (query.includes("pasa") || query.includes("module") || query.includes("activity"))) || query.includes("missing")) {
-    const missingStudents: string[] = [];
+    // "Active" assessment = one at least one student in the section has scored,
+    // so an item that was never given is never flagged. A student is missing an
+    // item when it's blank or zero. Dedupe by student (not per quarter record —
+    // the old check only looked at modules 1-5 and listed a student per record).
+    const isAssess = (k: string) => k.startsWith("module_") || k.startsWith("activity_") || k.startsWith("pt_") || k === "qe" || k === "at";
+    const activeBySection: Record<string, Set<string>> = {};
     data.records.forEach((r) => {
-      let hasMissing = false;
-      for (let i = 1; i <= 5; i++) if (r[`module_${i}`] == null || r[`module_${i}`] === "") hasMissing = true;
-      if (hasMissing) {
-        const stud = students.find((s) => s.id === r.student_id);
-        if (stud) missingStudents.push(stud.full_name);
+      if (!activeBySection[r.section_id]) activeBySection[r.section_id] = new Set();
+      Object.keys(r).forEach((k) => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[r.section_id].add(k); });
+    });
+    const missingList: { name: string; count: number; section: string }[] = [];
+    students.forEach((s) => {
+      const merged = mergedRecord(data, s.id);
+      if (!merged) return;
+      const active = Array.from(activeBySection[s.section_id] || []);
+      const missCount = active.filter((k) => merged[k] == null || merged[k] === "" || Number(merged[k]) === 0).length;
+      if (missCount > 0) {
+        const sec = sections.find((x) => x.id === s.section_id) || {};
+        missingList.push({ name: s.full_name || "No Name", count: missCount, section: sec.title || "" });
       }
     });
-    if (missingStudents.length === 0) return "All students have submitted their recorded modules and activities.";
-    return "<strong>The following students have missing requirements:</strong><br><br>- " + missingStudents.join("<br>- ");
+    if (missingList.length === 0) return "All students have submitted their recorded requirements.";
+    missingList.sort((a, b) => b.count - a.count);
+    let res = "<strong>The following students have missing requirements:</strong><br><br>";
+    missingList.forEach((m) => (res += `- <strong>${escapeHtml(m.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(m.section)})</span> — ${m.count} missing<br>`));
+    return res;
   }
   if (query.includes("score ni") || query.includes("grade of") || query.includes("grade ni") || query.includes("pasado ba si") || query.includes("nakapasa bala si") || query.includes("score of")) {
     const name = query.split(/ni |of |si /)[1]?.replace("?", "").trim();
     if (!name) return "Please specify the student's name. Example: <em>'What is the grade of Mark?'</em>";
-    const stud = students.find((s) => s.full_name.toLowerCase().includes(name));
+    const stud = students.find((s) => (s.full_name || "").toLowerCase().includes(name));
     if (!stud) return `I could not find a student named "<strong>${escapeHtml(name)}</strong>" in your class lists.`;
     if (!mergedRecord(data, stud.id)) return `There are no grade records entered for <strong>${escapeHtml(stud.full_name)}</strong> yet.`;
     const grade = gradeOf(data, stud);
@@ -483,7 +495,7 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
   if (query.includes("id number") || query.includes("id ni") || query.includes("id of")) {
     const name = query.split(/ni |of /)[1]?.replace("?", "").trim();
     if (!name) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
-    const stud = students.find((s) => s.full_name.toLowerCase().includes(name));
+    const stud = students.find((s) => (s.full_name || "").toLowerCase().includes(name));
     if (!stud) return `I couldn't locate "<strong>${escapeHtml(name)}</strong>" in the database.`;
     return `The ID number for <strong>${escapeHtml(stud.full_name)}</strong> is: <strong>${stud.id}</strong>.`;
   }
