@@ -123,6 +123,9 @@ export default function DashboardPage() {
   const qStudentsRef = useRef<Record<string, any[]>>({ "1": [], "2": [], "3": [], "4": [] });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  // Signature of the stats last applied to state, so a poll/realtime refresh
+  // that returns identical data doesn't re-set state and redraw the chart.
+  const lastAppliedSig = useRef<string>("");
 
   function showToast(msg: string, err = false) {
     setToast({ show: true, msg, err });
@@ -291,6 +294,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!statsCache.data) return;
     const d = statsCache.data;
+    // Skip re-applying state (which redraws the chart + re-renders Top Students)
+    // when a background refresh returns data identical to what's already shown.
+    const sig = JSON.stringify(d);
+    if (sig === lastAppliedSig.current) return;
+    lastAppliedSig.current = sig;
     sectionsRef.current = d.sections;
     todayAttRef.current = d.todayAtt;
     // Older cached payloads (pre-feature) have no qStudents — default empty.
