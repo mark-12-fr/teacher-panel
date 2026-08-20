@@ -913,18 +913,15 @@
 
             .sticky-col:nth-child(2) {
                 left: 22px !important;
-                width: 70px;
-                min-width: 70px;
-                max-width: 70px;
+                width: 85px;
+                min-width: 85px;
+                max-width: 85px;
                 font-size: 0.7rem;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
                 padding-left: 4px !important;
             }
 
             .sticky-col:nth-child(3) {
-                left: 92px !important;
+                left: 107px !important;
                 min-width: 75px;
                 max-width: 75px;
                 font-size: 0.7rem;
@@ -983,15 +980,12 @@
         }
         .sticky-col:nth-child(2) {
             left: 45px;
-            width: 120px;
-            min-width: 120px;
-            max-width: 120px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            width: 130px;
+            min-width: 130px;
+            max-width: 130px;
         }
         .sticky-col:nth-child(3) {
-            left: 165px;
+            left: 175px;
             min-width: 160px;
             max-width: 160px;
             border-right: 2px solid #475569 !important;
@@ -1223,17 +1217,14 @@
     }
     .sticky-col:nth-child(2) {
         left: 26px !important;
-        width: 70px;
-        min-width: 70px;
-        max-width: 70px;
+        width: 85px;
+        min-width: 85px;
+        max-width: 85px;
         font-size: 0.72rem;
         padding-left: 6px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
     .sticky-col:nth-child(3) {
-        left: 96px !important;
+        left: 111px !important;
         min-width: 118px;
         max-width: 118px;
         font-size: 0.72rem;
