@@ -351,7 +351,7 @@ export default function AttendanceGridPage() {
 
   const filteredStudents = useMemo(() => {
     const t = search.toLowerCase();
-    return students.map((s, i) => ({ s, i, hidden: !!t && !String(s.full_name || "").toLowerCase().includes(t) }));
+    return students.map((s, i) => ({ s, i, hidden: !!t && !`${s.full_name || ""} ${s.id_no || ""}`.toLowerCase().includes(t) }));
   }, [students, search]);
 
   // Per-student history grouped by month (ported from renderHistoryModal).
@@ -388,14 +388,14 @@ export default function AttendanceGridPage() {
       rows.push([`Month: ${monthLabel}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
 
-      const headers: any[] = ["#", "Student Name"];
+      const headers: any[] = ["#", "ID No.", "Student Name"];
       for (let d = 1; d <= daysInMonth; d++) headers.push(String(d));
       headers.push("Present", "Absent", "Late");
       rows.push(headers);
 
       let totP = 0, totA = 0, totL = 0;
       students.forEach((stud, idx) => {
-        const row: any[] = [idx + 1, stud.full_name];
+        const row: any[] = [idx + 1, stud.id_no || "", stud.full_name];
         let p = 0, a = 0, l = 0;
         for (let d = 1; d <= daysInMonth; d++) {
           const status = attMap.get(`${stud.full_name}__${dateFor(d)}`);
@@ -411,7 +411,7 @@ export default function AttendanceGridPage() {
       });
 
       rows.push([]);
-      rows.push(["", "GRAND TOTAL", ...Array(daysInMonth).fill(""), totP, totA, totL]);
+      rows.push(["", "", "GRAND TOTAL", ...Array(daysInMonth).fill(""), totP, totA, totL]);
 
       await writeStyledSheet(rows, {
         sheetName: "Attendance",
@@ -476,7 +476,7 @@ export default function AttendanceGridPage() {
         <div className="table-header">
           <div className="search-container">
             <i className="fa-solid fa-magnifying-glass search-icon" />
-            <input type="text" placeholder="Search student name..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input type="text" placeholder="Search student name or ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
             {search && (
               <button className="search-clear" style={{ display: "flex" }} onClick={() => setSearch("")} title="Clear">
                 <i className="fa-solid fa-times" />
@@ -503,7 +503,8 @@ export default function AttendanceGridPage() {
             <thead>
               <tr>
                 <th className="sticky-col-1" rowSpan={2}>#</th>
-                <th className="sticky-col-2" rowSpan={2}>Student Name</th>
+                <th className="sticky-col-2" rowSpan={2}>ID No.</th>
+                <th className="sticky-col-name" rowSpan={2}>Student Name</th>
                 <th colSpan={daysInMonth} style={{ borderBottom: "1px solid var(--border-color)", textAlign: "center", background: "var(--table-header)" }}>{monthLabel}</th>
               </tr>
               <tr>
@@ -514,10 +515,10 @@ export default function AttendanceGridPage() {
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={daysInMonth + 2} />
+                <SkeletonTableRows rows={6} cols={daysInMonth + 3} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={daysInMonth + 2} style={{ padding: 0 }}>
+                  <td colSpan={daysInMonth + 3} style={{ padding: 0 }}>
                     <div className="empty-state">
                       <div className="empty-state-icon"><i className="fa-solid fa-calendar-xmark" /></div>
                       <div className="empty-state-title">No students enrolled</div>
@@ -529,7 +530,8 @@ export default function AttendanceGridPage() {
                 filteredStudents.map(({ s, i, hidden }) => (
                   <tr key={s.id} className="student-data-row" style={hidden ? { display: "none" } : undefined}>
                     <td className="sticky-col-1">{i + 1}</td>
-                    <td className="sticky-col-2 search-target name-clickable" title="Click to view attendance history" onClick={() => setHistory({ open: true, name: s.full_name })}>
+                    <td className="sticky-col-2 search-id">{s.id_no || "—"}</td>
+                    <td className="sticky-col-name search-target name-clickable" title="Click to view attendance history" onClick={() => setHistory({ open: true, name: s.full_name })}>
                       {s.full_name}
                     </td>
                     {Array.from({ length: daysInMonth }, (_, di) => di + 1).map((d) => {

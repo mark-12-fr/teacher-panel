@@ -764,7 +764,7 @@ export default function ClassRecordGridPage() {
       rows.push([`Class Record — ${sectionName}${subjectName ? " — " + subjectName : ""}`]);
       rows.push([`${qLabel(currentQuarter)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
-      const headers: any[] = ["Student Name"];
+      const headers: any[] = ["ID No.", "Student Name"];
       for (let m = 1; m <= 25; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
       if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
@@ -775,7 +775,7 @@ export default function ClassRecordGridPage() {
 
       students.forEach((s) => {
         const rec = recForView(s.id);
-        const row: any[] = [s.full_name];
+        const row: any[] = [s.id_no || "", s.full_name];
         [...MODULES, ...ACTIVITIES, ...(college ? [] : TAIL)].forEach((f) => {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
@@ -865,7 +865,7 @@ export default function ClassRecordGridPage() {
       <div className="class-record-container">
         <div className="search-container">
           <i className="fa-solid fa-magnifying-glass search-icon" />
-          <input type="text" placeholder="Search student name..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input type="text" placeholder="Search student name or ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
         <div className="quarter-bar">
@@ -946,6 +946,7 @@ export default function ClassRecordGridPage() {
             <thead>
               <tr>
                 <th rowSpan={2} className="sticky-col">#</th>
+                <th rowSpan={2} className="sticky-col" style={{ textAlign: "center" }}>ID No.</th>
                 <th rowSpan={2} className="sticky-col text-left group-divider">Student Name</th>
                 <th colSpan={25} className="header-group group-divider header-modules">MODULES</th>
                 <th colSpan={10} className="header-group group-divider header-activities">ACTIVITIES</th>
@@ -979,17 +980,18 @@ export default function ClassRecordGridPage() {
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={college ? 39 : 43} />
+                <SkeletonTableRows rows={6} cols={college ? 40 : 44} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={college ? 39 : 43} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
+                  <td colSpan={college ? 40 : 44} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>
               ) : (
                 students.map((s, idx) => {
-                  const hidden = !!searchLower && !String(s.full_name || "").toLowerCase().includes(searchLower);
+                  const hidden = !!searchLower && !`${s.full_name || ""} ${s.id_no || ""}`.toLowerCase().includes(searchLower);
                   return (
                     <tr key={s.id} className="student-data-row" style={hidden ? { display: "none" } : undefined}>
                       <td className="sticky-col">{idx + 1}</td>
+                      <td className="sticky-col search-id" style={{ textAlign: "center" }}>{s.id_no || "—"}</td>
                       <td className="sticky-col text-left group-divider search-target">
                         <button
                           type="button"

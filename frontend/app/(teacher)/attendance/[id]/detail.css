@@ -538,7 +538,7 @@
             font-weight: 500;
         }
 
-        .sticky-col-1, .sticky-col-2 {
+        .sticky-col-1, .sticky-col-2, .sticky-col-name {
             position: sticky;
             background: var(--card-bg);
             z-index: 2;
@@ -549,11 +549,17 @@
         }
         .sticky-col-2 {
             left: 40px;
+            width: 100px;
+            text-align: center !important;
+        }
+        .sticky-col-name {
+            left: 140px;
             width: 220px;
             text-align: left !important;
         }
         thead .sticky-col-1,
-        thead .sticky-col-2 {
+        thead .sticky-col-2,
+        thead .sticky-col-name {
             background: var(--table-header);
             z-index: 3;
         }
@@ -1233,7 +1239,8 @@
             border-bottom-right-radius: 8px;
         }
         .student-data-row:hover .sticky-col-1,
-        .student-data-row:hover .sticky-col-2 {
+        .student-data-row:hover .sticky-col-2,
+        .student-data-row:hover .sticky-col-name {
             background: var(--hover-bg) !important;
         }
 
@@ -1355,8 +1362,8 @@
             .layout { overflow-x: hidden; }
             .main-content { width: 100%; overflow-x: hidden; }
             .editable-cell .mark-letter { min-width: 22px; height: 22px; font-size: 0.7rem; }
-            .sticky-col-1, .sticky-col-2 { position: static; }
-            thead .sticky-col-1, thead .sticky-col-2 { position: static; }
+            .sticky-col-1, .sticky-col-2, .sticky-col-name { position: static; }
+            thead .sticky-col-1, thead .sticky-col-2, thead .sticky-col-name { position: static; }
         }
 
         /* Centered summary box: icon on top, text centered below.
