@@ -124,9 +124,41 @@ function mergedRecord(data: AIData, studentId: any): any | null {
     return acc;
   }, {});
 }
-const gradeOf = (data: AIData, student: any) =>
-  finalGrade(mergedRecord(data, student.id) || {}, subjectOf(data, student.section_id), 100);
-const passingOf = (data: AIData, student: any) => passingFor(subjectOf(data, student.section_id));
+// ── Section / quarter scoping (so "top in HUMSS 1" and "Q2 / Prelim" work) ───
+const TERM_TO_Q: Record<string, string> = { prelim: "1", midterm: "2", final: "3", finals: "3" };
+const normQtr = (q: any): string => {
+  const t = String(q ?? "").trim().toLowerCase();
+  return TERM_TO_Q[t] || t.replace(/[^1-4]/g, "");
+};
+/** The section whose title appears in the query (longest match wins), or null. */
+function resolveSection(query: string, sections: any[]): any | null {
+  const q = String(query || "").toLowerCase();
+  let best: any = null;
+  sections.forEach((s) => {
+    const t = String(s.title || "").trim().toLowerCase();
+    if (t && q.includes(t) && (!best || t.length > String(best.title || "").trim().length)) best = s;
+  });
+  return best;
+}
+/** A quarter/term digit ("1".."4") named in the query, or null. "final grade"
+ *  is NOT treated as a term — only "final term"/"prelim"/"midterm"/"QN". */
+function resolveQuarter(query: string): string | null {
+  const q = " " + String(query || "").toLowerCase().replace(/[?.,]/g, " ") + " ";
+  if (/\bprelim(?:inary)?\b/.test(q)) return "1";
+  if (/\bmidterm\b/.test(q)) return "2";
+  if (/\bfinal\s+term\b/.test(q)) return "3";
+  const m = q.match(/\bq\s?([1-4])\b/) || q.match(/\b([1-4])(?:st|nd|rd|th)?\s+quarter\b/) || q.match(/\bquarter\s+([1-4])\b/);
+  return m ? m[1] : null;
+}
+/** A single quarter's merged record for a student (or null if none). */
+function quarterRecord(data: AIData, studentId: any, quarter: string): any | null {
+  const recs = data.records.filter((r) => r.student_id === studentId && normQtr(r.quarter) === quarter);
+  if (!recs.length) return null;
+  return recs.reduce((acc: any, c: any) => {
+    Object.keys(c).forEach((k) => { if (c[k] !== null && c[k] !== undefined && c[k] !== "") acc[k] = c[k]; });
+    return acc;
+  }, {});
+}
 
 // ── Facilitator logs (fetched via API; parallels formatFacilitatorLogsHTML) ──
 export async function formatFacilitatorLogs(facilitators: any[]): Promise<string> {
@@ -164,13 +196,14 @@ export async function formatFacilitatorLogs(facilitators: any[]): Promise<string
 }
 
 // ── Backend call ─────────────────────────────────────────────────────────────
-export async function callAIEvaluate(question: string, context: string): Promise<string> {
+export async function callAIEvaluate(question: string, context: string, signal?: AbortSignal): Promise<string> {
   try {
-    const r = await apiPost("/api/ai-evaluate", { question, context });
+    const r = await apiPost("/api/ai-evaluate", { question, context }, { signal });
     if (r && r.reply) return formatAIText(r.reply);
     return escapeHtml((r && r.error) || "The server took too long. Please send your question again.");
   } catch (e: any) {
     const msg = String(e?.message || "");
+    if (signal?.aborted || /abort/i.test(msg)) return ""; // cancelled by the user — caller ignores ""
     if (/429|rate|limit|quota/i.test(msg)) return "Please wait a moment and try again.";
     return "The server is waking up and took too long. Please send your question again.";
   }
@@ -388,7 +421,11 @@ export function buildAIContext(query: string, data: AIData): string {
 }
 
 // ── Deterministic query router (port of processSmartDBQuery) ─────────────────
-export async function processSmartDBQuery(rawQuery: string, data: AIData): Promise<string> {
+export async function processSmartDBQuery(
+  rawQuery: string,
+  data: AIData,
+  opts?: { history?: string; signal?: AbortSignal }
+): Promise<string> {
   const query = rawQuery.toLowerCase();
   const st = smallTalk(query);
   if (st) return st;
@@ -396,43 +433,85 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
   const { students, sections, schedules, facilitators, attendance } = data;
   if (sections.length === 0) return "It appears you haven't set up any active sections yet.";
 
-  if (isEvaluationIntent(query)) return callAIEvaluate(rawQuery, buildAIContext(query, data));
+  // Open-ended questions go to the model, with recent conversation prepended so
+  // follow-ups ("what should I do about them?") have context.
+  const evalContext = () => {
+    const ctx = buildAIContext(query, data);
+    return opts?.history ? `RECENT CONVERSATION (for follow-up context):\n${opts.history}\n\n${ctx}` : ctx;
+  };
+  if (isEvaluationIntent(query)) return callAIEvaluate(rawQuery, evalContext(), opts?.signal);
+
+  // ── Scope: a section ("HUMSS 1") and/or a quarter/term ("Q2", "Prelim") ─────
+  const scopeSection = resolveSection(rawQuery, sections);
+  const scopeQuarter = resolveQuarter(rawQuery);
+  const scoped = scopeSection ? students.filter((s) => String(s.section_id) === String(scopeSection.id)) : students;
+  const recFor = (s: any) => (scopeQuarter ? quarterRecord(data, s.id, scopeQuarter) : mergedRecord(data, s.id));
+  const gradeFor = (s: any) => finalGrade(recFor(s) || {}, subjectOf(data, s.section_id), 100);
+  const passFor = (s: any) => passingFor(subjectOf(data, s.section_id));
+  const secTitle = (s: any) => (sections.find((x) => x.id === s.section_id) || {}).title || "";
+  const absOf = (s: any) => attendance.filter((a) => (a.student_name || "").toLowerCase() === (s.full_name || "").toLowerCase() && a.status === "Absent").length;
+  const qLabel = (qd: string) => (scopeSection && scopeSection.school_level === "College" ? ({ "1": "Prelim", "2": "Midterm", "3": "Final" } as Record<string, string>)[qd] : "") || "Q" + qd;
+  const scopeBits: string[] = [];
+  if (scopeSection) scopeBits.push(scopeSection.title);
+  if (scopeQuarter) scopeBits.push(qLabel(scopeQuarter));
+  const inScope = scopeBits.length ? " in " + scopeBits.join(" · ") : "";
+  const label = scopeBits.length ? ` <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(scopeBits.join(" · "))})</span>` : "";
+  const noStudents = scopeSection ? `No students found in <strong>${escapeHtml(scopeSection.title)}</strong>.` : "You don't have any students registered yet.";
 
   if (query.includes("top") || query.includes("highest") || query.includes("best")) {
-    if (students.length === 0) return "You don't have any students registered yet.";
-    const scored = students
-      .map((s) => ({ name: s.full_name, grade: gradeOf(data, s), section: (sections.find((x) => x.id === s.section_id) || {}).title }))
+    if (!scoped.length) return noStudents;
+    const scored = scoped
+      .map((s) => ({ name: s.full_name, grade: gradeFor(s), section: secTitle(s) }))
+      .filter((x) => x.grade > 0)
       .sort((a, b) => b.grade - a.grade)
       .slice(0, 5);
-    let res = "<strong>🌟 Here are your top performers:</strong><br><br>";
+    if (!scored.length) return `No grades recorded yet${inScope}.`;
+    let res = `<strong>🌟 Top performers${label}:</strong><br><br>`;
     scored.forEach((s, i) => (res += `<strong>#${i + 1} ${escapeHtml(s.name)}</strong> - ${s.grade}% <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(s.section || "")})</span><br>`));
     return res;
   }
   if (query.includes("fail") || query.includes("bagsak") || query.includes("below")) {
     const failing: any[] = [];
-    students.forEach((s) => {
-      const grade = gradeOf(data, s);
-      if (grade > 0 && grade < passingOf(data, s)) failing.push({ name: s.full_name, grade });
-    });
-    if (failing.length === 0) return "Excellent news! None of your students are currently failing.";
+    scoped.forEach((s) => { const grade = gradeFor(s); if (grade > 0 && grade < passFor(s)) failing.push({ name: s.full_name, grade, section: secTitle(s) }); });
+    if (failing.length === 0) return `Excellent news! No students are currently failing${inScope}.`;
     failing.sort((a, b) => a.grade - b.grade);
-    let res = "<strong>📉 These students are currently below the passing grade:</strong><br><br>";
-    failing.forEach((f) => (res += `- <strong>${escapeHtml(f.name)}</strong> (${f.grade}%)<br>`));
+    let res = `<strong>📉 Students below the passing grade${label}:</strong><br><br>`;
+    failing.forEach((f) => (res += `- <strong>${escapeHtml(f.name)}</strong> (${f.grade}%) <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(f.section)})</span><br>`));
+    return res;
+  }
+  if (/needs? help|need .*help|struggl|kinahanglan.*bulig|nabudlay/.test(query)) {
+    const rows = scoped
+      .map((s) => { const grade = gradeFor(s); const abs = absOf(s); return { name: s.full_name, section: secTitle(s), grade, abs, flag: (grade > 0 && grade < passFor(s)) || abs >= 3 }; })
+      .filter((r) => r.flag)
+      .sort((a, b) => a.grade - b.grade);
+    if (!rows.length) return `No students are flagged as needing help${inScope} right now. 🎉`;
+    let res = `<strong>🆘 Students who may need help${label} (low grade or 3+ absences):</strong><br><br>`;
+    rows.forEach((r) => (res += `- <strong>${escapeHtml(r.name)}</strong> — ${r.grade > 0 ? r.grade + "%" : "no grade"}, ${r.abs} absence${r.abs === 1 ? "" : "s"} <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(r.section)})</span><br>`));
+    return res;
+  }
+  if (/(wala|walang|hasn'?t|has not|haven'?t|no record|indi pa|hindi pa|not yet|missing).{0,24}(quarterly exam|exam|\bqe\b|achievement test|achievement)|(quarterly exam|\bqe\b|achievement test|achievement).{0,24}(wala|walang|missing|no record|indi pa|hindi pa|not yet)/.test(query)) {
+    const wantAT = /achievement/.test(query);
+    const field = wantAT ? "at" : "qe";
+    const fLabel = wantAT ? "Achievement Test" : "Quarterly Exam";
+    const missing = scoped
+      .map((s) => ({ s, r: recFor(s) }))
+      .filter(({ r }) => r && (r[field] == null || r[field] === "" || Number(r[field]) === 0))
+      .map(({ s }) => ({ name: s.full_name, section: secTitle(s) }));
+    if (!missing.length) return `Everyone${inScope} already has a ${fLabel} score recorded. ✅`;
+    let res = `<strong>📝 No ${fLabel} score yet${label} (${missing.length}):</strong><br><br>`;
+    missing.forEach((m) => (res += `- <strong>${escapeHtml(m.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(m.section)})</span><br>`));
     return res;
   }
   if (query.includes("who passed") || query.includes("who is passing") || query.includes("passing student") || query.includes("passing list") || query.includes("mga pasado") || query.includes("mga nakapasa")) {
     const list: any[] = [];
-    students.forEach((s) => {
-      const grade = gradeOf(data, s);
-      if (grade >= passingOf(data, s)) list.push({ name: s.full_name, grade, section: (sections.find((x) => x.id === s.section_id) || {}).title || "Unknown" });
-    });
-    if (list.length === 0) return "No students have reached the passing grade yet.";
+    scoped.forEach((s) => { const grade = gradeFor(s); if (grade > 0 && grade >= passFor(s)) list.push({ name: s.full_name, grade, section: secTitle(s) || "Unknown" }); });
+    if (list.length === 0) return `No students have reached the passing grade yet${inScope}.`;
     list.sort((a, b) => b.grade - a.grade);
-    let res = `<strong>Passing students (${list.length}):</strong><br><br>`;
+    let res = `<strong>Passing students${label} (${list.length}):</strong><br><br>`;
     list.forEach((f) => (res += `- <strong>${escapeHtml(f.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(f.section)})</span> — ${f.grade}%<br>`));
     return res;
   }
-  if ((query.includes("wala") && (query.includes("pasa") || query.includes("module") || query.includes("activity"))) || query.includes("missing")) {
+  if ((query.includes("wala") && (query.includes("pasa") || query.includes("module") || query.includes("activity"))) || query.includes("missing") || query.includes("kulang")) {
     // "Active" assessment = one at least one student in the section has scored,
     // so an item that was never given is never flagged. A student is missing an
     // item when it's blank or zero. Dedupe by student (not per quarter record —
@@ -444,19 +523,16 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
       Object.keys(r).forEach((k) => { if (isAssess(k) && Number(r[k]) > 0) activeBySection[r.section_id].add(k); });
     });
     const missingList: { name: string; count: number; section: string }[] = [];
-    students.forEach((s) => {
-      const merged = mergedRecord(data, s.id);
+    scoped.forEach((s) => {
+      const merged = recFor(s);
       if (!merged) return;
       const active = Array.from(activeBySection[s.section_id] || []);
       const missCount = active.filter((k) => merged[k] == null || merged[k] === "" || Number(merged[k]) === 0).length;
-      if (missCount > 0) {
-        const sec = sections.find((x) => x.id === s.section_id) || {};
-        missingList.push({ name: s.full_name || "No Name", count: missCount, section: sec.title || "" });
-      }
+      if (missCount > 0) missingList.push({ name: s.full_name || "No Name", count: missCount, section: secTitle(s) });
     });
-    if (missingList.length === 0) return "All students have submitted their recorded requirements.";
+    if (missingList.length === 0) return `All students have submitted their recorded requirements${inScope}.`;
     missingList.sort((a, b) => b.count - a.count);
-    let res = "<strong>The following students have missing requirements:</strong><br><br>";
+    let res = `<strong>Students with missing requirements${label}:</strong><br><br>`;
     missingList.forEach((m) => (res += `- <strong>${escapeHtml(m.name)}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${escapeHtml(m.section)})</span> — ${m.count} missing<br>`));
     return res;
   }
@@ -465,18 +541,29 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
     if (!name) return "Please specify the student's name. Example: <em>'What is the grade of Mark?'</em>";
     const stud = students.find((s) => (s.full_name || "").toLowerCase().includes(name));
     if (!stud) return `I could not find a student named "<strong>${escapeHtml(name)}</strong>" in your class lists.`;
-    if (!mergedRecord(data, stud.id)) return `There are no grade records entered for <strong>${escapeHtml(stud.full_name)}</strong> yet.`;
-    const grade = gradeOf(data, stud);
-    const status = grade >= passingOf(data, stud) ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
-    return `The current calculated grade for <strong>${escapeHtml(stud.full_name)}</strong> is <strong>${grade}%</strong>. They are currently ${status}.`;
+    const rec = recFor(stud);
+    if (!rec) return `There are no grade records entered for <strong>${escapeHtml(stud.full_name)}</strong>${scopeQuarter ? " for " + escapeHtml(qLabel(scopeQuarter)) : ""} yet.`;
+    const grade = finalGrade(rec, subjectOf(data, stud.section_id), 100);
+    const status = grade >= passingFor(subjectOf(data, stud.section_id)) ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
+    return `The current grade for <strong>${escapeHtml(stud.full_name)}</strong>${scopeQuarter ? " (" + escapeHtml(qLabel(scopeQuarter)) + ")" : ""} is <strong>${grade}%</strong>. They are currently ${status}.`;
+  }
+  if (/attendance rate|attendance %|percent.*attend|attend.*percent|rate.*attend/.test(query)) {
+    const rows = scopeSection ? attendance.filter((a) => (a.section || "") === scopeSection.title) : attendance;
+    if (!rows.length) return `No attendance records found${inScope}.`;
+    let present = 0, late = 0;
+    rows.forEach((a) => { if (a.status === "Present") present++; else if (a.status === "Late") late++; });
+    const total = rows.length;
+    const rate = total ? Math.round(((present + 0.5 * late) / total) * 100) : 0;
+    return `<strong>📊 Attendance rate${label}: ${rate}%</strong><br><small>${present} present, ${late} late, ${total - present - late} absent across ${total} record(s). (Late counts as half.)</small>`;
   }
   if (query.includes("absent") || query.includes("attendance")) {
-    if (attendance.length === 0) return "I couldn't find any attendance records in your lists.";
+    const rows = scopeSection ? attendance.filter((a) => (a.section || "") === scopeSection.title) : attendance;
+    if (rows.length === 0) return `I couldn't find any attendance records${inScope}.`;
     const absent: Record<string, number> = {};
-    attendance.forEach((a) => { if (a.status === "Absent") absent[a.student_name] = (absent[a.student_name] || 0) + 1; });
+    rows.forEach((a) => { if (a.status === "Absent") absent[a.student_name] = (absent[a.student_name] || 0) + 1; });
     const sorted = Object.keys(absent).sort((a, b) => absent[b] - absent[a]);
-    if (sorted.length === 0) return "You have perfect attendance across all classes! No absences recorded.";
-    let res = "<strong>📅 Here are the students with the most absences:</strong><br><br>";
+    if (sorted.length === 0) return `Perfect attendance${inScope}! No absences recorded.`;
+    let res = `<strong>📅 Most absences${label}:</strong><br><br>`;
     sorted.slice(0, 5).forEach((name) => (res += `- <strong>${escapeHtml(name)}</strong> <span style="color:#ef4444;">(${absent[name]} absences)</span><br>`));
     return res;
   }
@@ -489,7 +576,8 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
   if (query.includes("facilitator") || query.includes("faci")) {
     return formatFacilitatorLogs(facilitators);
   }
-  if (query.includes("pila ka student") || query.includes("how many students") || query.includes("population")) {
+  if (query.includes("pila ka student") || query.includes("how many student") || query.includes("population") || query.includes("pila ka estudyante")) {
+    if (scopeSection) return `<strong>${escapeHtml(scopeSection.title)}</strong> has <strong>${scoped.length} student${scoped.length === 1 ? "" : "s"}</strong>.`;
     return `You currently handle a total of <strong>${students.length} students</strong> distributed across <strong>${sections.length} active sections</strong>.`;
   }
   if (query.includes("id number") || query.includes("id ni") || query.includes("id of")) {
@@ -497,22 +585,25 @@ export async function processSmartDBQuery(rawQuery: string, data: AIData): Promi
     if (!name) return "Please specify the student. Example: <em>'What is the ID number of Kevin?'</em>";
     const stud = students.find((s) => (s.full_name || "").toLowerCase().includes(name));
     if (!stud) return `I couldn't locate "<strong>${escapeHtml(name)}</strong>" in the database.`;
-    return `The ID number for <strong>${escapeHtml(stud.full_name)}</strong> is: <strong>${stud.id}</strong>.`;
+    return `The ID number for <strong>${escapeHtml(stud.full_name)}</strong> is: <strong>${escapeHtml(stud.id_no || stud.id)}</strong>.`;
   }
-  if (query.includes("summary") || query.includes("overview") || query.includes("performance") || query.includes("kamusta")) {
-    const total = students.length;
-    let pass = 0;
-    students.forEach((s) => { if (gradeOf(data, s) >= passingOf(data, s)) pass++; });
-    const rate = total > 0 ? Math.round((pass / total) * 100) : 0;
+  if (query.includes("summary") || query.includes("overview") || query.includes("performance") || query.includes("kamusta") || query.includes("pass rate") || query.includes("passing rate")) {
+    const pop = scoped;
+    let pass = 0, graded = 0;
+    pop.forEach((s) => { const g = gradeFor(s); if (g > 0) { graded++; if (g >= passFor(s)) pass++; } });
+    const rate = graded > 0 ? Math.round((pass / graded) * 100) : 0;
+    if (scopeSection) {
+      return `<strong>📊 ${escapeHtml(scopeSection.title)}${scopeQuarter ? " · " + escapeHtml(qLabel(scopeQuarter)) : ""}:</strong><br><br>• Students: <strong>${pop.length}</strong><br>• Graded: <strong>${graded}</strong><br>• Passing rate: <strong>${rate}%</strong> (${pass}/${graded})`;
+    }
     return (
       `<strong>📊 Here's a quick snapshot of your class:</strong><br><br>` +
       `• Total Active Sections: <strong>${sections.length}</strong><br>` +
-      `• Total Handled Students: <strong>${total}</strong><br>` +
-      `• Overall Passing Rate: <strong>${rate}%</strong><br><br>` +
-      `<em>Tip: You can ask me to list down the top students or those who are failing.</em>`
+      `• Total Handled Students: <strong>${pop.length}</strong><br>` +
+      `• Overall Passing Rate: <strong>${rate}%</strong> (${pass}/${graded} graded)<br><br>` +
+      `<em>Tip: Try "top in ${escapeHtml(sections[0]?.title || "your section")}", "who needs help", or "attendance rate".</em>`
     );
   }
-  return callAIEvaluate(rawQuery, buildAIContext(query, data));
+  return callAIEvaluate(rawQuery, evalContext(), opts?.signal);
 }
 
 // ── Data loader — aggregate all of the teacher's data via the API ────────────
