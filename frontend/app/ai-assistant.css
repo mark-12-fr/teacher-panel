@@ -319,6 +319,50 @@
     }
 }
 
+/* ── AI assistant enhancements: multiline input, mic, stop, copy ─────────── */
+.ai-chat-input-area textarea {
+    flex-grow: 1 !important;
+    padding: 10px 16px !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 18px !important;
+    outline: none !important;
+    font-size: 0.9rem !important;
+    font-family: inherit !important;
+    line-height: 1.4 !important;
+    background: var(--input-bg) !important;
+    color: var(--text-dark) !important;
+    resize: none !important;
+    max-height: 96px !important;
+    overflow-y: auto !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+.ai-chat-input-area textarea:focus {
+    border-color: #1e40af !important;
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.15) !important;
+}
+.ai-chat-input-area textarea:disabled { opacity: 0.55 !important; cursor: not-allowed !important; }
+.ai-chat-input-area button.ai-stop-btn { background: #ef4444 !important; }
+.ai-chat-input-area button.ai-stop-btn:hover:not(:disabled) { background: #dc2626 !important; }
+.ai-chat-input-area button.ai-mic-btn.listening {
+    background: #ef4444 !important;
+    animation: mjrAiPulse 1.4s infinite !important;
+}
+.ai-copy-btn {
+    margin-top: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    background: rgba(125, 125, 125, 0.12) !important;
+    color: var(--text-muted) !important;
+    border: none !important;
+    border-radius: 7px !important;
+    padding: 3px 9px !important;
+    font-size: 0.72rem !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+}
+.ai-copy-btn:hover { background: rgba(125, 125, 125, 0.22) !important; }
+
 /* School year badge inside the sidebar (rendered by school-year.js) */
 .sidebar-school-year {
     margin-top: 8px;
