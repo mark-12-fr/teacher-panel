@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
+import { isOffline, runWhenOnline } from "@/lib/offline";
 import { getSupabase } from "@/lib/supabase";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
@@ -585,12 +586,20 @@ export default function DashboardPage() {
     setSchedules((prev) => [entry, ...prev]);
     setSched({ subject: "", time: "", details: "" });
     setSchedModal(false);
+    const payload = { subject: entry.subject, time: entry.time, details: entry.details };
     try {
-      await apiPost("/api/schedules", { subject: entry.subject, time: entry.time, details: entry.details });
+      await apiPost("/api/schedules", payload);
       schedCache.refresh();
     } catch {
-      setSchedules((prev) => prev.filter((x) => x.id !== entry.id));
-      showToast("Failed to add schedule.", true);
+      if (isOffline()) {
+        runWhenOnline("dash-sched-" + entry.id, () =>
+          apiPost("/api/schedules", payload).then(() => schedCache.refresh())
+        );
+        showToast("Offline — schedule will save when you reconnect.");
+      } else {
+        setSchedules((prev) => prev.filter((x) => x.id !== entry.id));
+        showToast("Failed to add schedule.", true);
+      }
     }
   }
   async function deleteSchedule(id: string) {
@@ -601,8 +610,15 @@ export default function DashboardPage() {
       await apiDelete(`/api/schedules/${id}`);
       schedCache.refresh();
     } catch {
-      if (removed) setSchedules((prev) => [removed, ...prev]);
-      showToast("Failed to delete schedule.", true);
+      if (isOffline()) {
+        runWhenOnline("dash-sched-del-" + id, () =>
+          apiDelete(`/api/schedules/${id}`).then(() => schedCache.refresh())
+        );
+        showToast("Offline — schedule will be removed when you reconnect.");
+      } else {
+        if (removed) setSchedules((prev) => [removed, ...prev]);
+        showToast("Failed to delete schedule.", true);
+      }
     }
   }
   async function saveNotice() {
@@ -613,12 +629,20 @@ export default function DashboardPage() {
     setNotices((prev) => [entry, ...prev]);
     setNotice({ text: "", date: "", time: "" });
     setNoticeModal(false);
+    const payload = { text: entry.text, date: entry.date, time: entry.time, color: entry.color };
     try {
-      await apiPost("/api/notices", { text: entry.text, date: entry.date, time: entry.time, color: entry.color });
+      await apiPost("/api/notices", payload);
       noticeCache.refresh();
     } catch {
-      setNotices((prev) => prev.filter((x) => x.id !== entry.id));
-      showToast("Failed to add notice.", true);
+      if (isOffline()) {
+        runWhenOnline("dash-notice-" + entry.id, () =>
+          apiPost("/api/notices", payload).then(() => noticeCache.refresh())
+        );
+        showToast("Offline — notice will save when you reconnect.");
+      } else {
+        setNotices((prev) => prev.filter((x) => x.id !== entry.id));
+        showToast("Failed to add notice.", true);
+      }
     }
   }
   async function deleteNotice(id: string) {
@@ -629,8 +653,15 @@ export default function DashboardPage() {
       await apiDelete(`/api/notices/${id}`);
       noticeCache.refresh();
     } catch {
-      if (removed) setNotices((prev) => [removed, ...prev]);
-      showToast("Failed to delete notice.", true);
+      if (isOffline()) {
+        runWhenOnline("dash-notice-del-" + id, () =>
+          apiDelete(`/api/notices/${id}`).then(() => noticeCache.refresh())
+        );
+        showToast("Offline — notice will be removed when you reconnect.");
+      } else {
+        if (removed) setNotices((prev) => [removed, ...prev]);
+        showToast("Failed to delete notice.", true);
+      }
     }
   }
   async function addNote() {
@@ -644,8 +675,15 @@ export default function DashboardPage() {
       await apiPost("/api/notes", { content: t });
       noteCache.refresh();
     } catch {
-      setNotes((prev) => prev.filter((x) => x.id !== entry.id));
-      showToast("Failed to save note.", true);
+      if (isOffline()) {
+        runWhenOnline("dash-note-" + entry.id, () =>
+          apiPost("/api/notes", { content: t }).then(() => noteCache.refresh())
+        );
+        showToast("Offline — note will save when you reconnect.");
+      } else {
+        setNotes((prev) => prev.filter((x) => x.id !== entry.id));
+        showToast("Failed to save note.", true);
+      }
     }
   }
   async function deleteNote(id: string) {
@@ -656,8 +694,15 @@ export default function DashboardPage() {
       await apiDelete(`/api/notes/${id}`);
       noteCache.refresh();
     } catch {
-      if (removed) setNotes((prev) => [removed, ...prev]);
-      showToast("Failed to delete note.", true);
+      if (isOffline()) {
+        runWhenOnline("dash-note-del-" + id, () =>
+          apiDelete(`/api/notes/${id}`).then(() => noteCache.refresh())
+        );
+        showToast("Offline — note will be removed when you reconnect.");
+      } else {
+        if (removed) setNotes((prev) => [removed, ...prev]);
+        showToast("Failed to delete note.", true);
+      }
     }
   }
 

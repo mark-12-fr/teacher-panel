@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch, ApiError } from "@/lib/api";
+import { isOffline, runWhenOnline } from "@/lib/offline";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
@@ -120,27 +121,42 @@ export default function FacilitatorsPage() {
       return;
     }
     setSaving(true);
-    try {
-      faciCache.abortInFlight();
-      if (editingId) {
-        const payload: any = { full_name: form.name.trim(), section: form.section, subject };
-        if (form.password.trim()) payload.password = form.password.trim();
-        await apiPatch(`/api/facilitators/${editingId}`, payload);
-      } else {
-        await apiPost("/api/facilitators", {
+    const editing = editingId;
+    const payload: any = editing
+      ? { full_name: form.name.trim(), section: form.section, subject }
+      : {
           full_name: form.name.trim(),
           section: form.section,
           subject,
           account_id: form.account_id.trim(),
           password: form.password.trim(),
-        });
+        };
+    if (editing && form.password.trim()) payload.password = form.password.trim();
+    try {
+      faciCache.abortInFlight();
+      if (editing) {
+        await apiPatch(`/api/facilitators/${editing}`, payload);
+      } else {
+        await apiPost("/api/facilitators", payload);
       }
       setModal(false);
       faciCache.refresh();
-      showToast(editingId ? "Facilitator updated!" : "Facilitator assigned!");
+      showToast(editing ? "Facilitator updated!" : "Facilitator assigned!");
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) showToast("That Account ID is already taken. Please use a different one.", true);
-      else showToast("Error saving facilitator. Please try again.", true);
+      if (isOffline()) {
+        runWhenOnline("faci-save-" + (editing || "new"), () =>
+          (editing
+            ? apiPatch(`/api/facilitators/${editing}`, payload)
+            : apiPost("/api/facilitators", payload)
+          ).then(() => faciCache.refresh())
+        );
+        setModal(false);
+        showToast("Offline — facilitator changes will save when you reconnect.");
+      } else if (e instanceof ApiError && e.status === 409) {
+        showToast("That Account ID is already taken. Please use a different one.", true);
+      } else {
+        showToast("Error saving facilitator. Please try again.", true);
+      }
     } finally {
       setSaving(false);
     }
@@ -156,7 +172,14 @@ export default function FacilitatorsPage() {
       faciCache.refresh();
       showToast("Facilitator access removed.");
     } catch {
-      showToast("Failed to delete facilitator.", true);
+      if (isOffline()) {
+        runWhenOnline("faci-del-" + id, () =>
+          apiDelete(`/api/facilitators/${id}`).then(() => faciCache.refresh())
+        );
+        showToast("Offline — facilitator removal will sync when you reconnect.");
+      } else {
+        showToast("Failed to delete facilitator.", true);
+      }
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPost, apiPatch, invalidateCached } from "@/lib/api";
+import { isOffline, runWhenOnline } from "@/lib/offline";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
@@ -152,7 +153,22 @@ export default function GradingSystemPage() {
       subjCache.refresh();
       showToast(editingId ? "Subject updated!" : "Subject added!");
     } catch {
-      showToast("Error saving subject.", true);
+      if (isOffline()) {
+        const editing = editingId;
+        runWhenOnline("subj-save-" + (editing || "new"), () =>
+          (editing
+            ? apiPatch(`/api/subjects/${editing}`, payload)
+            : apiPost("/api/subjects", payload)
+          ).then(() => {
+            invalidateCached("subjects");
+            subjCache.refresh();
+          })
+        );
+        setModal(false);
+        showToast("Offline — subject will save when you reconnect.");
+      } else {
+        showToast("Error saving subject.", true);
+      }
     } finally {
       setSaving(false);
     }
@@ -168,7 +184,14 @@ export default function GradingSystemPage() {
       subjCache.refresh();
       showToast("Subject deleted.");
     } catch {
-      showToast("Failed to delete subject.", true);
+      if (isOffline()) {
+        runWhenOnline("subj-del-" + id, () =>
+          apiDelete(`/api/subjects/${id}`).then(() => subjCache.refresh())
+        );
+        showToast("Offline — subject removal will sync when you reconnect.");
+      } else {
+        showToast("Failed to delete subject.", true);
+      }
     }
   }
 

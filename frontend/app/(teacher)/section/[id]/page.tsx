@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiDelete, apiGet, apiPost, apiPatch, cachedGet, invalidateCached } from "@/lib/api";
+import { isOffline, runWhenOnline } from "@/lib/offline";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
@@ -124,13 +125,21 @@ export default function SectionDetailPage() {
   async function activateQuarter() {
     if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
+    const payload = { quarter: viewQuarter };
     try {
-      await apiPatch(`/api/sections/${sectionId}`, { quarter: viewQuarter });
+      await apiPatch(`/api/sections/${sectionId}`, payload);
       invalidateCached(`sec_${sectionId}`);
       setCurrentQuarter(viewQuarter);
       showToast(`Section updated to ${qLabel(viewQuarter)}!`);
     } catch {
-      showToast("Failed to update quarter.", true);
+      if (isOffline()) {
+        runWhenOnline("section-quarter-" + sectionId, () =>
+          apiPatch(`/api/sections/${sectionId}`, payload).then(() => invalidateCached(`sec_${sectionId}`))
+        );
+        showToast("Offline — quarter change will sync when you reconnect.");
+      } else {
+        showToast("Failed to update quarter.", true);
+      }
     } finally {
       setActivatingQ(false);
     }
@@ -140,15 +149,23 @@ export default function SectionDetailPage() {
     const newQuarter = viewSemester === "1st Sem" ? (isCollege ? "Prelim" : "1") : isCollege ? "Prelim" : "3";
     if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
+    const payload = { semester: viewSemester, quarter: newQuarter };
     try {
-      await apiPatch(`/api/sections/${sectionId}`, { semester: viewSemester, quarter: newQuarter });
+      await apiPatch(`/api/sections/${sectionId}`, payload);
       invalidateCached(`sec_${sectionId}`);
       setCurrentSemester(viewSemester);
       setCurrentQuarter(newQuarter);
       setViewQuarter(newQuarter);
       showToast(`Section updated to ${viewSemester}!`);
     } catch {
-      showToast("Failed to update semester.", true);
+      if (isOffline()) {
+        runWhenOnline("section-semester-" + sectionId, () =>
+          apiPatch(`/api/sections/${sectionId}`, payload).then(() => invalidateCached(`sec_${sectionId}`))
+        );
+        showToast("Offline — semester change will sync when you reconnect.");
+      } else {
+        showToast("Failed to update semester.", true);
+      }
     } finally {
       setActivatingS(false);
     }
@@ -162,13 +179,24 @@ export default function SectionDetailPage() {
     setAddIdNo("");
     setAddOpen(false);
     showToast("Student added successfully!");
+    const payload = { full_name: entry.full_name, id_no: entry.id_no };
     try {
-      await apiPost(`/api/sections/${sectionId}/students`, { full_name: entry.full_name, id_no: entry.id_no });
+      await apiPost(`/api/sections/${sectionId}/students`, payload);
       invalidateCached(`stud_${sectionId}`);
       loadStudents(true);
     } catch (e: any) {
-      setStudents((prev) => prev.filter((s) => s.id !== entry.id));
-      showToast(e?.message || "Failed to add student", true);
+      if (isOffline()) {
+        runWhenOnline("section-add-" + entry.id, () =>
+          apiPost(`/api/sections/${sectionId}/students`, payload).then(() => {
+            invalidateCached(`stud_${sectionId}`);
+            loadStudents(true);
+          })
+        );
+        showToast("Offline — student will be added when you reconnect.");
+      } else {
+        setStudents((prev) => prev.filter((s) => s.id !== entry.id));
+        showToast(e?.message || "Failed to add student", true);
+      }
     }
   }
   async function updateStudent() {
@@ -176,15 +204,27 @@ export default function SectionDetailPage() {
     if (!editName.trim()) return showToast("Please fill in all fields!", true);
     const oldName = students.find((s) => s.id === editId)?.full_name || "";
     const oldIdNo = students.find((s) => s.id === editId)?.id_no || "";
+    const sid = editId;
+    const payload = { full_name: editName.trim(), id_no: editIdNo.trim() };
     setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: editName.trim(), id_no: editIdNo.trim() } : s));
     setEditId(null);
     showToast("Student updated successfully!");
     try {
-      await apiPatch(`/api/students/${editId}`, { full_name: editName.trim(), id_no: editIdNo.trim() });
+      await apiPatch(`/api/students/${sid}`, payload);
       invalidateCached(`stud_${sectionId}`);
     } catch {
-      setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, full_name: oldName, id_no: oldIdNo } : s));
-      showToast("Failed to update student", true);
+      if (isOffline()) {
+        runWhenOnline("section-edit-" + sid, () =>
+          apiPatch(`/api/students/${sid}`, payload).then(() => {
+            invalidateCached(`stud_${sectionId}`);
+            loadStudents(true);
+          })
+        );
+        showToast("Offline — student update will sync when you reconnect.");
+      } else {
+        setStudents((prev) => prev.map((s) => s.id === sid ? { ...s, full_name: oldName, id_no: oldIdNo } : s));
+        showToast("Failed to update student", true);
+      }
     }
   }
   async function deleteStudent(id: string) {
@@ -196,8 +236,18 @@ export default function SectionDetailPage() {
       await apiDelete(`/api/students/${id}`);
       invalidateCached(`stud_${sectionId}`);
     } catch {
-      if (removed) setStudents((prev) => [removed, ...prev]);
-      showToast("Failed to delete student", true);
+      if (isOffline()) {
+        runWhenOnline("section-del-" + id, () =>
+          apiDelete(`/api/students/${id}`).then(() => {
+            invalidateCached(`stud_${sectionId}`);
+            loadStudents(true);
+          })
+        );
+        showToast("Offline — student will be removed when you reconnect.");
+      } else {
+        if (removed) setStudents((prev) => [removed, ...prev]);
+        showToast("Failed to delete student", true);
+      }
     }
   }
 
