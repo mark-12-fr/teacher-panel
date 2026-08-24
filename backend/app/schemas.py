@@ -60,6 +60,9 @@ class SubjectIn(BaseModel):
     exam_percent: float = 20
     attendance_percent: float = 0
     passing_grade: float = 75
+    ww_total: Optional[float] = None
+    pt_total: Optional[float] = None
+    exam_total: Optional[float] = None
 
 
 class SubjectUpdate(BaseModel):
@@ -69,6 +72,9 @@ class SubjectUpdate(BaseModel):
     exam_percent: Optional[float] = None
     attendance_percent: Optional[float] = None
     passing_grade: Optional[float] = None
+    ww_total: Optional[float] = None
+    pt_total: Optional[float] = None
+    exam_total: Optional[float] = None
 
 
 # ── Facilitators ────────────────────────────────────────────────────────────

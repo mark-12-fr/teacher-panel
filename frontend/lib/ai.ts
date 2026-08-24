@@ -234,14 +234,15 @@ export function buildAIContext(query: string, data: AIData): string {
 
   const analyze = (st: any) => {
     const merged = mergedRecord(data, st.id) || {};
+    const sec = sections.find((x) => x.id === st.section_id) || {};
     // Use the shared grade engine so the breakdown matches the actual grade and
-    // the rest of the app: Written Works = Modules + Activities, and the Exam
-    // component = Achievement Test + Quarterly Exam.
-    const comp = componentScores(merged);
+    // the rest of the app: Written Works = Modules + Activities, the Exam
+    // component = Achievement Test + Quarterly Exam, and per-subject component
+    // totals (e.g. WW out of 190) are applied.
+    const comp = componentScores(merged, sec.subject);
     const ww = Math.round(comp.ww);
     const pt = Math.round(comp.pt);
     const exam = Math.round(comp.exam);
-    const sec = sections.find((x) => x.id === st.section_id) || {};
     const grade = finalGrade(merged, sec.subject, 100);
     const passing = passingFor(sec.subject);
     const active = Array.from(activeBySection[st.section_id] || []);

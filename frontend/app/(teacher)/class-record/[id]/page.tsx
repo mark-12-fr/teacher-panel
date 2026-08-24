@@ -426,7 +426,7 @@ export default function ClassRecordGridPage() {
         ((dq.db === "1" || (college && dq.db === "Prelim")) ? records.find((r) => r.student_id === sid && exactQ(r.quarter) === null) : undefined);
       const hasData = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
       if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null };
-      const comp = componentScores(rec);
+      const comp = componentScores(rec, subjectName);
       const grade = finalGrade(rec, subjectName, att100);
       return { ...dq, hasData: true as const, grade, comp, delta: null };
     });
@@ -782,7 +782,7 @@ export default function ClassRecordGridPage() {
         });
         // Component summary (matches the grade-breakdown modal): Modules /
         // Activity / Achievement Test / Performance Task / Quarterly Exam.
-        const cs = rec ? componentScores(rec) : null;
+        const cs = rec ? componentScores(rec, subjectName) : null;
         row.push(
           cs ? Math.round(cs.modulesOnly) : "",
           cs ? Math.round(cs.activitiesOnly) : "",
