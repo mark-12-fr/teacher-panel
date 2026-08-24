@@ -13,6 +13,10 @@ export interface Weights {
 
 export const GRADE_DEFAULT: Weights = { ww: 30, pt: 50, exam: 20, att: 0, passing: 75 };
 
+/** Maximum raw Written Work points (Modules + Activities combined). The WW
+ *  component is scored as rawPoints ÷ WW_MAX × 100, capped at 100. */
+export const WW_MAX = 190;
+
 let SUBJECT_CFG: Record<string, Weights> = {};
 
 const norm = (s: any) => String(s == null ? "" : s).trim().toLowerCase();
@@ -55,7 +59,7 @@ export function passingFor(subjectName: string): number {
 }
 
 export interface ComponentScores {
-  ww: number; // Written Works = Modules + Activities (0–100). Drives the WW weight.
+  ww: number; // Written Works = Modules + Activities, as a % of WW_MAX. Drives the WW weight.
   wwOnly: number; // Same as ww now (kept for callers that referenced it).
   modulesOnly: number; // Modules columns only (for display).
   activitiesOnly: number; // Activity columns only (for display).
@@ -85,15 +89,17 @@ export function componentScores(record: any): ComponentScores {
     else if (k === "at") atTotal += num(v, 0);
     else if (k.indexOf("pt_") === 0) totalPT += num(v, 0);
   }
-  // Written Works = Modules + Activities. The Achievement Test (AT) belongs to
-  // the EXAM together with the Quarterly Exam — each is scored out of 50, so the
-  // exam component is (AT + QE) as a percentage of 100. (AT is still shown as its
-  // own row in the breakdown; it just feeds the exam bucket, not Written Works.)
+  // Written Works = Modules + Activities, scored out of WW_MAX points (see the
+  // constant above) so a student earning e.g. 150/190 shows as ~79%, not a
+  // capped 100. The Achievement Test (AT) belongs to the EXAM together with
+  // the Quarterly Exam — each is scored out of 50, so the exam component is
+  // (AT + QE) as a percentage of 100. (AT is still shown as its own row in
+  // the breakdown; it just feeds the exam bucket, not Written Works.)
   const wwOnly = modulesOnly + activitiesOnly;
   const examRaw = atTotal + totalQE; // AT (/50) + QE (/50) → out of 100
   return {
-    ww: Math.min(wwOnly, 100),
-    wwOnly: Math.min(wwOnly, 100),
+    ww: Math.min((wwOnly / WW_MAX) * 100, 100),
+    wwOnly: Math.min((wwOnly / WW_MAX) * 100, 100),
     modulesOnly: Math.min(modulesOnly, 100),
     activitiesOnly: Math.min(activitiesOnly, 100),
     at: Math.min(atTotal, 100),
