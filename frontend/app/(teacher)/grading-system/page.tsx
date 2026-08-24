@@ -29,7 +29,7 @@ function PctBadge({ v, color }: { v: any; color: string }) {
   );
 }
 
-const EMPTY = { name: "", ww: 30, pt: 50, exam: 20, att: 0, passing: 75 };
+const EMPTY = { name: "", ww: 30, pt: 50, exam: 20, att: 0, passing: 75, wwTotal: "", ptTotal: "", examTotal: "" };
 
 export default function GradingSystemPage() {
   usePageMeta("Grading System");
@@ -118,6 +118,9 @@ export default function GradingSystemPage() {
       exam: num(s.exam_percent),
       att: num(s.attendance_percent),
       passing: num(s.passing_grade || 75),
+      wwTotal: s.ww_total == null ? "" : String(s.ww_total),
+      ptTotal: s.pt_total == null ? "" : String(s.pt_total),
+      examTotal: s.exam_total == null ? "" : String(s.exam_total),
     });
     setModal(true);
   }
@@ -133,6 +136,7 @@ export default function GradingSystemPage() {
       return showToast("You already have a subject with that name.", true);
 
     setSaving(true);
+    const toTotal = (v: string) => (String(v).trim() === "" ? null : Number(v) || null);
     const payload = {
       name,
       ww_percent: form.ww,
@@ -140,6 +144,9 @@ export default function GradingSystemPage() {
       exam_percent: form.exam,
       attendance_percent: form.att,
       passing_grade: form.passing,
+      ww_total: toTotal(form.wwTotal),
+      pt_total: toTotal(form.ptTotal),
+      exam_total: toTotal(form.examTotal),
     };
     try {
       subjCache.abortInFlight();
@@ -326,6 +333,37 @@ export default function GradingSystemPage() {
               <input type="number" className="modal-input" min={0} max={100} step={1} value={form.passing} onChange={(e) => setForm({ ...form, passing: Number(e.target.value) || 0 })} style={{ paddingRight: 28 }} />
               <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", fontWeight: 600 }}>%</span>
             </div>
+
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-color, rgba(125,125,125,0.2))" }}>
+              <label style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                Perfect Score / Total Possible <span style={{ fontWeight: 400 }}>(optional — blank = score out of 100)</span>
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                {([
+                  ["Written Work", "wwTotal"],
+                  ["Perf. Tasks", "ptTotal"],
+                  ["Exam (AT+QE)", "examTotal"],
+                ] as const).map(([lbl, key]) => (
+                  <div key={key}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>{lbl}</label>
+                    <input
+                      type="number"
+                      className="modal-input"
+                      min={1}
+                      step={1}
+                      placeholder="/100"
+                      value={(form as any)[key]}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                      style={{ margin: 0 }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: "6px 2px 0", fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                e.g. set Written Work to <strong>190</strong> to grade it as (Modules + Activities) ÷ 190 × 100.
+              </p>
+            </div>
+
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button onClick={() => setModal(false)} style={{ flex: 1, padding: 12, borderRadius: 8, border: "none", cursor: "pointer", background: "var(--input-bg)", color: "var(--text-dark)", fontWeight: 500 }}>Cancel</button>
               <button onClick={save} disabled={saving} style={{ flex: 2, background: "#3b82f6", color: "white", padding: 12, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>

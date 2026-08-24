@@ -9,13 +9,12 @@ export interface Weights {
   exam: number;
   att: number;
   passing: number;
+  wwTotal: number; // "perfect score" (total possible) for Written Works; 0 = unset → cap at 100
+  ptTotal: number; // "perfect score" for Performance Tasks; 0 = unset
+  examTotal: number; // "perfect score" for the Exam (AT + QE); 0 = unset
 }
 
-export const GRADE_DEFAULT: Weights = { ww: 30, pt: 50, exam: 20, att: 0, passing: 75 };
-
-/** Maximum raw Written Work points (Modules + Activities combined). The WW
- *  component is scored as rawPoints ÷ WW_MAX × 100, capped at 100. */
-export const WW_MAX = 190;
+export const GRADE_DEFAULT: Weights = { ww: 30, pt: 50, exam: 20, att: 0, passing: 75, wwTotal: 0, ptTotal: 0, examTotal: 0 };
 
 let SUBJECT_CFG: Record<string, Weights> = {};
 
@@ -35,6 +34,9 @@ export function setSubjectConfigs(subjects: any[]): Record<string, Weights> {
       exam: num(r.exam_percent, GRADE_DEFAULT.exam),
       att: num(r.attendance_percent, GRADE_DEFAULT.att),
       passing: num(r.passing_grade, GRADE_DEFAULT.passing),
+      wwTotal: num(r.ww_total, 0),
+      ptTotal: num(r.pt_total, 0),
+      examTotal: num(r.exam_total, 0),
     };
   });
   SUBJECT_CFG = map;
@@ -50,6 +52,9 @@ export function weightsFor(subjectName: string): Weights {
         exam: num(c.exam, GRADE_DEFAULT.exam),
         att: num(c.att, GRADE_DEFAULT.att),
         passing: num(c.passing, GRADE_DEFAULT.passing),
+        wwTotal: num(c.wwTotal, 0),
+        ptTotal: num(c.ptTotal, 0),
+        examTotal: num(c.examTotal, 0),
       }
     : { ...GRADE_DEFAULT };
 }
@@ -59,8 +64,8 @@ export function passingFor(subjectName: string): number {
 }
 
 export interface ComponentScores {
-  ww: number; // Written Works = Modules + Activities, as a % of WW_MAX. Drives the WW weight.
-  wwOnly: number; // Same as ww now (kept for callers that referenced it).
+  ww: number; // Written Works = Modules + Activities (0–100). Drives the WW weight.
+  wwOnly: number; // Modules + Activities raw sum, capped at 100 (for display fallbacks).
   modulesOnly: number; // Modules columns only (for display).
   activitiesOnly: number; // Activity columns only (for display).
   at: number; // The standalone AT (Achievement Test) column on its own (for display).
@@ -74,8 +79,14 @@ export interface ComponentScores {
   rawExam: number; // Raw exam points = AT + QE (out of 100).
 }
 
-/** Component scores (each capped at 100) from a merged class record. */
-export function componentScores(record: any): ComponentScores {
+/** Component scores (0–100) from a merged class record. Pass `subjectName` so a
+ *  configured per-component "perfect score" (total possible) is applied: a
+ *  component's % is then (raw / total) × 100 instead of the raw sum capped at
+ *  100. e.g. Written Work total = 190 → a student with 130 shows as ~68%. Without
+ *  a subject (or when a total is unset) it falls back to the raw sum capped at
+ *  100 — the original behaviour, so nothing changes until a teacher sets a total
+ *  in the Grading System. */
+export function componentScores(record: any, subjectName?: string): ComponentScores {
   let modulesOnly = 0; // module_* columns
   let activitiesOnly = 0; // activity_* columns
   let atTotal = 0; // the standalone AT (Achievement Test) column
@@ -89,23 +100,24 @@ export function componentScores(record: any): ComponentScores {
     else if (k === "at") atTotal += num(v, 0);
     else if (k.indexOf("pt_") === 0) totalPT += num(v, 0);
   }
-  // Written Works = Modules + Activities, scored out of WW_MAX points (see the
-  // constant above) so a student earning e.g. 150/190 shows as ~79%, not a
-  // capped 100. The Achievement Test (AT) belongs to the EXAM together with
-  // the Quarterly Exam — each is scored out of 50, so the exam component is
-  // (AT + QE) as a percentage of 100. (AT is still shown as its own row in
-  // the breakdown; it just feeds the exam bucket, not Written Works.)
+  // Written Works = Modules + Activities. The Achievement Test (AT) belongs to
+  // the EXAM together with the Quarterly Exam — each is scored out of 50, so the
+  // exam component is (AT + QE) as a percentage of 100. (AT is still shown as its
+  // own row in the breakdown; it just feeds the exam bucket, not Written Works.)
   const wwOnly = modulesOnly + activitiesOnly;
   const examRaw = atTotal + totalQE; // AT (/50) + QE (/50) → out of 100
+  const w = subjectName != null ? weightsFor(subjectName) : null;
+  // (raw / total) × 100 when a total is configured; else the raw sum capped 100.
+  const pct = (raw: number, total: number) => (total > 0 ? Math.min((raw / total) * 100, 100) : Math.min(raw, 100));
   return {
-    ww: Math.min((wwOnly / WW_MAX) * 100, 100),
-    wwOnly: Math.min((wwOnly / WW_MAX) * 100, 100),
+    ww: pct(wwOnly, w ? w.wwTotal : 0),
+    wwOnly: Math.min(wwOnly, 100),
     modulesOnly: Math.min(modulesOnly, 100),
     activitiesOnly: Math.min(activitiesOnly, 100),
     at: Math.min(atTotal, 100),
-    pt: Math.min(totalPT, 100),
+    pt: pct(totalPT, w ? w.ptTotal : 0),
     qe: Math.min((totalQE / 50) * 100, 100),
-    exam: Math.min(examRaw, 100),
+    exam: pct(examRaw, w ? w.examTotal : 0),
     rawWW: wwOnly,
     rawPT: totalPT,
     rawQE: totalQE,
@@ -141,7 +153,7 @@ export function attScore(att: { present?: number; late?: number; total?: number 
 /** Final grade 0–100 for a merged record under a subject's weights. */
 export function finalGrade(record: any, subjectName: string, attendanceScore?: number | null): number {
   const w = weightsFor(subjectName);
-  const s = componentScores(record);
+  const s = componentScores(record, subjectName);
   const att = attendanceScore === null || attendanceScore === undefined ? 100 : attendanceScore;
   return Math.round(
     s.ww * (w.ww / 100) + s.pt * (w.pt / 100) + s.exam * (w.exam / 100) + att * (w.att / 100)

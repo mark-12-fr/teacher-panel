@@ -179,7 +179,7 @@ export default function PerformanceDetailPage() {
       // Capped / QE-scaled components drive the grade AND the chart averages
       // (WW/PT can exceed 100 and QE is out of 50 — the bar axis maxes at 100).
       // The table itself shows the raw earned totals, like the legacy page.
-      const comp = componentScores(merged);
+      const comp = componentScores(merged, subject);
       // Per-quarter trend: each quarter's own record, only if it has a real score.
       studentRecords.forEach((rec) => {
         let hasScore = false;

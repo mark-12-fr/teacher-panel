@@ -160,6 +160,11 @@ class Subject(Base):
     exam_percent = Column(Numeric, server_default=sa_text("20"))
     attendance_percent = Column(Numeric, server_default=sa_text("0"))
     passing_grade = Column(Numeric, server_default=sa_text("75"))
+    # Optional "perfect score" (total possible) per component. When set, that
+    # component's % is (raw / total) * 100 instead of the raw sum capped at 100.
+    ww_total = Column(Numeric)
+    pt_total = Column(Numeric)
+    exam_total = Column(Numeric)
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
