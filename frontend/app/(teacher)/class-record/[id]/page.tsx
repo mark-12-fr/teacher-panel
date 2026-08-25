@@ -1145,7 +1145,7 @@ function StudentGradeModal({
                         </div>
                         {c.inProgress && (
                           <div style={{ marginTop: 8, fontSize: "0.7rem", fontWeight: 700, color: "#b45309", background: "rgba(245,158,11,0.15)", borderRadius: 6, padding: "4px 8px", textAlign: "center", letterSpacing: "0.02em" }}>
-                            <i className="fa-solid fa-hourglass-half" style={{ marginRight: 5 }} />NOT YET FINAL · SCORES INCOMPLETE
+                            <i className="fa-solid fa-hourglass-half" style={{ marginRight: 5 }} />IN-PROGRESS · NOT YET FINAL
                           </div>
                         )}
                       </>

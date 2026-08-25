@@ -154,17 +154,53 @@ export function attScore(att: { present?: number; late?: number; total?: number 
   return Math.min(((present + 0.5 * late) / att.total) * 100, 100);
 }
 
-/** Final grade 0–100 for a merged record under a subject's weights. A missing
- *  component counts as 0 and drags the grade down until it's entered, so a grade
- *  only reaches its full value once every component is filled. (The "not yet
- *  final" tag flags a grade that isn't complete — see isGradeComplete.) */
+/** Final grade 0–100 for a merged record under a subject's weights.
+ *
+ *  IN-PROGRESS grading: only components that have actually been GIVEN count. A
+ *  component whose columns are all blank is treated as "not handed out yet" — it
+ *  is excluded and its weight is redistributed across the given components, so an
+ *  empty Performance Task or Quarterly Exam doesn't drag the grade down before
+ *  it's administered. A blank is grace; enter a 0 to record a real zero. Once
+ *  every component is filled the active weights sum to 100 and this equals the
+ *  plain weighted grade — so a completed quarter is unchanged. */
 export function finalGrade(record: any, subjectName: string, attendanceScore?: number | null): number {
   const w = weightsFor(subjectName);
   const s = componentScores(record, subjectName);
   const att = attendanceScore === null || attendanceScore === undefined ? 100 : attendanceScore;
-  return Math.round(
-    s.ww * (w.ww / 100) + s.pt * (w.pt / 100) + s.exam * (w.exam / 100) + att * (w.att / 100)
-  );
+
+  const has = (pred: (k: string) => boolean): boolean => {
+    for (const k in record || {}) {
+      if (pred(k)) {
+        const v = record[k];
+        if (v !== null && v !== undefined && v !== "") return true;
+      }
+    }
+    return false;
+  };
+  const wwGiven = has((k) => k.indexOf("module_") === 0 || k.indexOf("activity_") === 0);
+  const ptGiven = has((k) => k.indexOf("pt_") === 0);
+  const atGiven = has((k) => k === "at");
+  const qeGiven = has((k) => k === "qe");
+  const examGiven = atGiven || qeGiven;
+
+  // Exam % from the parts actually given (AT and QE are each half of examTotal —
+  // default 50 each), so an unentered QE doesn't halve a student's exam score.
+  let examPct = s.exam;
+  if (examGiven) {
+    const partMax = w.examTotal > 0 ? w.examTotal / 2 : 50;
+    const denom = partMax * ((atGiven ? 1 : 0) + (qeGiven ? 1 : 0));
+    examPct = denom > 0 ? Math.min(((s.rawAT + s.rawQE) / denom) * 100, 100) : 0;
+  }
+
+  let score = 0;
+  let activeWeight = 0;
+  if (wwGiven) { score += s.ww * w.ww; activeWeight += w.ww; }
+  if (ptGiven) { score += s.pt * w.pt; activeWeight += w.pt; }
+  if (examGiven) { score += examPct * w.exam; activeWeight += w.exam; }
+  if (w.att > 0) { score += att * w.att; activeWeight += w.att; }
+
+  if (activeWeight <= 0) return 0; // nothing entered yet
+  return Math.round(score / activeWeight);
 }
 
 /** True when every weighted component has been given, so finalGrade() is the
