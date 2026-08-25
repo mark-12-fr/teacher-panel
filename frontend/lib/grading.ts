@@ -202,3 +202,20 @@ export function finalGrade(record: any, subjectName: string, attendanceScore?: n
   if (activeWeight <= 0) return 0; // nothing entered yet
   return Math.round(score / activeWeight);
 }
+
+/** True when every weighted component has been given, so finalGrade() is the
+ *  FINAL grade (not the re-weighted in-progress one). The Exam needs BOTH the
+ *  Achievement Test and the Quarterly Exam. Drives the "In-progress" tag. */
+export function isGradeComplete(record: any, subjectName: string): boolean {
+  const w = weightsFor(subjectName);
+  const has = (pred: (k: string) => boolean): boolean => {
+    for (const k in record || {}) {
+      if (pred(k)) { const v = record[k]; if (v !== null && v !== undefined && v !== "") return true; }
+    }
+    return false;
+  };
+  if (w.ww > 0 && !has((k) => k.indexOf("module_") === 0 || k.indexOf("activity_") === 0)) return false;
+  if (w.pt > 0 && !has((k) => k.indexOf("pt_") === 0)) return false;
+  if (w.exam > 0 && !(has((k) => k === "at") && has((k) => k === "qe"))) return false;
+  return true;
+}
