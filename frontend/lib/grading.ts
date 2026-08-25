@@ -111,10 +111,14 @@ export function componentScores(record: any, subjectName?: string): ComponentSco
   const pct = (raw: number, total: number) => (total > 0 ? Math.min((raw / total) * 100, 100) : Math.min(raw, 100));
   return {
     ww: pct(wwOnly, w ? w.wwTotal : 0),
-    wwOnly: Math.min(wwOnly, 100),
-    modulesOnly: Math.min(modulesOnly, 100),
-    activitiesOnly: Math.min(activitiesOnly, 100),
-    at: Math.min(atTotal, 100),
+    // Display rows are a RAW point tally — show the real earned totals (not
+    // capped at 100), so a Modules sum of 102 shows as 102, not 100. Only the
+    // weighted component score (ww/pt/exam above) is normalised; these rows are
+    // informational and must reflect what the teacher actually entered.
+    wwOnly: wwOnly,
+    modulesOnly: modulesOnly,
+    activitiesOnly: activitiesOnly,
+    at: atTotal,
     pt: pct(totalPT, w ? w.ptTotal : 0),
     qe: Math.min((totalQE / 50) * 100, 100),
     exam: pct(examRaw, w ? w.examTotal : 0),
