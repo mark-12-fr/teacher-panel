@@ -17,7 +17,7 @@ import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import LoadingBar from "@/components/LoadingBar";
-import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, type ComponentScores } from "@/lib/grading";
+import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, isGradeComplete, type ComponentScores } from "@/lib/grading";
 import { isOffline, runWhenOnline } from "@/lib/offline";
 import "./detail.css";
 
@@ -29,7 +29,7 @@ type GradeQuarterCard = {
   sem: "1st Sem" | "2nd Sem";
   label: string;
 } & (
-  | { hasData: true; grade: number; comp: ComponentScores; delta: number | null }
+  | { hasData: true; grade: number; comp: ComponentScores; delta: number | null; inProgress: boolean }
   | { hasData: false; grade: null; comp: null; delta: null }
 );
 
@@ -428,7 +428,7 @@ export default function ClassRecordGridPage() {
       if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null };
       const comp = componentScores(rec, subjectName);
       const grade = finalGrade(rec, subjectName, att100);
-      return { ...dq, hasData: true as const, grade, comp, delta: null };
+      return { ...dq, hasData: true as const, grade, comp, delta: null, inProgress: !isGradeComplete(rec, subjectName) };
     });
     // Quarter-over-quarter change, only between consecutive quarters that both
     // have real data (so a gap — e.g. Q2 skipped — doesn't produce a delta).
@@ -1143,6 +1143,11 @@ function StudentGradeModal({
                           <span>Average Grade</span>
                           <b>{c.grade}</b>
                         </div>
+                        {c.inProgress && (
+                          <div style={{ marginTop: 8, fontSize: "0.7rem", fontWeight: 700, color: "#b45309", background: "rgba(245,158,11,0.15)", borderRadius: 6, padding: "4px 8px", textAlign: "center", letterSpacing: "0.02em" }}>
+                            <i className="fa-solid fa-hourglass-half" style={{ marginRight: 5 }} />IN-PROGRESS · NOT YET FINAL
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="grade-quarter-final empty">No data yet</div>
