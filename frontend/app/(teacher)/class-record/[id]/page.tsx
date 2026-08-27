@@ -755,6 +755,27 @@ export default function ClassRecordGridPage() {
     return any ? Math.round(sum * 100) / 100 : null;
   }
 
+  // Missing modules and activities for a student (blank columns).
+  function getMissingModulesAndActivities(sid: string): string {
+    const rec = recForView(sid);
+    if (!rec) return "None";
+    const missing: string[] = [];
+    for (let i = 1; i <= 25; i++) {
+      if (!isFilled(rec[`module_${i}`])) missing.push(`M${i}`);
+    }
+    for (let i = 1; i <= 10; i++) {
+      if (!isFilled(rec[`activity_${i}`])) missing.push(`A${i}`);
+    }
+    return missing.length === 0 ? "None" : missing.join(", ");
+  }
+
+  // Record completion status: COMPLETE if all weighted components have been given.
+  function getRecordStatus(sid: string): string {
+    const rec = recForView(sid);
+    if (!rec) return "INCOMPLETE";
+    return isGradeComplete(rec, section?.subject || "") ? "COMPLETE" : "INCOMPLETE";
+  }
+
   async function exportExcel() {
     try {
       showToast("Generating Excel...");
@@ -770,7 +791,7 @@ export default function ClassRecordGridPage() {
       if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
       headers.push("Modules", "Activity");
       if (!college) headers.push("Achievement Test", "Performance Task", "Quarterly Exam");
-      headers.push("TOTAL", "GRADE");
+      headers.push("TOTAL", "GRADE", "Lacking Modules & Activities", "Status");
       rows.push(headers);
 
       students.forEach((s) => {
@@ -798,6 +819,8 @@ export default function ClassRecordGridPage() {
         row.push(t === null ? "" : t);
         const g = liveGradeFor(s.id, s.full_name);
         row.push(g === null ? "" : g);
+        row.push(getMissingModulesAndActivities(s.id));
+        row.push(getRecordStatus(s.id));
         rows.push(row);
       });
 
@@ -960,6 +983,8 @@ export default function ClassRecordGridPage() {
                 )}
                 <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 60 }}>TOTAL</th>
                 <th rowSpan={2} className="header-group" style={{ minWidth: 62 }}>GRADE</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 140 }}>LACKING MODULES & ACTIVITIES</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 80 }}>STATUS</th>
               </tr>
               <tr>
                 {Array.from({ length: 25 }, (_, i) => i + 1).map((n) => (
@@ -980,10 +1005,10 @@ export default function ClassRecordGridPage() {
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={college ? 40 : 44} />
+                <SkeletonTableRows rows={6} cols={college ? 42 : 46} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={college ? 40 : 44} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
+                  <td colSpan={college ? 42 : 46} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>
               ) : (
                 students.map((s, idx) => {
@@ -1035,6 +1060,12 @@ export default function ClassRecordGridPage() {
                           </td>
                         );
                       })()}
+                      <td style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "left", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getMissingModulesAndActivities(s.id)}>
+                        {getMissingModulesAndActivities(s.id)}
+                      </td>
+                      <td style={{ fontWeight: 600, textAlign: "center", color: getRecordStatus(s.id) === "COMPLETE" ? "#059669" : "#f59e0b", fontSize: "0.85rem" }}>
+                        {getRecordStatus(s.id)}
+                      </td>
                     </tr>
                   );
                 })
