@@ -764,6 +764,19 @@ export default function ClassRecordGridPage() {
   }
 
   async function exportExcel() {
+    // Export builds its rows from `students`, so a click before the section has
+    // finished loading — or after a load that failed — would hand the teacher a
+    // file containing nothing but the header row. That looks exactly like the
+    // class record was wiped, so refuse and say what's wrong instead.
+    if (loading || students.length === 0) {
+      showToast(
+        loading
+          ? "Still loading — wait for the class record to appear, then export."
+          : "Nothing to export: no students are loaded for this section. Reload the page and try again.",
+        true,
+      );
+      return;
+    }
     try {
       showToast("Generating Excel...");
       const sectionName = section?.title || "Section";
