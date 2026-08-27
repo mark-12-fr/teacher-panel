@@ -299,13 +299,15 @@
             gap: 15px;
         }
 
-        /* Page title + notification bell sit on one row. On phones the header
-           becomes a centred title with the menu button absolutely placed on the
-           left, so the bell mirrors it on the right (see the media query). */
-        .topbar-header {
+        /* Right end of the topbar: the page's own action (Export Excel and the
+           like) with the notification bell last, so the bell keeps the same
+           top-right spot on every page. flex-shrink:0 protects it from
+           .topbar-header, which goes full-width on phones. */
+        .topbar-actions {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
+            flex-shrink: 0;
         }
 
         .topbar-bell {
@@ -349,10 +351,12 @@
             text-align: center;
         }
 
+        /* Anchored to the bell's right edge: it sits at the far right of the
+           topbar, so opening leftwards is what keeps the panel on screen. */
         .topbar-bell-panel {
             position: absolute;
             top: 50px;
-            left: 0;
+            right: 0;
             width: min(360px, calc(100vw - 32px));
             max-height: 440px;
             overflow-y: auto;
@@ -1102,21 +1106,6 @@
                 padding: 0 45px;
             }
 
-            /* Mirror of .menu-toggle: the title reserves 45px on both sides, so
-               the bell sits in that gutter instead of squeezing the heading. */
-            .topbar-bell {
-                position: absolute;
-                right: 0;
-                top: 50%;
-                transform: translateY(-50%);
-                z-index: 10;
-            }
-
-            /* Anchored to the right edge here, or the panel would run off-screen. */
-            .topbar-bell-panel {
-                left: auto;
-                right: 0;
-            }
         }
 
         .chart-badge {

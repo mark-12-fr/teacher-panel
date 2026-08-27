@@ -326,9 +326,11 @@ export default function TeacherShell({
               <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: 5 }}>{title}</h1>
               {subtitle && <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>{subtitle}</p>}
             </div>
+          </div>
+          <div className="topbar-actions">
+            {action}
             <NotificationBell />
           </div>
-          {action}
         </div>
         {children}
       </main>
