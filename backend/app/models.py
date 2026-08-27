@@ -109,6 +109,11 @@ class ClassRecord(Base):
     qe = Column(Numeric, nullable=True)
     date = Column(Text, nullable=True)
     quarter = Column(Text, nullable=True)
+    # Who last wrote the row: the facilitator's id when the facilitator panel
+    # saved it, NULL when the teacher saved it here. TEXT to match
+    # `attendance.facilitator_id`. The push webhook needs it to tell a
+    # facilitator's submission apart from the teacher's own edit.
+    facilitator_id = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
@@ -194,4 +199,25 @@ class Note(Base):
     id = _uuid_pk()
     user_id = Column(PGUUID(as_uuid=True))
     content = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
+
+
+class Notification(Base):
+    """One entry in a teacher's in-app bell feed.
+
+    Written by the push webhook dispatcher when a facilitator submits
+    attendance or class-record scores — one row per coalesced batch, not per
+    student, so a whole-class submission is a single notification. `read_at`
+    is NULL while unread; the bell's badge counts those.
+    """
+
+    __tablename__ = "notifications"
+    id = _uuid_pk()
+    teacher_id = Column(PGUUID(as_uuid=True), nullable=False)
+    kind = Column(Text, nullable=False)  # 'attendance' | 'class_records'
+    title = Column(Text, nullable=False)
+    body = Column(Text, nullable=False)
+    url = Column(Text, nullable=True)
+    section_label = Column(Text, nullable=True)
+    read_at = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
