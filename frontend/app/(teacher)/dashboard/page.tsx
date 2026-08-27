@@ -745,6 +745,10 @@ export default function DashboardPage() {
   };
 
   const semLabel = activeSem === "1st Sem" ? "1st Semester" : activeSem === "2nd Sem" ? "2nd Semester" : "1st-2nd Semester";
+  // The quarters the active semester actually covers — 1st Sem is Q1–Q2, 2nd Sem
+  // is Q3–Q4 — so the badge stops claiming the whole year while only half of it
+  // has been taught. Sections spanning both semesters still show the full range.
+  const qtrLabel = activeSem === "1st Sem" ? "Q1 – Q2" : activeSem === "2nd Sem" ? "Q3 – Q4" : "Q1 – Q4";
   const validChart = chartData.filter((v) => v != null && (v as number) > 0) as number[];
   const overallAvg = validChart.length ? Math.round(validChart.reduce((a, b) => a + b, 0) / validChart.length) : null;
   const firstLoad = statsCache.loading && !statsCache.data;
@@ -822,7 +826,7 @@ export default function DashboardPage() {
               <h4 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: 7 }}>Class Performance Overview</h4>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
                 <span className="chart-badge chart-badge-sem"><i className="fa-regular fa-calendar" style={{ fontSize: "0.65rem" }} /> {semLabel}</span>
-                <span className="chart-badge chart-badge-qtr"><i className="fa-solid fa-layer-group" style={{ fontSize: "0.65rem" }} /> Q1 – Q4</span>
+                <span className="chart-badge chart-badge-qtr"><i className="fa-solid fa-layer-group" style={{ fontSize: "0.65rem" }} /> {qtrLabel}</span>
                 <span className="chart-badge chart-badge-pass"><i className="fa-solid fa-minus" style={{ fontSize: "0.65rem" }} /> {passing}% Passing</span>
               </div>
             </div>
