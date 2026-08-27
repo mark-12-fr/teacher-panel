@@ -373,8 +373,8 @@ export default function ClassRecordGridPage() {
   const semesterLocked = viewSemester !== currentSemester;
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
   // sticky columns (#, ID, Name) + Modules + 10 Activities + AT/PT 1/PT 2/QE
-  // (senior high only) + TOTAL, GRADE, LACKING and STATUS.
-  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 4;
+  // (senior high only) + TOTAL and GRADE.
+  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 2;
   const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
   const qLabel = (q: string) => (college ? q : `Q${q}`);
 
@@ -763,27 +763,6 @@ export default function ClassRecordGridPage() {
     return any ? Math.round(sum * 100) / 100 : null;
   }
 
-  // Missing modules and activities for a student (blank columns).
-  function getMissingModulesAndActivities(sid: string): string {
-    const rec = recForView(sid);
-    if (!rec) return "None";
-    const missing: string[] = [];
-    for (let i = 1; i <= MODULE_COUNT; i++) {
-      if (!isFilled(rec[`module_${i}`])) missing.push(`M${i}`);
-    }
-    for (let i = 1; i <= 10; i++) {
-      if (!isFilled(rec[`activity_${i}`])) missing.push(`A${i}`);
-    }
-    return missing.length === 0 ? "None" : missing.join(", ");
-  }
-
-  // Record completion status: COMPLETE if all weighted components have been given.
-  function getRecordStatus(sid: string): string {
-    const rec = recForView(sid);
-    if (!rec) return "INCOMPLETE";
-    return isGradeComplete(rec, section?.subject || "") ? "COMPLETE" : "INCOMPLETE";
-  }
-
   async function exportExcel() {
     try {
       showToast("Generating Excel...");
@@ -827,8 +806,11 @@ export default function ClassRecordGridPage() {
         row.push(t === null ? "" : t);
         const g = liveGradeFor(s.id, s.full_name);
         row.push(g === null ? "" : g);
-        row.push(getMissingModulesAndActivities(s.id));
-        row.push(getRecordStatus(s.id));
+        // Left deliberately empty: these two are the teacher's own columns to
+        // fill in the exported file. Nothing protects the sheet, so the cells
+        // are editable, and autoFitColumns sizes them from their headers — so
+        // there is room to type even though every cell ships blank.
+        row.push("", "");
         rows.push(row);
       });
 
@@ -991,8 +973,6 @@ export default function ClassRecordGridPage() {
                 )}
                 <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 60 }}>TOTAL</th>
                 <th rowSpan={2} className="header-group" style={{ minWidth: 62 }}>GRADE</th>
-                <th rowSpan={2} className="header-group" style={{ minWidth: 140 }}>LACKING MODULES & ACTIVITIES</th>
-                <th rowSpan={2} className="header-group" style={{ minWidth: 80 }}>STATUS</th>
               </tr>
               <tr>
                 {Array.from({ length: MODULE_COUNT }, (_, i) => i + 1).map((n) => (
@@ -1068,12 +1048,6 @@ export default function ClassRecordGridPage() {
                           </td>
                         );
                       })()}
-                      <td style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "left", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getMissingModulesAndActivities(s.id)}>
-                        {getMissingModulesAndActivities(s.id)}
-                      </td>
-                      <td style={{ fontWeight: 600, textAlign: "center", color: getRecordStatus(s.id) === "COMPLETE" ? "#059669" : "#f59e0b", fontSize: "0.85rem" }}>
-                        {getRecordStatus(s.id)}
-                      </td>
                     </tr>
                   );
                 })
