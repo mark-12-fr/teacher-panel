@@ -299,6 +299,102 @@
             gap: 15px;
         }
 
+        /* Page title + notification bell sit on one row. On phones the header
+           becomes a centred title with the menu button absolutely placed on the
+           left, so the bell mirrors it on the right (see the media query). */
+        .topbar-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .topbar-bell {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .topbar-bell-btn {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color, rgba(125, 125, 125, 0.25));
+            background: transparent;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+
+        .topbar-bell-btn:hover {
+            background: rgba(125, 125, 125, 0.12);
+        }
+
+        .topbar-bell-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.66rem;
+            font-weight: 700;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        .topbar-bell-panel {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            width: min(360px, calc(100vw - 32px));
+            max-height: 440px;
+            overflow-y: auto;
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border-color, rgba(125, 125, 125, 0.25));
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+            z-index: 1200;
+        }
+
+        .topbar-bell-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color, rgba(125, 125, 125, 0.2));
+            position: sticky;
+            top: 0;
+            background: var(--card-bg, #fff);
+        }
+
+        .topbar-bell-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            text-align: left;
+            padding: 11px 14px;
+            border: none;
+            border-bottom: 1px solid var(--border-color, rgba(125, 125, 125, 0.12));
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .topbar-bell-row.is-unread {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .topbar-bell-row:hover {
+            background: rgba(125, 125, 125, 0.1);
+        }
+
         .menu-toggle {
             display: none;
             background: none;
@@ -1004,6 +1100,22 @@
                 text-align: center;
                 width: 100%;
                 padding: 0 45px;
+            }
+
+            /* Mirror of .menu-toggle: the title reserves 45px on both sides, so
+               the bell sits in that gutter instead of squeezing the heading. */
+            .topbar-bell {
+                position: absolute;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 10;
+            }
+
+            /* Anchored to the right edge here, or the panel would run off-screen. */
+            .topbar-bell-panel {
+                left: auto;
+                right: 0;
             }
         }
 

@@ -19,7 +19,7 @@ from .cache import close_redis, init_redis
 from .config import settings
 from .database import engine
 from .ratelimit import limiter
-from .routers import ai, dashboard, facilitators, grading, push, records, sections
+from .routers import ai, dashboard, facilitators, grading, notifications, push, records, sections
 
 app = FastAPI(
     title="AcadTrack Teacher API",
@@ -96,7 +96,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(ForceCORSMiddleware)
 
-for r in (dashboard, sections, grading, facilitators, records, ai, push):
+for r in (dashboard, sections, grading, facilitators, records, ai, push, notifications):
     app.include_router(r.router)
 
 

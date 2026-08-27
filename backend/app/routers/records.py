@@ -138,7 +138,11 @@ async def upsert_records(
     section = await own_section(db, teacher, section_id)
     written = 0
     for rec in records:
-        values = {"student_id": rec.student_id, "section_id": str(section.id)}
+        # facilitator_id=None marks this as the TEACHER's own write, so the push
+        # webhook skips it (they should not be notified about their own edit).
+        # It is set explicitly rather than left out so that editing a row a
+        # facilitator submitted earlier clears that row's stale stamp too.
+        values = {"student_id": rec.student_id, "section_id": str(section.id), "facilitator_id": None}
         if rec.id:
             values["id"] = rec.id
         if rec.date is not None:

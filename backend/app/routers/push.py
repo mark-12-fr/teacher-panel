@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database import SessionLocal, get_db
-from ..models import Facilitator, PushSubscription, Section
+from ..models import Facilitator, Notification, PushSubscription, Section
 from ..schemas import PushSubscribeIn
 from ..security import CurrentTeacher, get_current_teacher
 
@@ -161,9 +161,45 @@ async def _flush_batch(batch_key: str):
     target_ids = list(info.get("targets", {}).values())  # [(user_type, user_id)]
     if not target_ids:
         return
+    # Build the message BEFORE touching the database: the same title/body feeds
+    # both the teacher's in-app bell row and the Web Push payload, and the bell
+    # entry has to be written even when nobody has granted push permission (the
+    # `not subs` early-return below).
+    if info["table"] == "attendance":
+        title = f"Attendance Submitted — {info['section_label']}"
+        body = (info["faci_name"] or "A facilitator") + " marked " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "") + " as " + (info["status"] or "updated")
+    else:
+        title = f"Class Record Submitted — {info['section_label']}"
+        body = (info["faci_name"] or "A facilitator") + " submitted scores for " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "")
+        if info.get("subject"):
+            body += " · " + info["subject"]
+
     stale_ids = []
     try:
         async with SessionLocal() as db:
+            # In-app bell feed: one row per coalesced batch (not per student
+            # row), so a whole-class submission reads as a single notification.
+            for user_type, user_id in target_ids:
+                if user_type != "teacher" or not user_id:
+                    continue
+                try:
+                    db.add(
+                        Notification(
+                            teacher_id=UUID(str(user_id)),
+                            kind=info["table"],
+                            title=title,
+                            body=body,
+                            url=info.get("url") or "/",
+                            section_label=info.get("section_label"),
+                        )
+                    )
+                except Exception:
+                    continue
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
+
             subs = []
             for user_type, user_id in target_ids:
                 res = await db.execute(
@@ -177,15 +213,6 @@ async def _flush_batch(batch_key: str):
         # holds a pooled connection (prevents QueuePool exhaustion / 500s).
         if not subs:
             return
-
-        if info["table"] == "attendance":
-            title = f"Attendance Submitted — {info['section_label']}"
-            body = (info["faci_name"] or "A facilitator") + " marked " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "") + " as " + (info["status"] or "updated")
-        else:
-            title = f"Class Record Submitted — {info['section_label']}"
-            body = (info["faci_name"] or "A facilitator") + " submitted scores for " + str(info["count"]) + " student" + ("s" if info["count"] != 1 else "")
-            if info.get("subject"):
-                body += " · " + info["subject"]
 
         payload = {
             "title": title,
@@ -256,6 +283,26 @@ async def _flush_after(batch_key: str, delay: float):
     async with _pending_lock:
         if batch_key in _pending:
             await _flush_batch(batch_key)
+
+
+async def _faci_name(db: AsyncSession, faci_id) -> Optional[str]:
+    """Full name for a facilitator id, or None when it can't be resolved.
+
+    `facilitator_id` holds whatever the facilitator panel had in localStorage:
+    normally the row's UUID, but older sessions stored the text `account_id`
+    instead (the panel's own login query matches on either). Comparing a UUID
+    column against a non-UUID string is an error in Postgres, so the value is
+    only used for the id lookup when it actually parses as a UUID.
+    """
+    if not faci_id:
+        return None
+    key = str(faci_id)
+    try:
+        cond = Facilitator.id == UUID(key)
+    except (AttributeError, TypeError, ValueError):
+        cond = Facilitator.account_id == key
+    row = (await db.execute(select(Facilitator).where(cond))).scalars().first()
+    return row.full_name if row else None
 
 
 def _pretty_field(key: str) -> str:
@@ -334,11 +381,7 @@ async def webhook(
                 from ..cache import cache_invalidate
                 await cache_invalidate(f"tp:{section.teacher_id}:*")
             targets = {"teacher": ("teacher", str(section.teacher_id))} if section.teacher_id else {}
-            faci_name = None
-            if record.get("facilitator_id"):
-                f = await db.execute(select(Facilitator).where(Facilitator.id == record["facilitator_id"]))
-                faci_row = f.scalars().first()
-                faci_name = faci_row.full_name if faci_row else None
+            faci_name = await _faci_name(db, record.get("facilitator_id"))
             batch_key = f"att:{section.id}:{record.get('date') or ''}:{record.get('facilitator_id') or ''}"
             await _collect({
                 "batch_key": batch_key,
@@ -364,14 +407,23 @@ async def webhook(
             if section.teacher_id:
                 from ..cache import cache_invalidate
                 await cache_invalidate(f"tp:{section.teacher_id}:*")
+            # Rows the teacher saved from their own panel carry no
+            # facilitator_id (upsert_records sets it to NULL explicitly), and the
+            # save endpoint has already refreshed their caches. Skipping them
+            # here is what stops the teacher being notified about their own score
+            # edits — the mirror of the attendance branch above.
+            faci_id = record.get("facilitator_id")
+            if not faci_id:
+                return {"skipped": "teacher's own write"}
+            faci_name = await _faci_name(db, faci_id)
             targets = {"teacher": ("teacher", str(section.teacher_id))} if section.teacher_id else {}
-            batch_key = f"cr:{section.id}:{record.get('quarter') or ''}"
+            batch_key = f"cr:{section.id}:{record.get('quarter') or ''}:{faci_id}"
             await _collect({
                 "batch_key": batch_key,
                 "table": "class_records",
                 "section_label": section.title,
                 "subject": section.subject,
-                "faci_name": None,
+                "faci_name": faci_name,
                 "date": record.get("date"),
                 "submitted_at": record.get("created_at"),
                 "url": f"/class-record/{section.id}",
