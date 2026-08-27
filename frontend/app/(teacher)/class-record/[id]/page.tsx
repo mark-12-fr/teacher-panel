@@ -1,7 +1,7 @@
 ﻿"use client";
 
 // Per-section class record — the grade spreadsheet (ported from
-// class-record(2).html). Columns: 25 Modules + 10 Activities (Written Work),
+// class-record(2).html). Columns: 15 Modules + 10 Activities (Written Work),
 // AT, PT 1, PT 2, QE. Each cell is a contentEditable that saves on blur to
 // POST /api/sections/{id}/class-records (upsert by record id). A Quarter /
 // Semester bar mirrors the Section detail page: viewing a non-active quarter
@@ -33,7 +33,11 @@ type GradeQuarterCard = {
   | { hasData: false; grade: null; comp: null; delta: null }
 );
 
-const MODULES = Array.from({ length: 25 }, (_, i) => `module_${i + 1}`);
+// How many Module columns the grid shows. The database still has module_1..25,
+// so raising this back only re-exposes columns that were never dropped; the
+// grade only ever counts the module_* values a record actually has.
+const MODULE_COUNT = 15;
+const MODULES = Array.from({ length: MODULE_COUNT }, (_, i) => `module_${i + 1}`);
 const ACTIVITIES = Array.from({ length: 10 }, (_, i) => `activity_${i + 1}`);
 const TAIL = ["at", "pt_1", "pt_2", "qe"];
 const ALL_SCORE_FIELDS = [...MODULES, ...ACTIVITIES, ...TAIL];
@@ -367,6 +371,10 @@ export default function ClassRecordGridPage() {
 
   const quarterLocked = String(viewQuarter) !== String(currentQuarter);
   const semesterLocked = viewSemester !== currentSemester;
+  // Width of the grid in columns, for the "no students" / skeleton rows: the 3
+  // sticky columns (#, ID, Name) + Modules + 10 Activities + AT/PT 1/PT 2/QE
+  // (senior high only) + TOTAL, GRADE, LACKING and STATUS.
+  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 4;
   const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
   const qLabel = (q: string) => (college ? q : `Q${q}`);
 
@@ -737,7 +745,7 @@ export default function ClassRecordGridPage() {
   }
 
   // Raw point total for the viewed quarter: every entered score added up
-  // (all 25 modules + 10 activities + AT + PT 1 + PT 2 + QE). null when the
+  // (all 15 modules + 10 activities + AT + PT 1 + PT 2 + QE). null when the
   // student has no scores yet, so the cell shows "—" like the GRADE column.
   function totalScoreFor(sid: string): number | null {
     const rec = recForView(sid);
@@ -760,7 +768,7 @@ export default function ClassRecordGridPage() {
     const rec = recForView(sid);
     if (!rec) return "None";
     const missing: string[] = [];
-    for (let i = 1; i <= 25; i++) {
+    for (let i = 1; i <= MODULE_COUNT; i++) {
       if (!isFilled(rec[`module_${i}`])) missing.push(`M${i}`);
     }
     for (let i = 1; i <= 10; i++) {
@@ -786,7 +794,7 @@ export default function ClassRecordGridPage() {
       rows.push([`${qLabel(currentQuarter)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       rows.push([]);
       const headers: any[] = ["ID No.", "Student Name"];
-      for (let m = 1; m <= 25; m++) headers.push("M" + m);
+      for (let m = 1; m <= MODULE_COUNT; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
       if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
       headers.push("Modules", "Activity");
@@ -971,7 +979,7 @@ export default function ClassRecordGridPage() {
                 <th rowSpan={2} className="sticky-col">#</th>
                 <th rowSpan={2} className="sticky-col" style={{ textAlign: "center" }}>ID No.</th>
                 <th rowSpan={2} className="sticky-col text-left group-divider">Student Name</th>
-                <th colSpan={25} className="header-group group-divider header-modules">MODULES</th>
+                <th colSpan={MODULE_COUNT} className="header-group group-divider header-modules">MODULES</th>
                 <th colSpan={10} className="header-group group-divider header-activities">ACTIVITIES</th>
                 {!college && (
                   <>
@@ -987,8 +995,8 @@ export default function ClassRecordGridPage() {
                 <th rowSpan={2} className="header-group" style={{ minWidth: 80 }}>STATUS</th>
               </tr>
               <tr>
-                {Array.from({ length: 25 }, (_, i) => i + 1).map((n) => (
-                  <th key={`m${n}`} className={n === 25 ? "group-divider" : undefined}>{n}</th>
+                {Array.from({ length: MODULE_COUNT }, (_, i) => i + 1).map((n) => (
+                  <th key={`m${n}`} className={n === MODULE_COUNT ? "group-divider" : undefined}>{n}</th>
                 ))}
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                   <th key={`a${n}`} className={n === 10 ? "group-divider" : undefined}>{n}</th>
@@ -1005,10 +1013,10 @@ export default function ClassRecordGridPage() {
             </thead>
             <tbody>
               {loading ? (
-                <SkeletonTableRows rows={6} cols={college ? 42 : 46} />
+                <SkeletonTableRows rows={6} cols={gridColSpan} />
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={college ? 42 : 46} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
+                  <td colSpan={gridColSpan} style={{ textAlign: "center", padding: 30 }}>No students assigned yet.</td>
                 </tr>
               ) : (
                 students.map((s, idx) => {
