@@ -1018,10 +1018,13 @@
             height: 3px;
             border-radius: 16px 16px 0 0;
         }
-        .stat-card-blue::before  { background: linear-gradient(90deg, #3b82f6, #6366f1); }
-        .stat-card-green::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
-        .stat-card-yellow::before{ background: linear-gradient(90deg, #f59e0b, #f97316); }
-        .stat-card-purple::before{ background: linear-gradient(90deg, #a855f7, #6366f1); }
+        /* Every stat card wears the same blue accent. The four variant classes
+           stay (they still carry each card's own faint background tint and the
+           markup is unchanged) — only the top line is unified. */
+        .stat-card-blue::before,
+        .stat-card-green::before,
+        .stat-card-yellow::before,
+        .stat-card-purple::before { background: linear-gradient(90deg, #3b82f6, #6366f1); }
         .stat-card-blue  { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(59,130,246,0.05) 100%); }
         .stat-card-green { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(34,197,94,0.05) 100%); }
         .stat-card-yellow{ background: linear-gradient(160deg, var(--card-bg) 70%, rgba(245,158,11,0.05) 100%); }
