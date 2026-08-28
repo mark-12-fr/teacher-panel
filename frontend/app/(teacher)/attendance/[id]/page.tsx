@@ -175,6 +175,32 @@ export default function AttendanceGridPage() {
     return () => clearInterval(poll);
   }, [sectionTitle, sectionId, loadAttendance]);
 
+  // Two-finger trackpad swipe scrolls the month grid sideways, so crossing 31
+  // day-columns doesn't mean reaching for the scrollbar. The container is
+  // already `overflow-x: auto`, but a browser hands a sideways trackpad gesture
+  // to history navigation ("swipe to go back") unless the element under the
+  // pointer claims it — so take deltaX and preventDefault. React's onWheel is
+  // passive (preventDefault ignored there), hence the native listener,
+  // re-attached on the key that remounts the container. Mirrors the class-record
+  // grid. A plain vertical scroll is left alone so the page still scrolls.
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = gridScrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+      if (!dx) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      const next = Math.min(Math.max(el.scrollLeft + dx, 0), max);
+      if (next === el.scrollLeft) return; // at an edge — let the gesture through
+      el.scrollLeft = next;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [year, month]);
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthLabel = `${MONTHS_UP[month]} ${year}`;
   const isCurrentMonth = month === now.getMonth() && year === now.getFullYear();
@@ -498,7 +524,7 @@ export default function AttendanceGridPage() {
           </div>
         </div>
 
-        <div className="table-responsive fade-swap" key={`${year}-${month}`}>
+        <div className="table-responsive fade-swap" ref={gridScrollRef} key={`${year}-${month}`}>
           <table className="record-table">
             <thead>
               <tr>
