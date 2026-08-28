@@ -846,6 +846,34 @@ export default function ClassRecordGridPage() {
 
   usePageMeta("Class Record", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
 
+  // Two-finger trackpad swipe scrolls the grid sideways, so reaching for the
+  // scrollbar at the bottom isn't the only way across 30-odd columns.
+  //
+  // The container is already `overflow-x: auto`, but a browser hands a sideways
+  // trackpad gesture to history navigation ("swipe to go back") unless the
+  // element under the pointer claims it — so take deltaX and preventDefault.
+  // React attaches onWheel passively, where preventDefault is ignored, hence the
+  // native listener. Re-runs on the key that remounts the container.
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = gridScrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // Sideways intent only: a horizontal swipe, or Shift + wheel. A plain
+      // vertical scroll must still scroll the page, not the grid.
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+      if (!dx) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      const next = Math.min(Math.max(el.scrollLeft + dx, 0), max);
+      if (next === el.scrollLeft) return; // already at that edge — let it through
+      el.scrollLeft = next;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [viewSemester, viewQuarter]);
+
   const searchLower = search.toLowerCase();
   doUndoRef.current = doUndo; // keep the document Ctrl+Z listener on the latest closure
 
@@ -967,7 +995,7 @@ export default function ClassRecordGridPage() {
           </div>
         )}
 
-        <div className="table-responsive fade-swap" key={`${viewSemester}-${viewQuarter}`}>
+        <div className="table-responsive fade-swap" ref={gridScrollRef} key={`${viewSemester}-${viewQuarter}`}>
           <table id="recordTable">
             <thead>
               <tr>
