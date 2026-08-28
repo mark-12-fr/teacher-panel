@@ -827,7 +827,7 @@ export default function DashboardPage() {
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
                 <span className="chart-badge chart-badge-sem"><i className="fa-regular fa-calendar" style={{ fontSize: "0.65rem" }} /> {semLabel}</span>
                 <span className="chart-badge chart-badge-qtr"><i className="fa-solid fa-layer-group" style={{ fontSize: "0.65rem" }} /> {qtrLabel}</span>
-                <span className="chart-badge chart-badge-pass"><i className="fa-solid fa-minus" style={{ fontSize: "0.65rem" }} /> {passing}% Passing</span>
+                <span className="chart-badge chart-badge-pass">{passing}% Passing</span>
               </div>
             </div>
             {overallAvg != null && (
