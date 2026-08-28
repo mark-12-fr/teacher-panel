@@ -401,6 +401,10 @@
             overflow-x: auto;
             width: 100%;
             -webkit-overflow-scrolling: touch;
+            /* Keep a sideways trackpad swipe inside the grid: without this, a
+               swipe that reaches either end chains out to the browser's
+               back/forward gesture and navigates away from the class record. */
+            overscroll-behavior-x: contain;
             border-bottom: 1px solid var(--border-color);
             border-right: 1px solid var(--border-color);
             display: block;
