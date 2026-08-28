@@ -553,11 +553,15 @@
         }
         .sticky-col-2 {
             left: 40px;
-            width: 115px;
+            /* Fits a full 14-char ID like 04-2526-121141 (~137px at this font)
+               without the last digit slipping under the Student Name column. */
+            width: 145px;
             text-align: center !important;
         }
         .sticky-col-name {
-            left: 155px;
+            /* = sticky-col-1 (40px) + sticky-col-2 (145px), so Name butts right
+               up against the ID column with no gap or overlap. */
+            left: 185px;
             width: 220px;
             text-align: left !important;
         }
