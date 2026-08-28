@@ -206,6 +206,26 @@ export default function AttendanceGridPage() {
   const isCurrentMonth = month === now.getMonth() && year === now.getFullYear();
   const todayDay = now.getDate();
 
+  // On opening the current month, jump the grid to today's column so the teacher
+  // lands on the day they're marking instead of Day 1 with a long scroll ahead.
+  // Runs once per month view (a ref remembers which), so it never yanks the
+  // teacher's own scrolling back, and never fires for a past/future month.
+  const autoScrolledFor = useRef<string>("");
+  useEffect(() => {
+    const el = gridScrollRef.current;
+    if (!el || loading || !isCurrentMonth) return;
+    const key = `${year}-${month}`;
+    if (autoScrolledFor.current === key) return;
+    const cell = el.querySelector<HTMLElement>(".today-col-header");
+    if (!cell) return; // grid not painted yet — retry on the next render
+    autoScrolledFor.current = key;
+    const elRect = el.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    // Centre today's column in the viewport of the scroller.
+    const target = el.scrollLeft + (cellRect.left - elRect.left) - (el.clientWidth - cellRect.width) / 2;
+    el.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [loading, isCurrentMonth, year, month, students.length]);
+
   // (student_name|date) → status, for O(1) cell lookup.
   const attMap = useMemo(() => {
     const m = new Map<string, string>();
