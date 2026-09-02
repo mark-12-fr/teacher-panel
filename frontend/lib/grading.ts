@@ -159,46 +159,62 @@ export function initialGrade(record: any, subjectName: string): number {
 // ── Transmutation / Final Grade ────────────────────────────────────────────
 
 /** DepEd standard transmutation table: Initial Grade → Final Grade.
- *  Maps the raw Initial Grade (0-100) to the transmuted Quarterly Grade. */
+ *  Maps the raw Initial Grade (0-100) to the transmuted Quarterly Grade.
+ *  Based on the official DepEd transmutation formula. */
 const TRANSMUTATION_TABLE: [number, number][] = [
+  [99.5, 100],
+  [98.32, 99],
+  [97.14, 98],
+  [95.96, 97],
+  [94.78, 96],
+  [93.6, 95],
+  [92.42, 94],
+  [91.24, 93],
+  [90.06, 92],
+  [88.88, 91],
+  [87.7, 90],
+  [86.52, 89],
+  [85.34, 88],
+  [84.16, 87],
+  [82.98, 86],
+  [81.8, 85],
+  [80.62, 84],
+  [79.44, 83],
+  [78.26, 82],
+  [77.08, 81],
+  [75.9, 80],
+  [74.72, 79],
+  [73.54, 78],
+  [72.36, 77],
+  [71.18, 76],
+  [70, 75],
+  [65.34, 74],
+  [60.67, 73],
+  [56.01, 72],
+  [51.34, 71],
+  [46.67, 70],
+  [42.01, 69],
+  [37.34, 68],
+  [32.68, 67],
+  [28.01, 66],
+  [23.35, 65],
+  [18.68, 64],
+  [14.01, 63],
+  [9.35, 62],
+  [4.68, 61],
   [0, 60],
-  [10, 62],
-  [15, 64],
-  [20, 66],
-  [25, 68],
-  [30, 70],
-  [35, 72],
-  [40, 74],
-  [45, 76],
-  [50, 78],
-  [55, 80],
-  [60, 82],
-  [65, 84],
-  [70, 86],
-  [75, 88],
-  [80, 90],
-  [85, 92],
-  [90, 94],
-  [95, 96],
-  [100, 100],
 ];
 
 /** Transmute an Initial Grade (0-100) to a Final/Quarterly Grade using the
- *  DepEd standard transmutation table. Uses linear interpolation between
- *  table entries. Returns an integer (rounded). */
+ *  DepEd standard transmutation table. */
 export function transmute(initialGrade: number): number {
-  if (initialGrade <= 0) return TRANSMUTATION_TABLE[0][1];
-  if (initialGrade >= 100) return TRANSMUTATION_TABLE[TRANSMUTATION_TABLE.length - 1][1];
+  if (initialGrade < 0) return 60;
+  if (initialGrade >= 99.5) return 100;
 
-  for (let i = 0; i < TRANSMUTATION_TABLE.length - 1; i++) {
-    const [low, lowGrade] = TRANSMUTATION_TABLE[i];
-    const [high, highGrade] = TRANSMUTATION_TABLE[i + 1];
-    if (initialGrade >= low && initialGrade <= high) {
-      const ratio = (initialGrade - low) / (high - low);
-      return Math.round(lowGrade + ratio * (highGrade - lowGrade));
-    }
+  for (const [minScore, finalGrade] of TRANSMUTATION_TABLE) {
+    if (initialGrade >= minScore) return finalGrade;
   }
-  return TRANSMUTATION_TABLE[TRANSMUTATION_TABLE.length - 1][1];
+  return 60;
 }
 
 /** Final/Quarterly Grade: transmuted from Initial Grade.
