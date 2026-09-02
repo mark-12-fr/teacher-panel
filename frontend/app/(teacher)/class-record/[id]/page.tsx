@@ -15,6 +15,7 @@ import { apiGet, apiPost, apiPatch, cachedGet, invalidateCached } from "@/lib/ap
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
+import { buildDepedClassRecord, downloadXlsx } from "@/lib/depedTemplate";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import LoadingBar from "@/components/LoadingBar";
 import { setSubjectConfigs, componentScores, finalGrade, initialGrade, transmute, displayedTotal, passingFor, isGradeComplete, weightsFor, type ComponentScores } from "@/lib/grading";
@@ -899,10 +900,50 @@ export default function ClassRecordGridPage() {
     }
   }
 
+  // Fill the official DepEd SHS E-Class-Record workbook (logos, formulas and
+  // transmutation table intact) with the entered scores — both quarters of the
+  // active semester — so the teacher just opens it and views the finished form.
+  async function exportDepedForm() {
+    if (loading || students.length === 0) {
+      showToast(
+        loading
+          ? "Still loading — wait for the class record to appear, then export."
+          : "Nothing to export: no students are loaded for this section. Reload the page and try again.",
+        true,
+      );
+      return;
+    }
+    try {
+      showToast("Generating DepEd form...");
+      const teacherName =
+        (typeof localStorage !== "undefined" && localStorage.getItem("cached_user_name")) || "";
+      const bytes = await buildDepedClassRecord({
+        students,
+        records,
+        semester: currentSemester,
+        subject: section?.subject || "",
+        sectionTitle: section?.title || "",
+        teacherName,
+      });
+      const safe = (section?.title || "Section").replace(/\s+/g, "_");
+      downloadXlsx(bytes, `DepEd_Class_Record_${safe}.xlsx`);
+      showToast("DepEd form generated!");
+    } catch (e: any) {
+      showToast("DepEd form failed: " + (e?.message || e), true);
+    }
+  }
+
   const exportBtn = (
-    <button className="export-btn" onClick={exportExcel}>
-      <i className="fa-solid fa-file-excel" /> Export Excel
-    </button>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+      <button className="export-btn" onClick={exportExcel}>
+        <i className="fa-solid fa-file-excel" /> Export Excel
+      </button>
+      {!college && (
+        <button className="export-btn" onClick={exportDepedForm} title="Fill the official DepEd class-record form with these scores">
+          <i className="fa-solid fa-file-lines" /> DepEd Form
+        </button>
+      )}
+    </div>
   );
 
   usePageMeta("Class Record", section?.title ? `Section: ${section.title}` : undefined, exportBtn);
