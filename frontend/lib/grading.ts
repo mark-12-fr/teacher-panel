@@ -149,11 +149,22 @@ export function componentScores(record: any, subjectName?: string): ComponentSco
 
 // ── Initial Grade ──────────────────────────────────────────────────────────
 
-/** Initial Grade = sum of all weighted scores (no rounding).
- *  Do NOT round during intermediate calculations. */
+// Round to 2 decimals the way a spreadsheet's ROUND(x, 2) does. The +1e-9 nudge
+// absorbs binary float error so 11.185 rounds to 11.19, matching the Excel.
+const round2 = (n: number): number => Math.round((n + 1e-9) * 100) / 100;
+
+/** Initial Grade = sum of the weighted component scores. The class-record Excel
+ *  rounds each Percentage Score and each Weighted Score to 2 decimals before
+ *  adding them (PS = round2(raw ÷ perfect × 100); WS = round2(PS × weight%)),
+ *  so we do the same — otherwise the Initial Grade can read 0.01 low versus the
+ *  official sheet (e.g. 51.98 instead of 51.99, 84.09 instead of 84.10). */
 export function initialGrade(record: any, subjectName: string): number {
+  const w = weightsFor(subjectName);
   const s = componentScores(record, subjectName);
-  return s.wwWS + s.ptWS + s.examWS;
+  const wwWS = round2(round2(s.wwPct) * (w.ww / 100));
+  const ptWS = round2(round2(s.ptPct) * (w.pt / 100));
+  const examWS = round2(round2(s.examPct) * (w.exam / 100));
+  return round2(wwWS + ptWS + examWS);
 }
 
 // ── Transmutation / Final Grade ────────────────────────────────────────────
