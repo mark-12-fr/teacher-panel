@@ -7,7 +7,7 @@
 // (the file is flagged to recalculate on open), and the logos, weights and
 // transmutation table are the template's, untouched.
 //
-// Fill map (per student, one row each starting at row 13):
+// Fill map (per learner, one row each — see STUDENT_ROWS below):
 //   INPUT DATA   B/C/D/E = learner's name (drives the 1ST/2ND/Final sheets)
 //   1ST  (Q1/Q3) G = Σ modules, H = Σ activities, T = Σ performance tasks,
 //                AG = Achievement Test, AH = Quarterly Exam
@@ -15,9 +15,17 @@
 // Everything else in the workbook is a formula and recomputes from these.
 
 const TEMPLATE_URL = "/deped-class-record-template.xlsx";
-const FIRST_ROW = 13;
-// INPUT DATA has learner-name cells through row 113 (101 learners) — plenty.
-const LAST_ROW = 113;
+
+// The official form splits learners into a MALE block (rows 13-62) and a FEMALE
+// block (rows 64-113) around a divider row (63). The app has no sex field, so we
+// fill ONE continuous roster across both blocks, skipping the divider — then hide
+// the divider and every unused row so the form shows a single clean numbered list
+// with no stray data on the divider and no trailing blank rows. 100 rows in all.
+const STUDENT_ROWS: number[] = [];
+for (let r = 13; r <= 62; r++) STUDENT_ROWS.push(r);
+for (let r = 64; r <= 113; r++) STUDENT_ROWS.push(r);
+const DIVIDER_ROW = 63; // "FEMALE" divider on 1ST / 2ND / Final
+const FINAL_MALE_LABEL_ROW = 12; // "MALE" label row, only on the Final sheet
 
 export interface DepedStudent {
   id: string;
@@ -49,6 +57,15 @@ function setCell(xml: string, ref: string, value: any, opts: { string?: boolean 
     if (opts.string)
       return `<c r="${ref}"${sa} t="inlineStr"><is><t xml:space="preserve">${escXml(value)}</t></is></c>`;
     return `<c r="${ref}"${sa}><v>${value}</v></c>`;
+  });
+}
+
+/** Show or hide a whole worksheet row (adds/removes hidden="1" on the <row>).
+ *  A missing or self-closing row is a safe no-op. */
+function setRowHidden(xml: string, rownum: number, hidden: boolean): string {
+  return xml.replace(new RegExp(`<row r="${rownum}"((?:[^>/]*?))>`), (_m, attrs) => {
+    const cleaned = attrs.replace(/\shidden="1"/g, "");
+    return `<row r="${rownum}"${cleaned}${hidden ? ' hidden="1"' : ""}>`;
   });
 }
 
@@ -88,14 +105,14 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   const dbQuarters = secondSem ? ["3", "4"] : ["1", "2"];
   const semLabel = secondSem ? "2ND" : "1ST";
 
-  const capacity = LAST_ROW - FIRST_ROW + 1;
-  if ((opts.students || []).length > capacity) {
+  if ((opts.students || []).length > STUDENT_ROWS.length) {
     // Surface, don't silently drop, a roster larger than the template supports.
     throw new Error(
-      `This section has ${opts.students.length} learners but the DepEd template holds ${capacity}. Export in smaller groups.`,
+      `This section has ${opts.students.length} learners but the DepEd template holds ${STUDENT_ROWS.length}. Export in smaller groups.`,
     );
   }
   const students = opts.students || [];
+  const used = (i: number) => i < students.length;
 
   const recFor = (sid: string, q: string) =>
     (opts.records || []).find(
@@ -109,7 +126,7 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   if (opts.sectionTitle) input = setCell(input, "K7", opts.sectionTitle, { string: true });
   input = setCell(input, "S8", semLabel, { string: true });
   students.forEach((s, i) => {
-    const row = FIRST_ROW + i;
+    const row = STUDENT_ROWS[i];
     const name = s.full_name || "";
     for (const col of ["B", "C", "D", "E"]) input = setCell(input, col + row, name, { string: true });
   });
@@ -119,16 +136,30 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   ["xl/worksheets/sheet2.xml", "xl/worksheets/sheet3.xml"].forEach((path, qi) => {
     let xml = strFromU8(files[path]);
     students.forEach((s, i) => {
-      const row = FIRST_ROW + i;
+      const row = STUDENT_ROWS[i];
       const rec = recFor(s.id, dbQuarters[qi]) || {};
+      xml = setCell(xml, "A" + row, i + 1); // one continuous 1..N numbering
       xml = setCell(xml, "G" + row, sumFields(rec, "module_"));
       xml = setCell(xml, "H" + row, sumFields(rec, "activity_"));
       xml = setCell(xml, "T" + row, sumFields(rec, "pt_"));
       xml = setCell(xml, "AG" + row, fieldVal(rec, "at"));
       xml = setCell(xml, "AH" + row, fieldVal(rec, "qe"));
     });
+    // Hide the FEMALE divider and every unused learner row → no stray data on the
+    // divider, no trailing blank rows.
+    xml = setRowHidden(xml, DIVIDER_ROW, true);
+    STUDENT_ROWS.forEach((row, i) => (xml = setRowHidden(xml, row, !used(i))));
     files[path] = strToU8(xml);
   });
+
+  // ── Final Semestral Grade (sheet4): grades flow in by formula, so just tidy —
+  //    renumber, and hide the MALE/FEMALE labels plus the unused rows. ──────────
+  let final = strFromU8(files["xl/worksheets/sheet4.xml"]);
+  students.forEach((_s, i) => (final = setCell(final, "A" + STUDENT_ROWS[i], i + 1)));
+  final = setRowHidden(final, FINAL_MALE_LABEL_ROW, true);
+  final = setRowHidden(final, DIVIDER_ROW, true);
+  STUDENT_ROWS.forEach((row, i) => (final = setRowHidden(final, row, !used(i))));
+  files["xl/worksheets/sheet4.xml"] = strToU8(final);
 
   return zipSync(files, { level: 6 });
 }
