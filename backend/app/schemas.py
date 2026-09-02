@@ -53,12 +53,12 @@ class StudentsBulkIn(BaseModel):
 
 
 # ── Subjects (grade config) ─────────────────────────────────────────────────
+# Component-based grading: Written Work + Performance Tasks + Exam = 100%
 class SubjectIn(BaseModel):
     name: str
-    ww_percent: float = 30
-    pt_percent: float = 50
-    exam_percent: float = 20
-    attendance_percent: float = 0
+    ww_percent: float = 25
+    pt_percent: float = 45
+    exam_percent: float = 30
     passing_grade: float = 75
     ww_total: Optional[float] = None
     pt_total: Optional[float] = None
@@ -70,7 +70,6 @@ class SubjectUpdate(BaseModel):
     ww_percent: Optional[float] = None
     pt_percent: Optional[float] = None
     exam_percent: Optional[float] = None
-    attendance_percent: Optional[float] = None
     passing_grade: Optional[float] = None
     ww_total: Optional[float] = None
     pt_total: Optional[float] = None

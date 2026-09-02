@@ -243,7 +243,7 @@ export function buildAIContext(query: string, data: AIData): string {
     const ww = Math.round(comp.ww);
     const pt = Math.round(comp.pt);
     const exam = Math.round(comp.exam);
-    const grade = finalGrade(merged, sec.subject, 100);
+    const grade = finalGrade(merged, sec.subject);
     const passing = passingFor(sec.subject);
     const active = Array.from(activeBySection[st.section_id] || []);
     const missing = active.filter((k) => isEmpty(merged[k])).map(pretty);
@@ -447,7 +447,7 @@ export async function processSmartDBQuery(
   const scopeQuarter = resolveQuarter(rawQuery);
   const scoped = scopeSection ? students.filter((s) => String(s.section_id) === String(scopeSection.id)) : students;
   const recFor = (s: any) => (scopeQuarter ? quarterRecord(data, s.id, scopeQuarter) : mergedRecord(data, s.id));
-  const gradeFor = (s: any) => finalGrade(recFor(s) || {}, subjectOf(data, s.section_id), 100);
+  const gradeFor = (s: any) => finalGrade(recFor(s) || {}, subjectOf(data, s.section_id));
   const passFor = (s: any) => passingFor(subjectOf(data, s.section_id));
   const secTitle = (s: any) => (sections.find((x) => x.id === s.section_id) || {}).title || "";
   const absOf = (s: any) => attendance.filter((a) => (a.student_name || "").toLowerCase() === (s.full_name || "").toLowerCase() && a.status === "Absent").length;
@@ -544,7 +544,7 @@ export async function processSmartDBQuery(
     if (!stud) return `I could not find a student named "<strong>${escapeHtml(name)}</strong>" in your class lists.`;
     const rec = recFor(stud);
     if (!rec) return `There are no grade records entered for <strong>${escapeHtml(stud.full_name)}</strong>${scopeQuarter ? " for " + escapeHtml(qLabel(scopeQuarter)) : ""} yet.`;
-    const grade = finalGrade(rec, subjectOf(data, stud.section_id), 100);
+    const grade = finalGrade(rec, subjectOf(data, stud.section_id));
     const status = grade >= passingFor(subjectOf(data, stud.section_id)) ? "<span style='color:#10b981;'>Passing</span>" : "<span style='color:#ef4444;'>Failing</span>";
     return `The current grade for <strong>${escapeHtml(stud.full_name)}</strong>${scopeQuarter ? " (" + escapeHtml(qLabel(scopeQuarter)) + ")" : ""} is <strong>${grade}%</strong>. They are currently ${status}.`;
   }

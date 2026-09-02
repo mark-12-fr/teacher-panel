@@ -1,20 +1,19 @@
 // ── grading.ts — single source of truth for grade weights ───────────────────
-// Faithful TypeScript port of the legacy grading.js. Weights per subject come
-// from the teacher's `subjects` config (loaded via the API) so faci grades
-// match the teacher panel exactly; falls back to the DepEd default otherwise.
+// Component-based grading: Written Work (WW), Performance Tasks (PT), Exam.
+// Each component has a weight % and optional perfect score (total possible).
+// Initial Grade = Σ(weighted scores), Final Grade = transmutation of Initial Grade.
 
 export interface Weights {
   ww: number;
   pt: number;
   exam: number;
-  att: number;
   passing: number;
-  wwTotal: number; // "perfect score" (total possible) for Written Works; 0 = unset → cap at 100
-  ptTotal: number; // "perfect score" for Performance Tasks; 0 = unset
-  examTotal: number; // "perfect score" for the Exam (AT + QE); 0 = unset
+  wwTotal: number; // perfect score for Written Work; 0 = unset → cap at 100
+  ptTotal: number; // perfect score for Performance Tasks; 0 = unset
+  examTotal: number; // perfect score for Exam (AT + QE); 0 = unset
 }
 
-export const GRADE_DEFAULT: Weights = { ww: 30, pt: 50, exam: 20, att: 0, passing: 75, wwTotal: 0, ptTotal: 0, examTotal: 0 };
+export const GRADE_DEFAULT: Weights = { ww: 25, pt: 45, exam: 30, passing: 75, wwTotal: 0, ptTotal: 0, examTotal: 0 };
 
 let SUBJECT_CFG: Record<string, Weights> = {};
 
@@ -32,7 +31,6 @@ export function setSubjectConfigs(subjects: any[]): Record<string, Weights> {
       ww: num(r.ww_percent, GRADE_DEFAULT.ww),
       pt: num(r.pt_percent, GRADE_DEFAULT.pt),
       exam: num(r.exam_percent, GRADE_DEFAULT.exam),
-      att: num(r.attendance_percent, GRADE_DEFAULT.att),
       passing: num(r.passing_grade, GRADE_DEFAULT.passing),
       wwTotal: num(r.ww_total, 0),
       ptTotal: num(r.pt_total, 0),
@@ -50,7 +48,6 @@ export function weightsFor(subjectName: string): Weights {
         ww: num(c.ww, GRADE_DEFAULT.ww),
         pt: num(c.pt, GRADE_DEFAULT.pt),
         exam: num(c.exam, GRADE_DEFAULT.exam),
-        att: num(c.att, GRADE_DEFAULT.att),
         passing: num(c.passing, GRADE_DEFAULT.passing),
         wwTotal: num(c.wwTotal, 0),
         ptTotal: num(c.ptTotal, 0),
@@ -63,33 +60,41 @@ export function passingFor(subjectName: string): number {
   return weightsFor(subjectName).passing;
 }
 
+// ── Component scores ───────────────────────────────────────────────────────
+
 export interface ComponentScores {
-  ww: number; // Written Works = Modules + Activities (0–100). Drives the WW weight.
-  wwOnly: number; // Modules + Activities raw sum, capped at 100 (for display fallbacks).
-  modulesOnly: number; // Modules columns only (for display).
-  activitiesOnly: number; // Activity columns only (for display).
-  at: number; // The standalone AT (Achievement Test) column on its own (for display).
-  pt: number;
-  qe: number; // Quarterly Exam alone as a % of 50 (for the display row).
-  exam: number; // EXAM component = AT + QE (each /50 → /100). Drives the exam weight.
-  rawWW: number;
-  rawPT: number;
-  rawQE: number;
-  rawAT: number; // Raw Achievement Test points.
-  rawExam: number; // Raw exam points = AT + QE (out of 100).
+  // Written Work
+  modulesOnly: number; // raw sum of module_* columns
+  activitiesOnly: number; // raw sum of activity_* columns
+  rawWW: number; // WW raw score = modules + activities
+  wwPct: number; // WW percentage score = (raw / total) × 100
+  wwWS: number; // WW weighted score = wwPct × (wwWeight / 100)
+
+  // Performance Tasks
+  rawPT: number; // PT raw score (sum of pt_* columns)
+  ptPct: number; // PT percentage score
+  ptWS: number; // PT weighted score
+
+  // Exam
+  rawAT: number; // Achievement Test raw score
+  rawQE: number; // Quarterly Exam raw score
+  rawExam: number; // Exam raw score = AT + QE
+  examPct: number; // Exam percentage score
+  examWS: number; // Exam weighted score
+
+  // Totals
+  ww: number; // WW percentage (for backward compat with charts)
+  pt: number; // PT percentage (for backward compat)
+  qe: number; // QE display percentage
+  exam: number; // Exam percentage (for backward compat)
 }
 
-/** Component scores (0–100) from a merged class record. Pass `subjectName` so a
- *  configured per-component "perfect score" (total possible) is applied: a
- *  component's % is then (raw / total) × 100 instead of the raw sum capped at
- *  100. e.g. Written Work total = 190 → a student with 130 shows as ~68%. Without
- *  a subject (or when a total is unset) it falls back to the raw sum capped at
- *  100 — the original behaviour, so nothing changes until a teacher sets a total
- *  in the Grading System. */
+/** Component scores with percentage and weighted scores for each component.
+ *  Pass `subjectName` so configured perfect scores and weights are applied. */
 export function componentScores(record: any, subjectName?: string): ComponentScores {
-  let modulesOnly = 0; // module_* columns
-  let activitiesOnly = 0; // activity_* columns
-  let atTotal = 0; // the standalone AT (Achievement Test) column
+  let modulesOnly = 0;
+  let activitiesOnly = 0;
+  let atTotal = 0;
   let totalPT = 0;
   const totalQE = num(record && record.qe, 0);
   for (const k in record || {}) {
@@ -100,113 +105,113 @@ export function componentScores(record: any, subjectName?: string): ComponentSco
     else if (k === "at") atTotal += num(v, 0);
     else if (k.indexOf("pt_") === 0) totalPT += num(v, 0);
   }
-  // Written Works = Modules + Activities. The Achievement Test (AT) belongs to
-  // the EXAM together with the Quarterly Exam — each is scored out of 50, so the
-  // exam component is (AT + QE) as a percentage of 100. (AT is still shown as its
-  // own row in the breakdown; it just feeds the exam bucket, not Written Works.)
-  const wwOnly = modulesOnly + activitiesOnly;
-  const examRaw = atTotal + totalQE; // AT (/50) + QE (/50) → out of 100
+
+  const rawWW = modulesOnly + activitiesOnly;
+  const rawExam = atTotal + totalQE;
   const w = subjectName != null ? weightsFor(subjectName) : null;
-  // (raw / total) × 100 when a total is configured; else the raw sum capped 100.
+
+  // Percentage = (raw / total) × 100 when total is configured; else min(raw, 100)
   const pct = (raw: number, total: number) => (total > 0 ? Math.min((raw / total) * 100, 100) : Math.min(raw, 100));
+
+  const wwPct = pct(rawWW, w ? w.wwTotal : 0);
+  const ptPct = pct(totalPT, w ? w.ptTotal : 0);
+  const examPct = pct(rawExam, w ? w.examTotal : 0);
+
+  // Weighted Score = percentage × (weight / 100)
+  const wwWS = w ? wwPct * (w.ww / 100) : 0;
+  const ptWS = w ? ptPct * (w.pt / 100) : 0;
+  const examWS = w ? examPct * (w.exam / 100) : 0;
+
   return {
-    ww: pct(wwOnly, w ? w.wwTotal : 0),
-    // Display rows are a RAW point tally — show the real earned totals (not
-    // capped at 100), so a Modules sum of 102 shows as 102, not 100. Only the
-    // weighted component score (ww/pt/exam above) is normalised; these rows are
-    // informational and must reflect what the teacher actually entered.
-    wwOnly: wwOnly,
-    modulesOnly: modulesOnly,
-    activitiesOnly: activitiesOnly,
-    at: atTotal,
-    pt: pct(totalPT, w ? w.ptTotal : 0),
-    qe: Math.min((totalQE / 50) * 100, 100),
-    exam: pct(examRaw, w ? w.examTotal : 0),
-    rawWW: wwOnly,
+    modulesOnly,
+    activitiesOnly,
+    rawWW,
+    wwPct,
+    wwWS,
+
     rawPT: totalPT,
-    rawQE: totalQE,
+    ptPct,
+    ptWS,
+
     rawAT: atTotal,
-    rawExam: examRaw,
+    rawQE: totalQE,
+    rawExam,
+    examPct,
+    examWS,
+
+    // backward compat fields
+    ww: wwPct,
+    pt: ptPct,
+    qe: totalQE > 0 ? Math.min((totalQE / 50) * 100, 100) : 0,
+    exam: examPct,
   };
 }
 
-/** The point total shown as the headline of each grade-breakdown card: the four
- *  displayed component scores — Modules, Activity, Performance Task, and the Exam
- *  — added together, each rounded exactly the way the modal renders them so the
- *  big number always equals the sum of the rows beneath it. The Exam pools the
- *  Achievement Test and the Quarterly Exam (AT + QE), the same bucket the grade
- *  uses, so the AT is counted once — inside the Exam — and never added again on
- *  its own. A raw point tally for the teacher's convenience, NOT the weighted
- *  grade — that stays available via finalGrade(). */
-export function displayedTotal(c: ComponentScores): number {
-  return (
-    Math.round(c.modulesOnly) +
-    Math.round(c.activitiesOnly) +
-    Math.round(c.rawPT) +
-    Math.round(c.rawExam)
-  );
-}
+// ── Initial Grade ──────────────────────────────────────────────────────────
 
-/** Attendance score 0–100 from {present, late, total}. No records → 100. */
-export function attScore(att: { present?: number; late?: number; total?: number } | null | undefined): number {
-  if (!att || !att.total) return 100;
-  const present = num(att.present, 0);
-  const late = num(att.late, 0);
-  return Math.min(((present + 0.5 * late) / att.total) * 100, 100);
-}
-
-/** Final grade 0–100 for a merged record under a subject's weights.
- *
- *  IN-PROGRESS grading: only components that have actually been GIVEN count. A
- *  component whose columns are all blank is treated as "not handed out yet" — it
- *  is excluded and its weight is redistributed across the given components, so an
- *  empty Performance Task or Quarterly Exam doesn't drag the grade down before
- *  it's administered. A blank is grace; enter a 0 to record a real zero. Once
- *  every component is filled the active weights sum to 100 and this equals the
- *  plain weighted grade — so a completed quarter is unchanged. */
-export function finalGrade(record: any, subjectName: string, attendanceScore?: number | null): number {
-  const w = weightsFor(subjectName);
+/** Initial Grade = sum of all weighted scores (no rounding).
+ *  Do NOT round during intermediate calculations. */
+export function initialGrade(record: any, subjectName: string): number {
   const s = componentScores(record, subjectName);
-  const att = attendanceScore === null || attendanceScore === undefined ? 100 : attendanceScore;
-
-  const has = (pred: (k: string) => boolean): boolean => {
-    for (const k in record || {}) {
-      if (pred(k)) {
-        const v = record[k];
-        if (v !== null && v !== undefined && v !== "") return true;
-      }
-    }
-    return false;
-  };
-  const wwGiven = has((k) => k.indexOf("module_") === 0 || k.indexOf("activity_") === 0);
-  const ptGiven = has((k) => k.indexOf("pt_") === 0);
-  const atGiven = has((k) => k === "at");
-  const qeGiven = has((k) => k === "qe");
-  const examGiven = atGiven || qeGiven;
-
-  // Exam % from the parts actually given (AT and QE are each half of examTotal —
-  // default 50 each), so an unentered QE doesn't halve a student's exam score.
-  let examPct = s.exam;
-  if (examGiven) {
-    const partMax = w.examTotal > 0 ? w.examTotal / 2 : 50;
-    const denom = partMax * ((atGiven ? 1 : 0) + (qeGiven ? 1 : 0));
-    examPct = denom > 0 ? Math.min(((s.rawAT + s.rawQE) / denom) * 100, 100) : 0;
-  }
-
-  let score = 0;
-  let activeWeight = 0;
-  if (wwGiven) { score += s.ww * w.ww; activeWeight += w.ww; }
-  if (ptGiven) { score += s.pt * w.pt; activeWeight += w.pt; }
-  if (examGiven) { score += examPct * w.exam; activeWeight += w.exam; }
-  if (w.att > 0) { score += att * w.att; activeWeight += w.att; }
-
-  if (activeWeight <= 0) return 0; // nothing entered yet
-  return Math.round(score / activeWeight);
+  return s.wwWS + s.ptWS + s.examWS;
 }
 
-/** True when every weighted component has been given, so finalGrade() is the
- *  FINAL grade (not the re-weighted in-progress one). The Exam needs BOTH the
- *  Achievement Test and the Quarterly Exam. Drives the "In-progress" tag. */
+// ── Transmutation / Final Grade ────────────────────────────────────────────
+
+/** DepEd standard transmutation table: Initial Grade → Final Grade.
+ *  Maps the raw Initial Grade (0-100) to the transmuted Quarterly Grade. */
+const TRANSMUTATION_TABLE: [number, number][] = [
+  [0, 60],
+  [10, 62],
+  [15, 64],
+  [20, 66],
+  [25, 68],
+  [30, 70],
+  [35, 72],
+  [40, 74],
+  [45, 76],
+  [50, 78],
+  [55, 80],
+  [60, 82],
+  [65, 84],
+  [70, 86],
+  [75, 88],
+  [80, 90],
+  [85, 92],
+  [90, 94],
+  [95, 96],
+  [100, 100],
+];
+
+/** Transmute an Initial Grade (0-100) to a Final/Quarterly Grade using the
+ *  DepEd standard transmutation table. Uses linear interpolation between
+ *  table entries. Returns an integer (rounded). */
+export function transmute(initialGrade: number): number {
+  if (initialGrade <= 0) return TRANSMUTATION_TABLE[0][1];
+  if (initialGrade >= 100) return TRANSMUTATION_TABLE[TRANSMUTATION_TABLE.length - 1][1];
+
+  for (let i = 0; i < TRANSMUTATION_TABLE.length - 1; i++) {
+    const [low, lowGrade] = TRANSMUTATION_TABLE[i];
+    const [high, highGrade] = TRANSMUTATION_TABLE[i + 1];
+    if (initialGrade >= low && initialGrade <= high) {
+      const ratio = (initialGrade - low) / (high - low);
+      return Math.round(lowGrade + ratio * (highGrade - lowGrade));
+    }
+  }
+  return TRANSMUTATION_TABLE[TRANSMUTATION_TABLE.length - 1][1];
+}
+
+/** Final/Quarterly Grade: transmuted from Initial Grade.
+ *  The calculation order: Raw → Percentage → Weighted → Initial → Transmuted → Final. */
+export function finalGrade(record: any, subjectName: string): number {
+  const ig = initialGrade(record, subjectName);
+  return transmute(ig);
+}
+
+// ── In-progress detection ──────────────────────────────────────────────────
+
+/** True when every weighted component has been given, so initialGrade() is
+ *  the COMPLETE grade (not re-weighted). The Exam needs BOTH AT and QE. */
 export function isGradeComplete(record: any, subjectName: string): boolean {
   const w = weightsFor(subjectName);
   const has = (pred: (k: string) => boolean): boolean => {
@@ -219,4 +224,17 @@ export function isGradeComplete(record: any, subjectName: string): boolean {
   if (w.pt > 0 && !has((k) => k.indexOf("pt_") === 0)) return false;
   if (w.exam > 0 && !(has((k) => k === "at") && has((k) => k === "qe"))) return false;
   return true;
+}
+
+// ── Display helpers ────────────────────────────────────────────────────────
+
+/** The raw point total shown as the headline of each grade-breakdown card.
+ *  Modules + Activities + Performance Task + Exam (AT + QE). */
+export function displayedTotal(c: ComponentScores): number {
+  return (
+    Math.round(c.modulesOnly) +
+    Math.round(c.activitiesOnly) +
+    Math.round(c.rawPT) +
+    Math.round(c.rawExam)
+  );
 }

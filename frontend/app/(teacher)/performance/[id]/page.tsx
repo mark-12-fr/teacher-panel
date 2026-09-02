@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
 import { apiGet, cachedGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
-import { setSubjectConfigs, passingFor, finalGrade, componentScores } from "@/lib/grading";
+import { setSubjectConfigs, passingFor, finalGrade, initialGrade, componentScores } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { Skel, SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
@@ -34,7 +34,7 @@ const qSortKey = (q: any, college?: boolean) =>
   college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
 const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
-type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean; ww: number; pt: number; qe: number; exam: number };
+type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; initial_grade: number; has_data: boolean; ww: number; pt: number; qe: number; exam: number };
 type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
 
 export default function PerformanceDetailPage() {
@@ -44,7 +44,6 @@ export default function PerformanceDetailPage() {
   const [section, setSection] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [records, setRecords] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
 
@@ -76,22 +75,14 @@ export default function PerformanceDetailPage() {
         cachedGet(fresh ? null : `rec_${sectionId}`, `/api/sections/${sectionId}/class-records`),
         cachedGet(fresh ? null : "subjects", `/api/subjects`),
       ]);
-      let att: any[] = [];
-      try {
-        att = (await cachedGet(fresh ? null : `att_${sectionId}`, `/api/sections/${sectionId}/attendance`)).attendance || [];
-      } catch {}
       setReady(true);
-      // Bail out of the state churn when a background refresh returns the same
-      // data — without this the analytics + charts visibly re-render every 20s
-      // (and on every realtime echo) even though nothing changed.
-      const sig = JSON.stringify([sec, stu.students, rec.records, subj.subjects, att]);
+      const sig = JSON.stringify([sec, stu.students, rec.records, subj.subjects]);
       if (sig === lastSig.current) return;
       lastSig.current = sig;
-      setSubjectConfigs(subj.subjects || []); // weights/passing before any grade calc
+      setSubjectConfigs(subj.subjects || []);
       setSection(sec);
       setStudents(stu.students || []);
       setRecords(rec.records || []);
-      setAttendance(att);
     } catch {
       showToast("Unauthorized or Section not found", true);
     }
@@ -144,19 +135,6 @@ export default function PerformanceDetailPage() {
 
   // ── Derive per-student rows + aggregate stats (mirrors loadPerformanceData) ──
   const perf = useMemo(() => {
-    // Attendance tallies keyed by student name (teacher students have no id_no).
-    const attByName: Record<string, { present: number; late: number; excused: number; total: number }> = {};
-    for (const a of attendance) {
-      const name = a.student_name ? String(a.student_name).trim().toLowerCase() : "";
-      if (!name) continue;
-      if (!attByName[name]) attByName[name] = { present: 0, late: 0, excused: 0, total: 0 };
-      const s = (a.status || "").toLowerCase();
-      if (s === "present") attByName[name].present++;
-      else if (s === "late") attByName[name].late++;
-      else if (s === "excused") attByName[name].excused++;
-      attByName[name].total++;
-    }
-
     const qBuckets: Record<string, { t: number; c: number }> = college
       ? { Prelim: { t: 0, c: 0 }, Midterm: { t: 0, c: 0 }, Final: { t: 0, c: 0 } }
       : { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } };
@@ -172,13 +150,9 @@ export default function PerformanceDetailPage() {
         return acc;
       }, {});
 
-      const att = attByName[String(student.full_name || "").trim().toLowerCase()];
-      const att100 = att && att.total > 0 ? Math.round(((att.present + 0.5 * (att.late + att.excused)) / att.total) * 100) : 100;
-      const final = finalGrade(merged, subject, att100);
+      const final = finalGrade(merged, subject);
+      const initGrade = Math.round(initialGrade(merged, subject) * 100) / 100;
 
-      // Capped / QE-scaled components drive the grade AND the chart averages
-      // (WW/PT can exceed 100 and QE is out of 50 — the bar axis maxes at 100).
-      // The table itself shows the raw earned totals, like the legacy page.
       const comp = componentScores(merged, subject);
       // Per-quarter trend: each quarter's own record, only if it has a real score.
       studentRecords.forEach((rec) => {
@@ -193,15 +167,11 @@ export default function PerformanceDetailPage() {
         if (!hasScore) return;
         const qk = college ? qNorm(rec.quarter, college) : qNorm(rec.quarter) === "0" ? "1" : qNorm(rec.quarter);
         if (qBuckets[qk]) {
-          qBuckets[qk].t += finalGrade(rec, subject, 100);
+          qBuckets[qk].t += finalGrade(rec, subject);
           qBuckets[qk].c++;
         }
       });
 
-      // Has any real score? Students with no scores yet must NOT pull the
-      // class average / pass rate / component averages down (finalGrade of an
-      // empty record is 0, and counting those zeros made the stats look broken
-      // whenever most of the class had no entries).
       let hasData = false;
       for (const k in merged) {
         if ((k.startsWith("module_") || k.startsWith("activity_") || k.startsWith("pt_") || k === "at" || k === "qe") && filled(merged[k]) && Number(merged[k]) > 0) {
@@ -210,7 +180,7 @@ export default function PerformanceDetailPage() {
         }
       }
 
-      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe, exam: comp.exam };
+      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, initial_grade: initGrade, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe, exam: comp.exam };
     });
 
     let totalGrade = 0;
@@ -240,7 +210,7 @@ export default function PerformanceDetailPage() {
     });
 
     return { rows, stats: { totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist, qBuckets, scored } };
-  }, [students, records, attendance, subject, passing, college]);
+  }, [students, records, subject, passing, college]);
 
   const stats = perf.stats;
   // ── Charts ──────────────────────────────────────────────────────────────────
@@ -392,8 +362,8 @@ export default function PerformanceDetailPage() {
       out.push([`Class Performance — ${sectionLabel}`]);
       out.push([`${termLabel(qNorm(section?.quarter) === "0" ? "1" : qNorm(section?.quarter), college)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       out.push([]);
-      out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Final Grade"]);
-      tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.final_grade || 0]));
+      out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Initial Grade", "Quarterly Grade"]);
+      tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.initial_grade || 0, s.final_grade || 0]));
       await writeStyledSheet(out, {
         sheetName: "Performance",
         headerRow: 3,
@@ -502,9 +472,10 @@ export default function PerformanceDetailPage() {
                   ["ww", "Modules"],
                   ["pt", "Perf. Task"],
                   ["qe", "Quarterly Exam"],
-                  ["grade", "Final Grade"],
-                ] as [SortKey, string][]).map(([k, label]) => (
-                  <th key={k} className={`sortable${tableState.sortKey === k ? " active" : ""}`} onClick={() => toggleSort(k)}>
+                  ["grade", "Initial Grade"],
+                  ["grade", "Quarterly Grade"],
+                ] as [SortKey, string][]).map(([k, label], i) => (
+                  <th key={k + i} className={`sortable${tableState.sortKey === k ? " active" : ""}`} onClick={() => toggleSort(k)}>
                     {label} <span className="sort-arrow">{arrow(k)}</span>
                   </th>
                 ))}
@@ -512,11 +483,11 @@ export default function PerformanceDetailPage() {
             </thead>
             <tbody>
               {!ready ? (
-                <SkeletonTableRows rows={6} cols={6} />
+                <SkeletonTableRows rows={6} cols={7} />
               ) : perf.rows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
               ) : tableRows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students match the current filter.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students match the current filter.</td></tr>
               ) : (
                 tableRows.map((s, index) => {
                   const rank = index + 1;
@@ -528,6 +499,7 @@ export default function PerformanceDetailPage() {
                       <td>{s.written_works || 0}</td>
                       <td>{s.perf_task || 0}</td>
                       <td>{s.quarterly_exam || 0}</td>
+                      <td>{s.initial_grade || 0}</td>
                       <td><strong>{s.final_grade || 0}</strong></td>
                     </tr>
                   );

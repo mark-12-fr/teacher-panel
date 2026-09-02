@@ -29,7 +29,7 @@ function PctBadge({ v, color }: { v: any; color: string }) {
   );
 }
 
-const EMPTY = { name: "", ww: 30, pt: 50, exam: 20, att: 0, passing: 75, wwTotal: "", ptTotal: "", examTotal: "" };
+const EMPTY = { name: "", ww: 25, pt: 45, exam: 30, passing: 75, wwTotal: "", ptTotal: "", examTotal: "" };
 
 export default function GradingSystemPage() {
   usePageMeta("Grading System");
@@ -90,7 +90,7 @@ export default function GradingSystemPage() {
     return sections.filter((x) => names.has(String(x.subject || "").trim().toLowerCase())).length;
   }, [subjects, sections]);
 
-  const total = form.ww + form.pt + form.exam + form.att;
+  const total = form.ww + form.pt + form.exam;
   const totalOk = total === 100;
 
   function openAdd() {
@@ -116,7 +116,6 @@ export default function GradingSystemPage() {
       ww: num(s.ww_percent),
       pt: num(s.pt_percent),
       exam: num(s.exam_percent),
-      att: num(s.attendance_percent),
       passing: num(s.passing_grade || 75),
       wwTotal: s.ww_total == null ? "" : String(s.ww_total),
       ptTotal: s.pt_total == null ? "" : String(s.pt_total),
@@ -128,10 +127,9 @@ export default function GradingSystemPage() {
   async function save() {
     const name = form.name.trim();
     if (!name) return showToast("Please enter a subject name.", true);
-    if (form.ww + form.pt + form.exam + form.att !== 100)
-      return showToast("Written Work + Performance Tasks + Exam + Attendance must total 100%.", true);
+    if (form.ww + form.pt + form.exam !== 100)
+      return showToast("Written Work + Performance Tasks + Exam must total 100%.", true);
     // The DB has no unique (teacher, name) constraint, so guard duplicates here
-    // (matches the legacy "already have a subject with that name" behaviour).
     if (!editingId && subjects.some((x) => String(x.name || "").trim().toLowerCase() === name.toLowerCase()))
       return showToast("You already have a subject with that name.", true);
 
@@ -142,7 +140,6 @@ export default function GradingSystemPage() {
       ww_percent: form.ww,
       pt_percent: form.pt,
       exam_percent: form.exam,
-      attendance_percent: form.att,
       passing_grade: form.passing,
       ww_total: toTotal(form.wwTotal),
       pt_total: toTotal(form.ptTotal),
@@ -153,9 +150,6 @@ export default function GradingSystemPage() {
       if (editingId) await apiPatch(`/api/subjects/${editingId}`, payload);
       else await apiPost("/api/subjects", payload);
       setModal(false);
-      // Drop the shared "subjects" cache the Performance / Class Record /
-      // dashboard pages read, so the new weights apply on their next load
-      // instead of lingering for the 20s TTL.
       invalidateCached("subjects");
       subjCache.refresh();
       showToast(editingId ? "Subject updated!" : "Subject added!");
@@ -239,17 +233,16 @@ export default function GradingSystemPage() {
               <th>Written Work</th>
               <th>Performance Tasks</th>
               <th>Exam</th>
-              <th>Attendance</th>
               <th>Passing</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {subjCache.loading && !subjCache.data ? (
-              <SkeletonTableRows rows={5} cols={7} />
+              <SkeletonTableRows rows={5} cols={6} />
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: 34, color: "var(--text-muted)" }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: 34, color: "var(--text-muted)" }}>
                   No subjects yet. Click the + button to add a subject and set its grading percentages.
                 </td>
               </tr>
@@ -260,7 +253,6 @@ export default function GradingSystemPage() {
                   <td><PctBadge v={s.ww_percent} color="#3b82f6" /></td>
                   <td><PctBadge v={s.pt_percent} color="#8b5cf6" /></td>
                   <td><PctBadge v={s.exam_percent} color="#f59e0b" /></td>
-                  <td><PctBadge v={s.attendance_percent} color="#10b981" /></td>
                   <td><span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{num(s.passing_grade || 75)}%</span></td>
                   <td>
                     <div className="action-btns">
@@ -286,15 +278,14 @@ export default function GradingSystemPage() {
             <h4 style={{ marginBottom: 16, color: "var(--text-dark)" }}>{editingId ? "Edit Subject" : "Add Subject"}</h4>
             <input type="text" className="modal-input" placeholder="Subject Name (e.g. APP 006: Practical Research 2)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <p style={{ margin: "4px 2px 10px", fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-              Set the weight (%) of each grading component. Written Work, Performance Tasks, Exam and Attendance must total 100%.
+              Set the weight (%) of each grading component. Written Work + Performance Tasks + Exam must total 100%.
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               {([
-                ["Written Work", "ww"],
-                ["Performance Tasks", "pt"],
-                ["Exam", "exam"],
-                ["Attendance", "att"],
-              ] as const).map(([label, key]) => (
+                ["Written Work", "ww", "#3b82f6"],
+                ["Performance Tasks", "pt", "#8b5cf6"],
+                ["Exam", "exam", "#f59e0b"],
+              ] as const).map(([label, key, color]) => (
                 <div key={key}>
                   <label style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>{label}</label>
                   <div style={{ position: "relative" }}>

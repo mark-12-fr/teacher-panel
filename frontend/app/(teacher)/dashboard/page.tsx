@@ -215,7 +215,7 @@ export default function DashboardPage() {
             }
             if (!hasScore) return;
             const qtr = normalizeQtr(row.quarter);
-            const grade = finalGrade(row, s.subject, 100);
+            const grade = finalGrade(row, s.subject);
             if (qTotals[qtr]) {
               qTotals[qtr].t += grade;
               qTotals[qtr].c++;
@@ -229,7 +229,7 @@ export default function DashboardPage() {
             });
             return acc;
           }, {});
-          allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject, 100) });
+          allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject) });
         });
       });
     } catch {

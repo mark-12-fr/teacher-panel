@@ -17,7 +17,7 @@ import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import LoadingBar from "@/components/LoadingBar";
-import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, isGradeComplete, type ComponentScores } from "@/lib/grading";
+import { setSubjectConfigs, componentScores, finalGrade, initialGrade, transmute, displayedTotal, passingFor, isGradeComplete, type ComponentScores } from "@/lib/grading";
 import { isOffline, runWhenOnline } from "@/lib/offline";
 import "./detail.css";
 
@@ -166,7 +166,6 @@ export default function ClassRecordGridPage() {
   const [loadProgress, setLoadProgress] = useState(0);
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
   const [detailStudent, setDetailStudent] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
@@ -267,20 +266,15 @@ export default function ClassRecordGridPage() {
     } catch {}
   }, [sectionId, commitRecords]);
 
-  // Grade weights + attendance, so the per-student breakdown modal computes the
-  // SAME final grade the Performance page would show — neither is essential to
-  // the spreadsheet itself, so both fail silently (falls back to default
-  // weights / 100% attendance, same as Performance does).
+  // Grade weights, so the per-student breakdown modal computes the SAME final
+  // grade the Performance page would show — not essential to the spreadsheet
+  // itself, so it fails silently (falls back to default weights).
   const loadGradingInputs = useCallback(async () => {
     try {
       const subj = await cachedGet("subjects", `/api/subjects`);
       setSubjectConfigs(subj.subjects || []);
     } catch {}
-    try {
-      const att = await cachedGet(`att_${sectionId}`, `/api/sections/${sectionId}/attendance`);
-      setAttendance(att.attendance || []);
-    } catch {}
-  }, [sectionId]);
+  }, []);
 
   useEffect(() => {
     // Pure real progress: the bar advances one step for each of the four data
@@ -431,29 +425,6 @@ export default function ClassRecordGridPage() {
     [records, viewQuarter, viewSemester, college]
   );
 
-  // Attendance tallies keyed by student name (mirrors the Performance page —
-  // teacher-entered students have no id_no to join on).
-  const attByName = useMemo(() => {
-    const map: Record<string, { present: number; late: number; excused: number; total: number }> = {};
-    for (const a of attendance) {
-      const name = a.student_name ? String(a.student_name).trim().toLowerCase() : "";
-      if (!name) continue;
-      if (!map[name]) map[name] = { present: 0, late: 0, excused: 0, total: 0 };
-      const st = (a.status || "").toLowerCase();
-      if (st === "present") map[name].present++;
-      else if (st === "late") map[name].late++;
-      else if (st === "excused") map[name].excused++;
-      map[name].total++;
-    }
-    return map;
-  }, [attendance]);
-
-  function attendanceScoreFor(fullName: string): number {
-    const att = attByName[String(fullName || "").trim().toLowerCase()];
-    if (!att || att.total <= 0) return 100;
-    return Math.round(((att.present + 0.5 * (att.late + att.excused)) / att.total) * 100);
-  }
-
   // One card per quarter for the grade-breakdown modal: each quarter's OWN
   // record only (never merged across quarters, unlike the Performance page's
   // single "current" snapshot) so a genuine Q1→Q2→Q3→Q4 progression shows.
@@ -462,7 +433,6 @@ export default function ClassRecordGridPage() {
   // uses — rather than appearing (identically) under all four cards.
   function quarterBreakdown(sid: string, fullName: string): GradeQuarterCard[] {
     const subjectName = section?.subject || "";
-    const att100 = attendanceScoreFor(fullName);
     const src = college
       ? COLLEGE_TERMS.map((t) => ({ ...t, sem: (viewSemester || "1st Sem") as "1st Sem" | "2nd Sem" }))
       : GRADE_QUARTERS;
@@ -473,7 +443,7 @@ export default function ClassRecordGridPage() {
       const hasData = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
       if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null };
       const comp = componentScores(rec, subjectName);
-      const grade = finalGrade(rec, subjectName, att100);
+      const grade = finalGrade(rec, subjectName);
       return { ...dq, hasData: true as const, grade, comp, delta: null, inProgress: !isGradeComplete(rec, subjectName) };
     });
     // Quarter-over-quarter change, only between consecutive quarters that both
@@ -776,10 +746,17 @@ export default function ClassRecordGridPage() {
   }
 
   // Live final grade for the viewed quarter (null when the row has no scores).
-  function liveGradeFor(sid: string, fullName: string): number | null {
+  function liveGradeFor(sid: string): number | null {
     const rec = recForView(sid);
     if (!rec || !ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]))) return null;
-    return finalGrade(rec, section?.subject || "", attendanceScoreFor(fullName));
+    return finalGrade(rec, section?.subject || "");
+  }
+
+  // Live initial grade for the viewed quarter.
+  function liveInitialGradeFor(sid: string): number | null {
+    const rec = recForView(sid);
+    if (!rec || !ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]))) return null;
+    return Math.round(initialGrade(rec, section?.subject || "") * 100) / 100;
   }
 
   // Raw point total for the viewed quarter: every entered score added up
@@ -828,12 +805,8 @@ export default function ClassRecordGridPage() {
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
       if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
       headers.push("Modules", "Activity");
-      // The Exam pools the Achievement Test with the Quarterly Exam (AT + QE) —
-      // the same bucket the grade uses — so AT is no longer its own column and
-      // is counted once, inside the Exam. These four summary columns are a raw
-      // point tally and add up to TOTAL.
       if (!college) headers.push("Performance Task", "Exam (AT + QE)");
-      headers.push("TOTAL", "GRADE", "Lacking Modules & Activities", "Status");
+      headers.push("TOTAL", "Initial Grade", "Quarterly Grade", "Lacking Modules & Activities", "Status");
       rows.push(headers);
 
       students.forEach((s) => {
@@ -843,10 +816,6 @@ export default function ClassRecordGridPage() {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
-        // Component summary (matches the grade-breakdown modal): Modules /
-        // Activity / Performance Task / Exam. Raw point tallies that add up to
-        // TOTAL. The Exam is AT + QE pooled (rawExam), so the Achievement Test
-        // is counted once here, inside the Exam — never on its own.
         const cs = rec ? componentScores(rec, subjectName) : null;
         row.push(
           cs ? Math.round(cs.modulesOnly) : "",
@@ -860,7 +829,9 @@ export default function ClassRecordGridPage() {
         }
         const t = totalScoreFor(s.id);
         row.push(t === null ? "" : t);
-        const g = liveGradeFor(s.id, s.full_name);
+        const ig = rec ? (Math.round(initialGrade(rec, subjectName) * 100) / 100) : null;
+        const g = liveGradeFor(s.id);
+        row.push(ig === null ? "" : ig);
         row.push(g === null ? "" : g);
         // Left deliberately empty: these two are the teacher's own columns to
         // fill in the exported file. Nothing protects the sheet, so the cells
@@ -1115,7 +1086,7 @@ export default function ClassRecordGridPage() {
                         );
                       })()}
                       {(() => {
-                        const g = liveGradeFor(s.id, s.full_name);
+                        const g = liveGradeFor(s.id);
                         const pass = g !== null && g >= passingFor(section?.subject || "");
                         return (
                           <td
@@ -1232,8 +1203,38 @@ function StudentGradeModal({
                             </div>
                           </>
                         )}
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-color, rgba(125,125,125,0.2))" }}>
+                          <div className="grade-component-row" style={{ fontSize: "0.78rem" }}>
+                            <span>WW — PS</span>
+                            <b>{c.comp.wwPct.toFixed(2)}%</b>
+                          </div>
+                          <div className="grade-component-row" style={{ fontSize: "0.78rem" }}>
+                            <span>WW — WS</span>
+                            <b>{c.comp.wwWS.toFixed(2)}</b>
+                          </div>
+                          <div className="grade-component-row" style={{ fontSize: "0.78rem" }}>
+                            <span>PT — PS</span>
+                            <b>{c.comp.ptPct.toFixed(2)}%</b>
+                          </div>
+                          <div className="grade-component-row" style={{ fontSize: "0.78rem" }}>
+                            <span>PT — WS</span>
+                            <b>{c.comp.ptWS.toFixed(2)}</b>
+                          </div>
+                          <div className="grade-component-row" style={{ fontSize: "0.78rem" }}>
+                            <span>Exam — PS</span>
+                            <b>{c.comp.examPct.toFixed(2)}%</b>
+                          </div>
+                          <div className="grade-component-row" style={{ fontSize: "0.78rem" }}>
+                            <span>Exam — WS</span>
+                            <b>{c.comp.examWS.toFixed(2)}</b>
+                          </div>
+                        </div>
+                        <div className="grade-component-row" style={{ marginTop: 6, fontWeight: 700, color: "var(--text-dark)" }}>
+                          <span>Initial Grade</span>
+                          <b>{(c.comp.wwWS + c.comp.ptWS + c.comp.examWS).toFixed(2)}</b>
+                        </div>
                         <div className={`grade-component-row grade-average-row ${c.grade >= passingGrade ? "pass" : "fail"}`}>
-                          <span>Average Grade</span>
+                          <span>Quarterly Grade</span>
                           <b>{c.grade}</b>
                         </div>
                         {c.inProgress && (
