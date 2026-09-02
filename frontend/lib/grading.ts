@@ -130,19 +130,20 @@ export function componentScores(record: any, subjectName?: string): ComponentSco
   };
 }
 
-/** The point total shown as the headline of each grade-breakdown card: the five
- *  displayed component scores (Modules, Activity, Achievement Test, Performance
- *  Task, Quarterly Exam) added together, each rounded exactly the way the modal
- *  renders them so the big number always equals the sum of the rows beneath it.
- *  This is a raw point tally for the teacher's convenience, NOT the weighted
+/** The point total shown as the headline of each grade-breakdown card: the four
+ *  displayed component scores — Modules, Activity, Performance Task, and the Exam
+ *  — added together, each rounded exactly the way the modal renders them so the
+ *  big number always equals the sum of the rows beneath it. The Exam pools the
+ *  Achievement Test and the Quarterly Exam (AT + QE), the same bucket the grade
+ *  uses, so the AT is counted once — inside the Exam — and never added again on
+ *  its own. A raw point tally for the teacher's convenience, NOT the weighted
  *  grade — that stays available via finalGrade(). */
 export function displayedTotal(c: ComponentScores): number {
   return (
     Math.round(c.modulesOnly) +
     Math.round(c.activitiesOnly) +
-    Math.round(c.at) +
-    Math.round(c.pt) +
-    Math.round(c.qe)
+    Math.round(c.rawPT) +
+    Math.round(c.rawExam)
   );
 }
 
