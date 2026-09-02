@@ -406,7 +406,7 @@ export default function ClassRecordGridPage() {
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
   // sticky columns (#, ID, Name) + Modules + 10 Activities + AT/PT 1/PT 2/QE
   // (senior high only) + TOTAL and GRADE.
-  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 2;
+  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 3;
   const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
   const qLabel = (q: string) => (college ? q : `Q${q}`);
 
@@ -1074,7 +1074,8 @@ export default function ClassRecordGridPage() {
                   </>
                 )}
                 <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 60 }}>TOTAL</th>
-                <th rowSpan={2} className="header-group" style={{ minWidth: 62 }}>GRADE</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 70 }}>Initial Grade</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 70 }}>Quarterly Grade</th>
               </tr>
               <tr>
                 {Array.from({ length: MODULE_COUNT }, (_, i) => i + 1).map((n) => (
@@ -1129,6 +1130,17 @@ export default function ClassRecordGridPage() {
                             style={{ fontWeight: 700, textAlign: "center", color: t === null ? "var(--text-muted)" : "var(--text-dark)" }}
                           >
                             {t === null ? "—" : t}
+                          </td>
+                        );
+                      })()}
+                      {(() => {
+                        const ig = liveInitialGradeFor(s.id);
+                        return (
+                          <td
+                            title={ig === null ? "No scores yet" : "Initial Grade (before transmutation)"}
+                            style={{ fontWeight: 700, textAlign: "center", color: ig === null ? "var(--text-muted)" : "var(--text-dark)" }}
+                          >
+                            {ig === null ? "—" : ig.toFixed(2)}
                           </td>
                         );
                       })()}
