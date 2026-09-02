@@ -790,7 +790,11 @@ export default function ClassRecordGridPage() {
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
       if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
       headers.push("Modules", "Activity");
-      if (!college) headers.push("Achievement Test", "Performance Task", "Quarterly Exam");
+      // The Exam pools the Achievement Test with the Quarterly Exam (AT + QE) —
+      // the same bucket the grade uses — so AT is no longer its own column and
+      // is counted once, inside the Exam. These four summary columns are a raw
+      // point tally and add up to TOTAL.
+      if (!college) headers.push("Performance Task", "Exam (AT + QE)");
       headers.push("TOTAL", "GRADE", "Lacking Modules & Activities", "Status");
       rows.push(headers);
 
@@ -802,7 +806,9 @@ export default function ClassRecordGridPage() {
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
         // Component summary (matches the grade-breakdown modal): Modules /
-        // Activity / Achievement Test / Performance Task / Quarterly Exam.
+        // Activity / Performance Task / Exam. Raw point tallies that add up to
+        // TOTAL. The Exam is AT + QE pooled (rawExam), so the Achievement Test
+        // is counted once here, inside the Exam — never on its own.
         const cs = rec ? componentScores(rec, subjectName) : null;
         row.push(
           cs ? Math.round(cs.modulesOnly) : "",
@@ -810,9 +816,8 @@ export default function ClassRecordGridPage() {
         );
         if (!college) {
           row.push(
-            cs ? Math.round(cs.at) : "",
-            cs ? Math.round(cs.pt) : "",
-            cs ? Math.round(cs.qe) : "",
+            cs ? Math.round(cs.rawPT) : "",
+            cs ? Math.round(cs.rawExam) : "",
           );
         }
         const t = totalScoreFor(s.id);
@@ -1180,16 +1185,12 @@ function StudentGradeModal({
                         {!college && (
                           <>
                             <div className="grade-component-row">
-                              <span>Achievement Test</span>
-                              <b>{Math.round(c.comp.at)}</b>
-                            </div>
-                            <div className="grade-component-row">
                               <span>Performance Task</span>
-                              <b>{Math.round(c.comp.pt)}</b>
+                              <b>{Math.round(c.comp.rawPT)}</b>
                             </div>
                             <div className="grade-component-row">
-                              <span>Quarterly Exam</span>
-                              <b>{Math.round(c.comp.qe)}</b>
+                              <span>Exam (AT + QE)</span>
+                              <b>{Math.round(c.comp.rawExam)}</b>
                             </div>
                           </>
                         )}
