@@ -244,6 +244,11 @@ export default function ClassRecordGridPage() {
     } catch {}
   }, [sectionId]);
 
+  // Signature of the last records we rendered, so a poll/focus/realtime reload
+  // that returns identical data doesn't remount every cell (and jump the
+  // teacher's scroll or cursor). Sorted by id so a non-deterministic row order
+  // from the DB can't look like a change.
+  const lastRecordsSig = useRef<string>("");
   const loadRecords = useCallback(async (fresh = false) => {
     // Never clobber the grid while the teacher has unsaved staged edits — a
     // poll/reload here would replace them with the DB values and make the
@@ -253,7 +258,11 @@ export default function ClassRecordGridPage() {
     if (pendingRef.current.size > 0) return;
     try {
       const r = await cachedGet(fresh ? null : `rec_${sectionId}`, `/api/sections/${sectionId}/class-records`);
-      commitRecords(r.records || []);
+      const rows = r.records || [];
+      const sig = JSON.stringify([...rows].sort((a: Rec, b: Rec) => String(a.id).localeCompare(String(b.id))));
+      if (sig === lastRecordsSig.current) return; // nothing changed — don't churn the grid
+      lastRecordsSig.current = sig;
+      commitRecords(rows);
       setDataVersion((v) => v + 1);
     } catch {}
   }, [sectionId, commitRecords]);
@@ -287,7 +296,14 @@ export default function ClassRecordGridPage() {
           setLoadProgress(Math.round((done / tasks.length) * 100));
         })
       )
-    ).then(() => setLoading(false));
+    ).then(() => {
+      setLoading(false);
+      // The initial records load reads the ≤20s localStorage cache for an instant
+      // paint; follow it with one fresh read so a grid opened right after a
+      // facilitator submitted shows the new scores immediately, not a poll-cycle
+      // later. The signature guard makes this a no-op when nothing changed.
+      loadRecords(true);
+    });
   }, [loadDetails, loadStudents, loadRecords, loadGradingInputs]);
 
   // Live roster updates: a student added/edited/removed elsewhere reflects
@@ -350,6 +366,28 @@ export default function ClassRecordGridPage() {
       }
     }, 20000);
     return () => clearInterval(poll);
+  }, [loadRecords, loadGradingInputs]);
+
+  // Refresh the instant this tab is looked at again. The common case is a
+  // facilitator submitting scores from their phone while the teacher has this
+  // page open in a background tab: the 20s poll is paused while hidden and a
+  // realtime event can be missed, so without this the grid can sit stale until
+  // the teacher happens to reload. Firing on both visibilitychange and window
+  // focus covers tab-switching and app-switching alike; the signature guard in
+  // loadRecords keeps a no-change refresh from disturbing the grid.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") {
+        loadRecords(true);
+        loadGradingInputs();
+      }
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
   }, [loadRecords, loadGradingInputs]);
 
   // Ctrl/Cmd+Z anywhere on the page → undo the last score change. A focused
