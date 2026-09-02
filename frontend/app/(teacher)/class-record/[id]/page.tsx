@@ -17,7 +17,7 @@ import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import LoadingBar from "@/components/LoadingBar";
-import { setSubjectConfigs, componentScores, finalGrade, displayedTotal, passingFor, isGradeComplete, type ComponentScores } from "@/lib/grading";
+import { setSubjectConfigs, componentScores, finalGrade, initialGrade, gradeBreakdown, passingFor, isGradeComplete, type ComponentScores, type GradeBreakdown } from "@/lib/grading";
 import { isOffline, runWhenOnline } from "@/lib/offline";
 import "./detail.css";
 
@@ -29,7 +29,7 @@ type GradeQuarterCard = {
   sem: "1st Sem" | "2nd Sem";
   label: string;
 } & (
-  | { hasData: true; grade: number; comp: ComponentScores; delta: number | null; inProgress: boolean }
+  | { hasData: true; grade: number; initial: number; brk: GradeBreakdown; comp: ComponentScores; delta: number | null; inProgress: boolean }
   | { hasData: false; grade: null; comp: null; delta: null }
 );
 
@@ -412,7 +412,7 @@ export default function ClassRecordGridPage() {
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
   // sticky columns (#, ID, Name) + Modules + 10 Activities + AT/PT 1/PT 2/QE
   // (senior high only) + TOTAL and GRADE.
-  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 2;
+  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 3; // + TOTAL, INITIAL, GRADE
   const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
   const qLabel = (q: string) => (college ? q : `Q${q}`);
 
@@ -473,8 +473,8 @@ export default function ClassRecordGridPage() {
       const hasData = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
       if (!hasData) return { ...dq, hasData: false as const, grade: null, comp: null, delta: null };
       const comp = componentScores(rec, subjectName);
-      const grade = finalGrade(rec, subjectName, att100);
-      return { ...dq, hasData: true as const, grade, comp, delta: null, inProgress: !isGradeComplete(rec, subjectName) };
+      const brk = gradeBreakdown(rec, subjectName, att100);
+      return { ...dq, hasData: true as const, grade: brk.final, initial: brk.initial, brk, comp, delta: null, inProgress: !isGradeComplete(rec, subjectName) };
     });
     // Quarter-over-quarter change, only between consecutive quarters that both
     // have real data (so a gap — e.g. Q2 skipped — doesn't produce a delta).
@@ -775,11 +775,20 @@ export default function ClassRecordGridPage() {
     }
   }
 
-  // Live final grade for the viewed quarter (null when the row has no scores).
+  // Live Final (transmuted quarterly) grade for the viewed quarter — null when
+  // the row has no scores.
   function liveGradeFor(sid: string, fullName: string): number | null {
     const rec = recForView(sid);
     if (!rec || !ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]))) return null;
     return finalGrade(rec, section?.subject || "", attendanceScoreFor(fullName));
+  }
+
+  // Live Initial Grade (weighted sum, 2 decimals, before transmutation) for the
+  // viewed quarter — null when the row has no scores.
+  function liveInitialFor(sid: string, fullName: string): number | null {
+    const rec = recForView(sid);
+    if (!rec || !ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]))) return null;
+    return initialGrade(rec, section?.subject || "", attendanceScoreFor(fullName));
   }
 
   // Raw point total for the viewed quarter: every entered score added up
@@ -827,13 +836,17 @@ export default function ClassRecordGridPage() {
       for (let m = 1; m <= MODULE_COUNT; m++) headers.push("M" + m);
       for (let a = 1; a <= 10; a++) headers.push("A" + a);
       if (!college) headers.push("AT", "PT 1", "PT 2", "QE");
-      headers.push("Modules", "Activity");
-      // The Exam pools the Achievement Test with the Quarterly Exam (AT + QE) —
-      // the same bucket the grade uses — so AT is no longer its own column and
-      // is counted once, inside the Exam. These four summary columns are a raw
-      // point tally and add up to TOTAL.
-      if (!college) headers.push("Performance Task", "Exam (AT + QE)");
-      headers.push("TOTAL", "GRADE", "Lacking Modules & Activities", "Status");
+      // DepEd class-record layout: each component shows its raw Total, its
+      // Percentage Score (PS = Total ÷ perfect × 100) and its Weighted Score
+      // (WS = PS × weight). The Initial Grade is the sum of the WS; the Final
+      // Grade is the Initial Grade transmuted. The Exam pools AT + QE.
+      headers.push("Modules", "Activity", "Written Work Total", "WW PS", "WW WS");
+      if (!college)
+        headers.push(
+          "Perf. Task Total", "PT PS", "PT WS",
+          "Exam Total (AT+QE)", "Exam PS", "Exam WS",
+        );
+      headers.push("Initial Grade", "Final Grade", "Lacking Modules & Activities", "Status");
       rows.push(headers);
 
       students.forEach((s) => {
@@ -843,25 +856,30 @@ export default function ClassRecordGridPage() {
           const v = rec ? rec[f] : null;
           row.push(v === null || v === undefined || v === "" ? "" : v);
         });
-        // Component summary (matches the grade-breakdown modal): Modules /
-        // Activity / Performance Task / Exam. Raw point tallies that add up to
-        // TOTAL. The Exam is AT + QE pooled (rawExam), so the Achievement Test
-        // is counted once here, inside the Exam — never on its own.
+        // Component breakdown (raw Total, PS, WS) then the Initial and Final
+        // grades — computed exactly as the grade engine (and the teacher's
+        // Excel) does: raw → % → weighted → initial → transmute → final.
         const cs = rec ? componentScores(rec, subjectName) : null;
+        const hasScores = !!rec && ALL_SCORE_FIELDS.some((f) => isFilled(rec[f]));
+        const brk = hasScores ? gradeBreakdown(rec, subjectName, attendanceScoreFor(s.full_name)) : null;
         row.push(
           cs ? Math.round(cs.modulesOnly) : "",
           cs ? Math.round(cs.activitiesOnly) : "",
+          cs ? Math.round(cs.rawWW) : "",
+          brk ? brk.wwPS : "",
+          brk ? brk.wwWS : "",
         );
         if (!college) {
           row.push(
             cs ? Math.round(cs.rawPT) : "",
+            brk ? brk.ptPS : "",
+            brk ? brk.ptWS : "",
             cs ? Math.round(cs.rawExam) : "",
+            brk ? brk.examPS : "",
+            brk ? brk.examWS : "",
           );
         }
-        const t = totalScoreFor(s.id);
-        row.push(t === null ? "" : t);
-        const g = liveGradeFor(s.id, s.full_name);
-        row.push(g === null ? "" : g);
+        row.push(brk ? brk.initial : "", brk ? brk.final : "");
         // Left deliberately empty: these two are the teacher's own columns to
         // fill in the exported file. Nothing protects the sheet, so the cells
         // are editable, and autoFitColumns sizes them from their headers — so
@@ -1056,7 +1074,8 @@ export default function ClassRecordGridPage() {
                   </>
                 )}
                 <th rowSpan={2} className="header-group group-divider" style={{ minWidth: 60 }}>TOTAL</th>
-                <th rowSpan={2} className="header-group" style={{ minWidth: 62 }}>GRADE</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 66 }} title="Initial Grade — sum of the weighted component scores, before transmutation">INITIAL</th>
+                <th rowSpan={2} className="header-group" style={{ minWidth: 62 }} title="Final / Quarterly Grade — the Initial Grade transmuted">GRADE</th>
               </tr>
               <tr>
                 {Array.from({ length: MODULE_COUNT }, (_, i) => i + 1).map((n) => (
@@ -1115,12 +1134,23 @@ export default function ClassRecordGridPage() {
                         );
                       })()}
                       {(() => {
+                        const ini = liveInitialFor(s.id, s.full_name);
+                        return (
+                          <td
+                            title={ini === null ? "No scores yet" : "Initial Grade (weighted, before transmutation)"}
+                            style={{ fontWeight: 600, textAlign: "center", color: ini === null ? "var(--text-muted)" : "var(--text-dark)", fontVariantNumeric: "tabular-nums" }}
+                          >
+                            {ini === null ? "—" : ini.toFixed(2)}
+                          </td>
+                        );
+                      })()}
+                      {(() => {
                         const g = liveGradeFor(s.id, s.full_name);
                         const pass = g !== null && g >= passingFor(section?.subject || "");
                         return (
                           <td
                             className="grade-live-cell"
-                            title={g === null ? "No scores yet" : pass ? "Passing" : "Below passing"}
+                            title={g === null ? "No scores yet" : pass ? "Passing (Final grade)" : "Below passing (Final grade)"}
                             style={{
                               fontWeight: 700,
                               textAlign: "center",
@@ -1211,36 +1241,30 @@ function StudentGradeModal({
                     </div>
                     {c.hasData ? (
                       <>
-                        <div className="grade-quarter-final total">{displayedTotal(c.comp)}</div>
-                        <div className="grade-component-row">
-                          <span>Modules</span>
-                          <b>{Math.round(c.comp.modulesOnly)}</b>
+                        <div className="grade-quarter-final" style={{ color: c.grade >= passingGrade ? "#059669" : "#dc2626" }}>{c.grade}</div>
+                        <div style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--text-muted)", marginTop: -6, marginBottom: 9 }}>
+                          Initial Grade <b style={{ color: "var(--text-dark)", fontVariantNumeric: "tabular-nums" }}>{c.initial.toFixed(2)}</b>
                         </div>
-                        <div className="grade-component-row">
-                          <span>Activity</span>
-                          <b>{Math.round(c.comp.activitiesOnly)}</b>
+                        <div className="grade-component-row" title="Percentage Score · Weighted Score">
+                          <span>Written Work</span>
+                          <b style={{ fontVariantNumeric: "tabular-nums" }}>{c.brk.wwPS.toFixed(2)}% · {c.brk.wwWS.toFixed(2)}</b>
                         </div>
                         {!college && (
                           <>
-                            <div className="grade-component-row">
+                            <div className="grade-component-row" title="Percentage Score · Weighted Score">
                               <span>Performance Task</span>
-                              <b>{Math.round(c.comp.rawPT)}</b>
+                              <b style={{ fontVariantNumeric: "tabular-nums" }}>{c.brk.ptPS.toFixed(2)}% · {c.brk.ptWS.toFixed(2)}</b>
                             </div>
-                            <div className="grade-component-row">
+                            <div className="grade-component-row" title="Percentage Score · Weighted Score">
                               <span>Exam (AT + QE)</span>
-                              <b>{Math.round(c.comp.rawExam)}</b>
+                              <b style={{ fontVariantNumeric: "tabular-nums" }}>{c.brk.examPS.toFixed(2)}% · {c.brk.examWS.toFixed(2)}</b>
                             </div>
                           </>
                         )}
                         <div className={`grade-component-row grade-average-row ${c.grade >= passingGrade ? "pass" : "fail"}`}>
-                          <span>Average Grade</span>
+                          <span>Final Grade</span>
                           <b>{c.grade}</b>
                         </div>
-                        {c.inProgress && (
-                          <div style={{ marginTop: 8, fontSize: "0.7rem", fontWeight: 700, color: "#b45309", background: "rgba(245,158,11,0.15)", borderRadius: 6, padding: "4px 8px", textAlign: "center", letterSpacing: "0.02em" }}>
-                            <i className="fa-solid fa-hourglass-half" style={{ marginRight: 5 }} />IN-PROGRESS · NOT YET FINAL
-                          </div>
-                        )}
                       </>
                     ) : (
                       <div className="grade-quarter-final empty">No data yet</div>

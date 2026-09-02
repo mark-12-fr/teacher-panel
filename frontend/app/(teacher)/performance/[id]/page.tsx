@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
 import { apiGet, cachedGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
-import { setSubjectConfigs, passingFor, finalGrade, componentScores } from "@/lib/grading";
+import { setSubjectConfigs, passingFor, finalGrade, initialGrade, componentScores } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { Skel, SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
@@ -34,8 +34,8 @@ const qSortKey = (q: any, college?: boolean) =>
   college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
 const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
-type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; has_data: boolean; ww: number; pt: number; qe: number; exam: number };
-type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
+type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; initial_grade: number; final_grade: number; has_data: boolean; ww: number; pt: number; qe: number; exam: number };
+type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "initial" | "grade";
 
 export default function PerformanceDetailPage() {
   const params = useParams<{ id: string }>();
@@ -175,6 +175,7 @@ export default function PerformanceDetailPage() {
       const att = attByName[String(student.full_name || "").trim().toLowerCase()];
       const att100 = att && att.total > 0 ? Math.round(((att.present + 0.5 * (att.late + att.excused)) / att.total) * 100) : 100;
       const final = finalGrade(merged, subject, att100);
+      const initial = initialGrade(merged, subject, att100);
 
       // Capped / QE-scaled components drive the grade AND the chart averages
       // (WW/PT can exceed 100 and QE is out of 50 — the bar axis maxes at 100).
@@ -210,7 +211,7 @@ export default function PerformanceDetailPage() {
         }
       }
 
-      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe, exam: comp.exam };
+      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, initial_grade: initial, final_grade: final, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe, exam: comp.exam };
     });
 
     let totalGrade = 0;
@@ -362,6 +363,8 @@ export default function PerformanceDetailPage() {
           return ((a.perf_task || 0) - (b.perf_task || 0)) * dir;
         case "qe":
           return ((a.quarterly_exam || 0) - (b.quarterly_exam || 0)) * dir;
+        case "initial":
+          return ((a.initial_grade || 0) - (b.initial_grade || 0)) * dir;
         case "rank":
         case "grade":
         default: {
@@ -392,8 +395,8 @@ export default function PerformanceDetailPage() {
       out.push([`Class Performance — ${sectionLabel}`]);
       out.push([`${termLabel(qNorm(section?.quarter) === "0" ? "1" : qNorm(section?.quarter), college)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       out.push([]);
-      out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Final Grade"]);
-      tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.final_grade || 0]));
+      out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Initial Grade", "Final Grade"]);
+      tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.initial_grade != null ? s.initial_grade : "", s.final_grade || 0]));
       await writeStyledSheet(out, {
         sheetName: "Performance",
         headerRow: 3,
@@ -502,6 +505,7 @@ export default function PerformanceDetailPage() {
                   ["ww", "Modules"],
                   ["pt", "Perf. Task"],
                   ["qe", "Quarterly Exam"],
+                  ["initial", "Initial"],
                   ["grade", "Final Grade"],
                 ] as [SortKey, string][]).map(([k, label]) => (
                   <th key={k} className={`sortable${tableState.sortKey === k ? " active" : ""}`} onClick={() => toggleSort(k)}>
@@ -512,11 +516,11 @@ export default function PerformanceDetailPage() {
             </thead>
             <tbody>
               {!ready ? (
-                <SkeletonTableRows rows={6} cols={6} />
+                <SkeletonTableRows rows={6} cols={7} />
               ) : perf.rows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
               ) : tableRows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students match the current filter.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students match the current filter.</td></tr>
               ) : (
                 tableRows.map((s, index) => {
                   const rank = index + 1;
@@ -528,6 +532,7 @@ export default function PerformanceDetailPage() {
                       <td>{s.written_works || 0}</td>
                       <td>{s.perf_task || 0}</td>
                       <td>{s.quarterly_exam || 0}</td>
+                      <td style={{ fontVariantNumeric: "tabular-nums", color: "var(--text-muted)" }}>{s.initial_grade != null ? s.initial_grade.toFixed(2) : "—"}</td>
                       <td><strong>{s.final_grade || 0}</strong></td>
                     </tr>
                   );

@@ -155,53 +155,94 @@ export function attScore(att: { present?: number; late?: number; total?: number 
   return Math.min(((present + 0.5 * late) / att.total) * 100, 100);
 }
 
-/** Final grade 0–100 for a merged record under a subject's weights.
+// Round to 2 decimals the way a spreadsheet's ROUND(x, 2) does (half away from
+// zero for positive grades). The +1e-9 nudge absorbs binary float error so a
+// value like 11.185 rounds to 11.19, matching the teacher's Excel exactly.
+const round2 = (n: number): number => Math.round((n + 1e-9) * 100) / 100;
+
+/** Percentage Score (PS) for a component: raw / perfect × 100, capped at 100 and
+ *  rounded to 2 decimals — the "PS" column in the DepEd class record. When no
+ *  perfect score is configured (legacy 0), fall back to the raw sum capped 100. */
+function componentPct(raw: number, perfect: number): number {
+  return perfect > 0 ? round2(Math.min((raw / perfect) * 100, 100)) : round2(Math.min(raw, 100));
+}
+
+export interface GradeBreakdown {
+  wwPS: number;
+  wwWS: number;
+  ptPS: number;
+  ptWS: number;
+  examPS: number;
+  examWS: number;
+  attPS: number;
+  attWS: number;
+  initial: number; // Initial Grade — sum of weighted scores, 2 decimals.
+  final: number; // Final / Quarterly Grade — the Initial Grade transmuted.
+}
+
+// The school's transmutation table (Initial Grade → Final/Quarterly Grade),
+// transcribed verbatim from the teacher's Excel IFS formula. Rows are
+// [lowerBound, upperBound, grade], ordered high→low; the two decimals are exact.
+// Passing (75) needs an Initial Grade of 70.00; the floor grade is 60.
+const TRANSMUTATION: [number, number, number][] = [
+  [99.5, 100, 100], [98.32, 99.49, 99], [97.14, 98.31, 98], [95.96, 97.13, 97], [94.78, 95.95, 96],
+  [93.6, 94.77, 95], [92.42, 93.59, 94], [91.24, 92.41, 93], [90.06, 91.23, 92], [88.88, 90.05, 91],
+  [87.7, 88.87, 90], [86.52, 87.69, 89], [85.34, 86.51, 88], [84.16, 85.33, 87], [82.98, 84.15, 86],
+  [81.8, 82.97, 85], [80.62, 81.79, 84], [79.44, 80.61, 83], [78.26, 79.43, 82], [77.08, 78.25, 81],
+  [75.9, 77.07, 80], [74.72, 75.89, 79], [73.54, 74.71, 78], [72.36, 73.53, 77], [71.18, 72.35, 76],
+  [70, 71.17, 75], [65.34, 69.99, 74], [60.67, 65.33, 73], [56.01, 60.66, 72], [51.34, 56, 71],
+  [46.67, 51.33, 70], [42.01, 46.66, 69], [37.34, 42, 68], [32.68, 37.33, 67], [28.01, 32.67, 66],
+  [23.35, 28, 65], [18.68, 23.34, 64], [14.01, 18.67, 63], [9.35, 14, 62], [4.68, 9.34, 61], [0, 4.67, 60],
+];
+
+/** Convert an Initial Grade to the Final/Quarterly Grade via the school's
+ *  transmutation table. Never calculate the Final Grade from raw scores — always
+ *  transmute the Initial Grade (raw → % → weighted → initial → transmute). */
+export function transmute(initial: number): number {
+  if (initial >= 100) return 100;
+  for (const [lo, , g] of TRANSMUTATION) if (initial >= lo) return g; // table is high→low
+  return 60;
+}
+
+/** Full component breakdown for one record: each component's Percentage Score
+ *  and Weighted Score, then the Initial Grade and the transmuted Final Grade —
+ *  the exact quantities the DepEd class record (and the teacher's Excel) show.
  *
- *  IN-PROGRESS grading: only components that have actually been GIVEN count. A
- *  component whose columns are all blank is treated as "not handed out yet" — it
- *  is excluded and its weight is redistributed across the given components, so an
- *  empty Performance Task or Quarterly Exam doesn't drag the grade down before
- *  it's administered. A blank is grace; enter a 0 to record a real zero. Once
- *  every component is filled the active weights sum to 100 and this equals the
- *  plain weighted grade — so a completed quarter is unchanged. */
-export function finalGrade(record: any, subjectName: string, attendanceScore?: number | null): number {
+ *  The pipeline is strictly Raw → Percentage → Weighted → Initial → Transmute →
+ *  Final; nothing is derived from a flat "TOTAL". A component with 0% weight
+ *  contributes 0 to the Initial Grade. Blank components score 0 (not excluded),
+ *  matching the Excel — the transmutation lifts a low Initial back up. */
+export function gradeBreakdown(record: any, subjectName: string, attendanceScore?: number | null): GradeBreakdown {
   const w = weightsFor(subjectName);
   const s = componentScores(record, subjectName);
-  const att = attendanceScore === null || attendanceScore === undefined ? 100 : attendanceScore;
+  const att = attendanceScore === null || attendanceScore === undefined ? 100 : round2(Math.min(Math.max(attendanceScore, 0), 100));
 
-  const has = (pred: (k: string) => boolean): boolean => {
-    for (const k in record || {}) {
-      if (pred(k)) {
-        const v = record[k];
-        if (v !== null && v !== undefined && v !== "") return true;
-      }
-    }
-    return false;
-  };
-  const wwGiven = has((k) => k.indexOf("module_") === 0 || k.indexOf("activity_") === 0);
-  const ptGiven = has((k) => k.indexOf("pt_") === 0);
-  const atGiven = has((k) => k === "at");
-  const qeGiven = has((k) => k === "qe");
-  const examGiven = atGiven || qeGiven;
+  const wwPS = componentPct(s.rawWW, w.wwTotal); // Written Work = Modules + Activities
+  const ptPS = componentPct(s.rawPT, w.ptTotal); // Performance Tasks
+  const examPS = componentPct(s.rawExam, w.examTotal); // Exam = Achievement Test + Quarterly Exam
+  const attPS = att;
 
-  // Exam % from the parts actually given (AT and QE are each half of examTotal —
-  // default 50 each), so an unentered QE doesn't halve a student's exam score.
-  let examPct = s.exam;
-  if (examGiven) {
-    const partMax = w.examTotal > 0 ? w.examTotal / 2 : 50;
-    const denom = partMax * ((atGiven ? 1 : 0) + (qeGiven ? 1 : 0));
-    examPct = denom > 0 ? Math.min(((s.rawAT + s.rawQE) / denom) * 100, 100) : 0;
-  }
+  const wwWS = round2(wwPS * (w.ww / 100));
+  const ptWS = round2(ptPS * (w.pt / 100));
+  const examWS = round2(examPS * (w.exam / 100));
+  const attWS = round2(attPS * (w.att / 100));
 
-  let score = 0;
-  let activeWeight = 0;
-  if (wwGiven) { score += s.ww * w.ww; activeWeight += w.ww; }
-  if (ptGiven) { score += s.pt * w.pt; activeWeight += w.pt; }
-  if (examGiven) { score += examPct * w.exam; activeWeight += w.exam; }
-  if (w.att > 0) { score += att * w.att; activeWeight += w.att; }
+  const initial = round2(wwWS + ptWS + examWS + attWS);
+  return { wwPS, wwWS, ptPS, ptWS, examPS, examWS, attPS, attWS, initial, final: transmute(initial) };
+}
 
-  if (activeWeight <= 0) return 0; // nothing entered yet
-  return Math.round(score / activeWeight);
+/** Initial Grade (0–100, 2 decimals): the sum of the weighted component scores,
+ *  BEFORE transmutation. This is what the class record's "Initial Grade" column
+ *  shows. Store/compare with its decimals — do not round to a whole number. */
+export function initialGrade(record: any, subjectName: string, attendanceScore?: number | null): number {
+  return gradeBreakdown(record, subjectName, attendanceScore).initial;
+}
+
+/** Final / Quarterly Grade (whole number): the Initial Grade run through the
+ *  school's transmutation table. This is the official quarterly grade used for
+ *  ranking, pass/fail and reports. */
+export function finalGrade(record: any, subjectName: string, attendanceScore?: number | null): number {
+  return gradeBreakdown(record, subjectName, attendanceScore).final;
 }
 
 /** True when every weighted component has been given, so finalGrade() is the
