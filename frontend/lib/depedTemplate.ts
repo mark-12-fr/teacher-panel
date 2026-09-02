@@ -91,6 +91,38 @@ function fieldVal(rec: Record<string, any>, key: string): number | null {
   return Number(v) || 0;
 }
 
+/** The five score-input cells for one quarter, following the teacher panel's own
+ *  rule so the official sheet shows the SAME grade it does:
+ *   • a learner with no scores at all stays fully blank (the sheet shows no grade);
+ *   • a learner with any score gets a grade, and a wholly-missing component counts
+ *     as 0 — we drop a 0 into that component's first cell so the sheet scores it 0
+ *     instead of blanking the whole Initial Grade (which is what the raw template
+ *     does when a component's Total is empty). Written Work = modules (G) +
+ *     activities (H); Performance Task = T; Exam = Achievement Test (AG) + QE (AH). */
+function scoreCells(rec: Record<string, any>): {
+  G: number | null; H: number | null; T: number | null; AG: number | null; AH: number | null;
+} {
+  const modules = sumFields(rec, "module_");
+  const activities = sumFields(rec, "activity_");
+  const pt = sumFields(rec, "pt_");
+  const at = fieldVal(rec, "at");
+  const qe = fieldVal(rec, "qe");
+  if ([modules, activities, pt, at, qe].every((v) => v === null)) {
+    return { G: null, H: null, T: null, AG: null, AH: null };
+  }
+  // Written Work Total and Performance Task Total blank out when their inputs are
+  // all empty (COUNT()=0), which would blank the whole Initial Grade — so seed a 0.
+  // The Exam Total is a plain SUM, already 0 when empty, so leave AT/QE as-is.
+  const wwMissing = modules === null && activities === null;
+  return {
+    G: wwMissing ? 0 : modules,
+    H: activities,
+    T: pt === null ? 0 : pt,
+    AG: at,
+    AH: qe,
+  };
+}
+
 /** Build the filled DepEd class-record workbook as xlsx bytes. */
 export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uint8Array> {
   const { unzipSync, zipSync, strToU8, strFromU8 } = await import("fflate");
@@ -137,13 +169,13 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
     let xml = strFromU8(files[path]);
     students.forEach((s, i) => {
       const row = STUDENT_ROWS[i];
-      const rec = recFor(s.id, dbQuarters[qi]) || {};
+      const c = scoreCells(recFor(s.id, dbQuarters[qi]) || {});
       xml = setCell(xml, "A" + row, i + 1); // one continuous 1..N numbering
-      xml = setCell(xml, "G" + row, sumFields(rec, "module_"));
-      xml = setCell(xml, "H" + row, sumFields(rec, "activity_"));
-      xml = setCell(xml, "T" + row, sumFields(rec, "pt_"));
-      xml = setCell(xml, "AG" + row, fieldVal(rec, "at"));
-      xml = setCell(xml, "AH" + row, fieldVal(rec, "qe"));
+      xml = setCell(xml, "G" + row, c.G);
+      xml = setCell(xml, "H" + row, c.H);
+      xml = setCell(xml, "T" + row, c.T);
+      xml = setCell(xml, "AG" + row, c.AG);
+      xml = setCell(xml, "AH" + row, c.AH);
     });
     // Hide the FEMALE divider and every unused learner row → no stray data on the
     // divider, no trailing blank rows.
