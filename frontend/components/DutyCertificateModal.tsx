@@ -11,6 +11,9 @@ import {
   printHtml,
   semesterText,
   defaultSchoolYear,
+  formatIssuedDate,
+  ordinal,
+  MONTH_NAMES,
   type CertShared,
   type CertRecipient,
 } from "@/lib/dutyCertificate";
@@ -55,9 +58,9 @@ function loadShared(): CertShared {
 const labelStyle: React.CSSProperties = { fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: "0.03em" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 8, border: "1px solid var(--border-color, #e5e7eb)", background: "var(--input-bg, #fff)", color: "var(--text-dark)", fontSize: "0.9rem" };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, span }: { label: string; children: React.ReactNode; span?: boolean }) {
   return (
-    <div>
+    <div style={span ? { gridColumn: "1 / -1" } : undefined}>
       <label style={labelStyle}>{label}</label>
       {children}
     </div>
@@ -85,6 +88,16 @@ export default function DutyCertificateModal({
   }, []);
 
   const set = (k: keyof CertShared, v: string) => setShared((s) => ({ ...s, [k]: v }));
+
+  // Issued-date parts, so the teacher picks the day in "1st / 2nd / 28th" form
+  // (matching the certificate's "Issued on this ___ day of ___" wording).
+  const dm = /^(\d{4})-(\d{2})-(\d{2})/.exec(shared.issuedDate);
+  const iy = dm ? +dm[1] : new Date().getFullYear();
+  const im = dm ? +dm[2] : new Date().getMonth() + 1;
+  const idd = dm ? +dm[3] : new Date().getDate();
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const setIssued = (yy: number, mm: number, dd: number) => set("issuedDate", `${yy}-${pad2(mm)}-${pad2(dd)}`);
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i);
 
   const semesterFor = (faci: any): string =>
     semesterText(sections.find((s) => s.title === faci.section)?.semester);
@@ -168,8 +181,23 @@ export default function DutyCertificateModal({
 
         {/* Shared certificate details */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 8 }}>
+          <Field label="Date Issued" span>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <select style={{ ...inputStyle, flex: "0 0 92px" }} value={idd} onChange={(e) => setIssued(iy, im, +e.target.value)} aria-label="Day">
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{ordinal(n)}</option>)}
+              </select>
+              <select style={{ ...inputStyle, flex: "1 1 130px" }} value={im} onChange={(e) => setIssued(iy, +e.target.value, idd)} aria-label="Month">
+                {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+              <select style={{ ...inputStyle, flex: "0 0 92px" }} value={iy} onChange={(e) => setIssued(+e.target.value, im, idd)} aria-label="Year">
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <span style={{ flex: "1 1 100%", fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                Issued on this {formatIssuedDate(shared.issuedDate)}.
+              </span>
+            </div>
+          </Field>
           <Field label="School Year"><input style={inputStyle} value={shared.schoolYear} onChange={(e) => set("schoolYear", e.target.value)} /></Field>
-          <Field label="Date Issued"><input type="date" style={inputStyle} value={shared.issuedDate} onChange={(e) => set("issuedDate", e.target.value)} /></Field>
           <Field label="Program / Year Level"><input style={inputStyle} value={shared.program} onChange={(e) => set("program", e.target.value)} /></Field>
           <Field label="Purpose (for his/her …)"><input style={inputStyle} value={shared.purpose} onChange={(e) => set("purpose", e.target.value)} /></Field>
           <Field label="Signatory Name"><input style={inputStyle} value={shared.signatoryName} onChange={(e) => set("signatoryName", e.target.value)} /></Field>
