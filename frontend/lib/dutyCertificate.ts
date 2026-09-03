@@ -30,10 +30,9 @@ const esc = (s: any) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/** 1 → "1st", 2 → "2nd", 28 → "28th". */
-export function ordinal(n: number): string {
+function ordinal(n: number): string {
   const t = n % 100;
   if (t >= 11 && t <= 13) return n + "th";
   switch (n % 10) {
@@ -49,7 +48,7 @@ export function formatIssuedDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
   if (!m) return iso || "";
   const [, y, mo, d] = m;
-  const month = MONTH_NAMES[Number(mo) - 1] || "";
+  const month = MONTHS[Number(mo) - 1] || "";
   return `${ordinal(Number(d))} day of ${month} ${y}`;
 }
 
