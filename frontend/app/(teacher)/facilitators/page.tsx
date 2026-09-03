@@ -8,6 +8,7 @@ import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import SmoothSelect from "@/components/SmoothSelect";
+import DutyCertificateModal from "@/components/DutyCertificateModal";
 import "./facilitators.css";
 
 function getLastSeenText(lastLogin?: string | null): { text: string; isActive: boolean } {
@@ -31,7 +32,18 @@ const avatarFor = (f: any) =>
   f.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.full_name)}&background=3b82f6&color=fff&size=128`;
 
 export default function FacilitatorsPage() {
-  usePageMeta("Facilitators");
+  const [certOpen, setCertOpen] = useState(false);
+  usePageMeta(
+    "Facilitators",
+    undefined,
+    <button
+      onClick={() => setCertOpen(true)}
+      style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#3b82f6", color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer" }}
+      title="Print Certificates of Duty Hours for facilitators"
+    >
+      <i className="fa-solid fa-print" /> Certificates
+    </button>,
+  );
   const [facis, setFacis] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -355,6 +367,15 @@ export default function FacilitatorsPage() {
             <div className="photo-viewer-name">{photo.name}</div>
           </div>
         </div>
+      )}
+
+      {certOpen && (
+        <DutyCertificateModal
+          facis={facis}
+          sections={sections}
+          onClose={() => setCertOpen(false)}
+          onToast={showToast}
+        />
       )}
 
       <div className={`toast-notification ${toast.err ? "error" : ""} ${toast.show ? "show" : ""}`}>
