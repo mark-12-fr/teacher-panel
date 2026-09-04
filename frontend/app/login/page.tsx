@@ -3,15 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { clearUserCache } from "@/hooks/useAuth";
+import HCaptchaBox from "@/components/HCaptchaBox";
 import "./login.css";
 
 type ToastType = "success" | "error" | "info";
+
+// hCaptcha site key. Set NEXT_PUBLIC_HCAPTCHA_SITE_KEY to your own key for real
+// bot protection; it falls back to hCaptcha's public TEST key so the "I am human"
+// gate is visible out of the box (the test key always passes — swap it in prod).
+const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001";
 
 export default function LoginPage() {
   const sb = getSupabase();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loginBtn, setLoginBtn] = useState<"idle" | "busy" | "done">("idle");
@@ -90,8 +97,17 @@ export default function LoginPage() {
     }
   }
 
+  function resetCaptcha() {
+    setCaptchaToken("");
+    try { (window as any).hcaptcha?.reset(); } catch {}
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      showToast("Please confirm you're not a robot.", "error");
+      return;
+    }
     setLoginBtn("busy");
     if (rememberMe) localStorage.setItem("remembered_email", email.trim());
     else localStorage.removeItem("remembered_email");
@@ -99,10 +115,12 @@ export default function LoginPage() {
     const { data, error } = await sb.auth.signInWithPassword({
       email: email.trim(),
       password: password.trim(),
+      options: captchaToken ? { captchaToken } : undefined,
     });
     if (error) {
       showToast("Incorrect email or password. Please try again.", "error");
       setLoginBtn("idle");
+      resetCaptcha(); // hCaptcha tokens are single-use — clear it for the retry
     } else {
       // Switching to a different account? Drop the previous user's cached
       // identity and chat so it can't be shown for this one.
@@ -295,7 +313,14 @@ export default function LoginPage() {
                 Forgot password?
               </a>
             </div>
-            <button type="submit" className="btn-login" disabled={loginBtn !== "idle"}
+            {HCAPTCHA_SITE_KEY && (
+              <HCaptchaBox
+                siteKey={HCAPTCHA_SITE_KEY}
+                onVerify={(t) => setCaptchaToken(t)}
+                onExpire={() => setCaptchaToken("")}
+              />
+            )}
+            <button type="submit" className="btn-login" disabled={loginBtn !== "idle" || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
               style={loginBtn === "done" ? { background: "linear-gradient(135deg, #10b981, #059669)" } : undefined}>
               {loginBtn === "busy" ? (
                 <>
