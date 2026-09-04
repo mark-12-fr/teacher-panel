@@ -100,7 +100,7 @@ export default function LoginPage() {
 
   function resetCaptcha() {
     setCaptchaToken("");
-    try { (window as any).hcaptcha?.reset(); } catch {}
+    try { window.hcaptcha?.reset(); } catch {}
   }
 
   async function handleLogin(e: React.FormEvent) {

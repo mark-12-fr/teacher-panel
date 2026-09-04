@@ -7,9 +7,12 @@
 
 import { useEffect, useRef } from "react";
 
+interface HCaptchaApi {
+  render: (container: HTMLElement, params: Record<string, unknown>) => string | number;
+  reset: (id?: string | number) => void;
+}
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  interface Window { hcaptcha?: any; }
+  interface Window { hcaptcha?: HCaptchaApi; }
 }
 
 let loader: Promise<void> | null = null;
