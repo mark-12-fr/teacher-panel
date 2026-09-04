@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaReady, setCaptchaReady] = useState(false); // gate only once the widget is up (fail-open if it never loads)
   const [rememberMe, setRememberMe] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loginBtn, setLoginBtn] = useState<"idle" | "busy" | "done">("idle");
@@ -104,7 +105,7 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+    if (HCAPTCHA_SITE_KEY && captchaReady && !captchaToken) {
       showToast("Please confirm you're not a robot.", "error");
       return;
     }
@@ -316,11 +317,12 @@ export default function LoginPage() {
             {HCAPTCHA_SITE_KEY && (
               <HCaptchaBox
                 siteKey={HCAPTCHA_SITE_KEY}
+                onReady={() => setCaptchaReady(true)}
                 onVerify={(t) => setCaptchaToken(t)}
                 onExpire={() => setCaptchaToken("")}
               />
             )}
-            <button type="submit" className="btn-login" disabled={loginBtn !== "idle" || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
+            <button type="submit" className="btn-login" disabled={loginBtn !== "idle" || (!!HCAPTCHA_SITE_KEY && captchaReady && !captchaToken)}
               style={loginBtn === "done" ? { background: "linear-gradient(135deg, #10b981, #059669)" } : undefined}>
               {loginBtn === "busy" ? (
                 <>

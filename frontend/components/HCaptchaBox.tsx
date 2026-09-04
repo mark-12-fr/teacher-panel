@@ -33,11 +33,14 @@ export default function HCaptchaBox({
   siteKey,
   onVerify,
   onExpire,
+  onReady,
   theme = "light",
 }: {
   siteKey: string;
   onVerify: (token: string) => void;
   onExpire?: () => void;
+  onReady?: () => void; // fired once the widget actually renders (so the form
+  //                       only gates on a captcha that's genuinely available)
   theme?: "light" | "dark";
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
@@ -57,6 +60,7 @@ export default function HCaptchaBox({
             "expired-callback": () => onExpire?.(),
             "error-callback": () => onExpire?.(),
           });
+          onReady?.();
         } catch {
           /* already rendered / transient — ignore */
         }
