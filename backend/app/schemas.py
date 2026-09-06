@@ -31,6 +31,8 @@ class SectionUpdate(BaseModel):
     school_year: Optional[str] = None
     quarter: Optional[str] = None
     school_level: Optional[str] = None
+    module_count: Optional[int] = Field(default=None, ge=1, le=25)
+    activity_count: Optional[int] = Field(default=None, ge=1, le=10)
 
     class Config:
         extra = "ignore"

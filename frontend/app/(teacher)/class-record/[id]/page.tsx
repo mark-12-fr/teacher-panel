@@ -9,7 +9,7 @@
 // per-student search, live facilitator updates (Supabase realtime), and Excel
 // export. There is no computed-grade column here — grades live on Performance.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent, CSSProperties } from "react";
 import { useParams } from "next/navigation";
 import { apiGet, apiPost, apiPatch, cachedGet, invalidateCached } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
@@ -34,14 +34,12 @@ type GradeQuarterCard = {
   | { hasData: false; grade: null; comp: null; delta: null }
 );
 
-// How many Module columns the grid shows. The database still has module_1..25,
-// so raising this back only re-exposes columns that were never dropped; the
-// grade only ever counts the module_* values a record actually has.
-const MODULE_COUNT = 15;
-const MODULES = Array.from({ length: MODULE_COUNT }, (_, i) => `module_${i + 1}`);
-const ACTIVITIES = Array.from({ length: 10 }, (_, i) => `activity_${i + 1}`);
+// The Module / Activity columns shown are per-section (section.module_count /
+// activity_count, default 15 / 10) and are derived inside the component. The DB
+// still has module_1..25 and activity_1..10, so shrinking only hides trailing
+// columns (never drops data) and growing re-exposes them; the grade only ever
+// counts the values a record actually has. TAIL is fixed.
 const TAIL = ["at", "pt_1", "pt_2", "qe"];
-const ALL_SCORE_FIELDS = [...MODULES, ...ACTIVITIES, ...TAIL];
 // College sections created before term support stored numeric quarters
 // (1,2 in 1st Sem; 3,4 in 2nd Sem). Map those legacy values to the term they
 // correspond to so old college sections get proper Prelim/Midterm/Final tabs.
@@ -199,10 +197,51 @@ export default function ClassRecordGridPage() {
   const [dirtyCount, setDirtyCount] = useState(0);
   const [saving, setSaving] = useState(false);
 
+  // ── Column counts (per section) ────────────────────────────────────────────
+  // How many Module / Activity columns the grid shows; the teacher grows/shrinks
+  // them from the header (see changeCount). Clamped to the physical DB columns.
+  const MODULE_MAX = 25;
+  const ACTIVITY_MAX = 10;
+  const moduleCount = Math.min(Math.max(Math.round(Number(section?.module_count) || 15), 1), MODULE_MAX);
+  const activityCount = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
+  const MODULES = useMemo(() => Array.from({ length: moduleCount }, (_, i) => `module_${i + 1}`), [moduleCount]);
+  const ACTIVITIES = useMemo(() => Array.from({ length: activityCount }, (_, i) => `activity_${i + 1}`), [activityCount]);
+  const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL], [MODULES, ACTIVITIES]);
+  const [countBusy, setCountBusy] = useState(false);
+
   function showToast(msg: string, err = false) {
     setToast({ show: true, msg, err });
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 4000);
   }
+
+  // Grow / shrink the Module or Activity columns for this section. Persisted on
+  // the section so the facilitator panel shows the same count. Non-destructive:
+  // shrinking just hides trailing columns, the scores stay in the DB.
+  async function changeCount(kind: "module" | "activity", delta: number) {
+    if (countBusy) return;
+    const cur = kind === "module" ? moduleCount : activityCount;
+    const max = kind === "module" ? MODULE_MAX : ACTIVITY_MAX;
+    const next = Math.min(Math.max(cur + delta, 1), max);
+    if (next === cur) return;
+    const field = kind === "module" ? "module_count" : "activity_count";
+    setCountBusy(true);
+    try {
+      await apiPatch(`/api/sections/${sectionId}`, { [field]: next });
+      invalidateCached(`sec_${sectionId}`);
+      setSection((s: any) => ({ ...(s || {}), [field]: next }));
+    } catch {
+      showToast("Couldn't update columns — please try again.", true);
+    } finally {
+      setCountBusy(false);
+    }
+  }
+
+  const colHeaderWrap: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 };
+  const colBtn = (disabled: boolean): CSSProperties => ({
+    cursor: disabled ? "not-allowed" : "pointer", border: "none", borderRadius: 4,
+    width: 18, height: 18, lineHeight: 1, fontSize: 14, fontWeight: 700,
+    background: "rgba(255,255,255,0.30)", color: "inherit", opacity: disabled ? 0.35 : 1, padding: 0, flexShrink: 0,
+  });
 
   // Warn before a tab close / refresh drops staged-but-unsaved scores.
   useEffect(() => {
@@ -407,7 +446,7 @@ export default function ClassRecordGridPage() {
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
   // sticky columns (#, ID, Name) + Modules + 10 Activities + AT/PT 1/PT 2/QE
   // (senior high only) + TOTAL and GRADE.
-  const gridColSpan = 3 + MODULE_COUNT + 10 + (college ? 0 : 4) + 3;
+  const gridColSpan = 3 + moduleCount + activityCount + (college ? 0 : 4) + 3;
   const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
   const qLabel = (q: string) => (college ? q : `Q${q}`);
 
@@ -1104,8 +1143,24 @@ export default function ClassRecordGridPage() {
                 <th rowSpan={2} className="sticky-col">#</th>
                 <th rowSpan={2} className="sticky-col" style={{ textAlign: "center" }}>ID No.</th>
                 <th rowSpan={2} className="sticky-col text-left group-divider">Student Name</th>
-                <th colSpan={MODULE_COUNT} className="header-group group-divider header-modules">MODULES</th>
-                <th colSpan={10} className="header-group group-divider header-activities">ACTIVITIES</th>
+                <th colSpan={moduleCount} className="header-group group-divider header-modules">
+                  <span style={colHeaderWrap}>
+                    <button type="button" style={colBtn(countBusy || moduleCount <= 1)} disabled={countBusy || moduleCount <= 1}
+                      onClick={() => changeCount("module", -1)} title="Remove the last Module column (scores are kept)">−</button>
+                    MODULES
+                    <button type="button" style={colBtn(countBusy || moduleCount >= MODULE_MAX)} disabled={countBusy || moduleCount >= MODULE_MAX}
+                      onClick={() => changeCount("module", 1)} title="Add a Module column">+</button>
+                  </span>
+                </th>
+                <th colSpan={activityCount} className="header-group group-divider header-activities">
+                  <span style={colHeaderWrap}>
+                    <button type="button" style={colBtn(countBusy || activityCount <= 1)} disabled={countBusy || activityCount <= 1}
+                      onClick={() => changeCount("activity", -1)} title="Remove the last Activity column (scores are kept)">−</button>
+                    ACTIVITIES
+                    <button type="button" style={colBtn(countBusy || activityCount >= ACTIVITY_MAX)} disabled={countBusy || activityCount >= ACTIVITY_MAX}
+                      onClick={() => changeCount("activity", 1)} title="Add an Activity column">+</button>
+                  </span>
+                </th>
                 {!college && (
                   <>
                     <th className="header-group header-at">AT</th>
@@ -1119,11 +1174,11 @@ export default function ClassRecordGridPage() {
                 <th rowSpan={2} className="header-group" style={{ minWidth: 70 }}>Quarterly Grade</th>
               </tr>
               <tr>
-                {Array.from({ length: MODULE_COUNT }, (_, i) => i + 1).map((n) => (
-                  <th key={`m${n}`} className={n === MODULE_COUNT ? "group-divider" : undefined}>{n}</th>
+                {Array.from({ length: moduleCount }, (_, i) => i + 1).map((n) => (
+                  <th key={`m${n}`} className={n === moduleCount ? "group-divider" : undefined}>{n}</th>
                 ))}
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <th key={`a${n}`} className={n === 10 ? "group-divider" : undefined}>{n}</th>
+                {Array.from({ length: activityCount }, (_, i) => i + 1).map((n) => (
+                  <th key={`a${n}`} className={n === activityCount ? "group-divider" : undefined}>{n}</th>
                 ))}
                 {!college && (
                   <>
@@ -1159,8 +1214,8 @@ export default function ClassRecordGridPage() {
                           <strong>{s.full_name}</strong>
                         </button>
                       </td>
-                      {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 24} />)}
-                      {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === 9} />)}
+                      {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === moduleCount - 1} />)}
+                      {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === activityCount - 1} />)}
                       {!college && TAIL.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
                       {(() => {
                         const t = totalScoreFor(s.id);

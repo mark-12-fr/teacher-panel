@@ -70,6 +70,11 @@ class Section(Base):
     school_year = Column(String, nullable=True)
     quarter = Column(Text, nullable=True)
     school_level = Column(Text, nullable=True)  # 'JHS' | 'SHS' | 'College'
+    # How many Module / Activity columns the class-record grid shows. Display
+    # only and non-destructive — lowering hides trailing columns, the scores
+    # stay in module_*/activity_*. Bounded by the physical columns (25 / 10).
+    module_count = Column(Integer, nullable=False, server_default=sa_text("15"))
+    activity_count = Column(Integer, nullable=False, server_default=sa_text("10"))
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
