@@ -850,32 +850,84 @@ export default function ClassRecordGridPage() {
       showToast("Generating Excel...");
       const sectionName = section?.title || "Section";
       const subjectName = section?.subject || "";
+      const teacherName = section?.advisor || section?.teacher || "";
       const rows: any[][] = [];
 
-      // Top-left header block: Section then Subject. Nothing else goes above
-      // the table — the teacher asked for just these two lines.
-      rows.push([`SECTION: ${sectionName}`]);
-      rows.push([`SUBJECT: ${subjectName}`]);
+      // Row 1: Section — Subject
+      rows.push([`${sectionName} — ${subjectName}`]);
+      // Row 2: SSP Advisor
+      rows.push([teacherName ? `SSP Advisor: ${teacherName}` : ""]);
+      // Row 3: Empty row
+      rows.push([]);
 
-      // Column headers (row index 2 → styled as the navy header via headerRow).
-      rows.push(["Name", "ID No.", "Achievement Test", "Periodical Exam", "Status"]);
+      // Row 4: Headers
+      rows.push([
+        "#",
+        "ID No.",
+        "Student Name",
+        "Modules",
+        "Activities",
+        "PERFORMANCE TASK",
+        "ACHIEVEMENT TEST",
+        "PERIODICAL EXAM",
+        "Status"
+      ]);
 
-      // One row per student: name, id, Achievement Test (AT), Periodical Exam
-      // (QE). Status is COMPLETE once both of those exam scores are in,
-      // INCOMPLETE while either is still missing — matching the two score
-      // columns shown here.
-      students.forEach((s) => {
+      // Helper: check if a value is filled
+      const isFilled = (v: any) => v !== null && v !== undefined && v !== "";
+
+      // Student rows
+      students.forEach((s, idx) => {
         const rec = recForView(s.id);
-        const has = (v: any) => v !== null && v !== undefined && v !== "";
-        const atVal = rec && has(rec.at) ? rec.at : "";
-        const qeVal = rec && has(rec.qe) ? rec.qe : "";
-        const status = has(atVal) && has(qeVal) ? "COMPLETE" : "INCOMPLETE";
-        rows.push([s.full_name || "", s.id_no || "", atVal, qeVal, status]);
+
+        // Build Modules & Activities list (e.g., "M1, M2, M3, A1, A2")
+        const moduleList: string[] = [];
+        const activityList: string[] = [];
+        if (rec) {
+          for (let i = 1; i <= 15; i++) {
+            if (isFilled(rec[`module_${i}`])) moduleList.push(`M${i}`);
+          }
+          for (let i = 1; i <= 10; i++) {
+            if (isFilled(rec[`activity_${i}`])) activityList.push(`A${i}`);
+          }
+        }
+        const modulesStr = moduleList.join(", ");
+        const activitiesStr = activityList.join(", ");
+
+        // Status: COMPLETE if all modules + activities + AT + QE are filled, else INCOMPLETE
+        const allModulesFilled = Array.from({ length: 15 }, (_, i) => isFilled(rec?.[`module_${i + 1}`])).every(Boolean);
+        const allActivitiesFilled = Array.from({ length: 10 }, (_, i) => isFilled(rec?.[`activity_${i + 1}`])).every(Boolean);
+        const atFilled = isFilled(rec?.at);
+        const qeFilled = isFilled(rec?.qe);
+        const ptFilled = isFilled(rec?.pt_1) || isFilled(rec?.pt_2);
+        const status = (allModulesFilled && allActivitiesFilled && ptFilled && atFilled && qeFilled) ? "COMPLETE" : "INCOMPLETE";
+
+        // Performance Task status
+        const ptStatus = ptFilled ? "SUBMITTED" : "";
+
+        // Achievement Test status
+        const atStatus = atFilled ? "TAKEN" : "";
+
+        // Periodical Exam status
+        const qeStatus = qeFilled ? "TAKEN" : "";
+
+        const row = [
+          idx + 1,
+          s.id_no || "",
+          s.full_name || "",
+          modulesStr,
+          activitiesStr,
+          ptStatus,
+          atStatus,
+          qeStatus,
+          status
+        ];
+        rows.push(row);
       });
 
       await writeStyledSheet(rows, {
-        sheetName: "Class Record",
-        headerRow: 2,
+        sheetName: sectionName || "Class Record",
+        headerRow: 3,
         fileName: `Class_Record_${sectionName.replace(/\s+/g, "_")}.xlsx`,
       });
       showToast("Class Record exported successfully!");
