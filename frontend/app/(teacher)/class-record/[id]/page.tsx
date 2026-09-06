@@ -18,7 +18,7 @@ import { writeStyledSheet } from "@/lib/export";
 import { buildDepedClassRecord, downloadXlsx } from "@/lib/depedTemplate";
 import { SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
 import LoadingBar from "@/components/LoadingBar";
-import { setSubjectConfigs, componentScores, finalGrade, initialGrade, transmute, displayedTotal, passingFor, isGradeComplete, weightsFor, type ComponentScores } from "@/lib/grading";
+import { setSubjectConfigs, componentScores, finalGrade, initialGrade, transmute, displayedTotal, passingFor, isGradeComplete, type ComponentScores } from "@/lib/grading";
 import { isOffline, runWhenOnline } from "@/lib/offline";
 import "./detail.css";
 
@@ -850,105 +850,32 @@ export default function ClassRecordGridPage() {
       showToast("Generating Excel...");
       const sectionName = section?.title || "Section";
       const subjectName = section?.subject || "";
-      const w = weightsFor(subjectName);
       const rows: any[][] = [];
 
-      // Row 1-2: School info header
-      rows.push([`SCHOOL NAME:`, ``, `SCHOOL ID:`, ``, `SCHOOL YEAR:`, ``]);
-      rows.push([``, `GRADE & SECTION: ${sectionName}`, ``, `TEACHER:`, ``, `SUBJECT: ${subjectName}`]);
-      rows.push([``, `SEMESTER: ${currentSemester}`, ``, ``, ``, `QUARTER: ${qLabel(currentQuarter)}`]);
-      rows.push([]);
+      // Top-left header block: Section then Subject. Nothing else goes above
+      // the table — the teacher asked for just these two lines.
+      rows.push([`SECTION: ${sectionName}`]);
+      rows.push([`SUBJECT: ${subjectName}`]);
 
-      // Row 4: Component headers with weights
-      const wwWeight = w.ww;
-      const ptWeight = w.pt;
-      const examWeight = w.exam;
-      rows.push([
-        "LEARNERS' NAMES", "ID Number",
-        `WRITTEN WORK (${wwWeight}%)`, "", "", "", "", "", "", "", "", "", "", "",
-        `PERFORMANCE TASKS (${ptWeight}%)`, "", "", "", "", "", "", "", "", "", "",
-        `QUARTERLY ASSESSMENT (${examWeight}%)`, "", "", "", "",
-        "Initial Grade", "Quarterly Grade"
-      ]);
+      // Column headers (row index 2 → styled as the navy header via headerRow).
+      rows.push(["Name", "ID No.", "Achievement Test", "Periodical Exam", "Status"]);
 
-      // Row 5: Sub-headers
-      const wwCols = Array.from({ length: 10 }, (_, i) => String(i + 1));
-      const ptCols = Array.from({ length: 10 }, (_, i) => String(i + 1));
-      rows.push([
-        "", "",
-        ...wwCols, "Total", "PS", "WS",
-        ...ptCols, "Total", "PS", "WS",
-        "AT", "QE", "Total", "PS", "WS",
-        "", ""
-      ]);
-
-      // Row 6: Highest Possible Score
-      const wwPerfect = w.wwTotal || 100;
-      const ptPerfect = w.ptTotal || 100;
-      const examPerfect = w.examTotal || 100;
-      rows.push([
-        "HIGHEST POSSIBLE SCORE", "",
-        ...Array(10).fill(""),
-        wwPerfect, "100.00", `${wwWeight}%`,
-        ...Array(10).fill(""),
-        ptPerfect, "100.00", `${ptWeight}%`,
-        "50", "50", examPerfect, "100.00", `${examWeight}%`,
-        "", ""
-      ]);
-
-      // Student rows
+      // One row per student: name, id, Achievement Test (AT), Periodical Exam
+      // (QE). Status is COMPLETE once both of those exam scores are in,
+      // INCOMPLETE while either is still missing — matching the two score
+      // columns shown here.
       students.forEach((s) => {
         const rec = recForView(s.id);
-        const cs = rec ? componentScores(rec, subjectName) : null;
-
-        // Written Work columns (1-10): first 10 module/activity fields
-        const wwValues: any[] = [];
-        for (let i = 1; i <= 10; i++) {
-          const moduleVal = rec ? rec[`module_${i}`] : null;
-          const activityVal = rec ? rec[`activity_${i}`] : null;
-          const m = moduleVal !== null && moduleVal !== undefined && moduleVal !== "" ? Number(moduleVal) : 0;
-          const a = activityVal !== null && activityVal !== undefined && activityVal !== "" ? Number(activityVal) : 0;
-          wwValues.push(m + a > 0 ? m + a : "");
-        }
-        const wwTotal = cs ? Math.round(cs.rawWW * 100) / 100 : 0;
-        const wwPS = cs ? cs.wwPct.toFixed(2) : "0.00";
-        const wwWS = cs ? cs.wwWS.toFixed(2) : "0.00";
-
-        // Performance Tasks columns (1-10): pt_1 through pt_10
-        const ptValues: any[] = [];
-        for (let i = 1; i <= 10; i++) {
-          const ptVal = rec ? rec[`pt_${i}`] : null;
-          ptValues.push(ptVal !== null && ptVal !== undefined && ptVal !== "" ? ptVal : "");
-        }
-        const ptTotal = cs ? Math.round(cs.rawPT * 100) / 100 : 0;
-        const ptPS = cs ? cs.ptPct.toFixed(2) : "0.00";
-        const ptWS = cs ? cs.ptWS.toFixed(2) : "0.00";
-
-        // Quarterly Assessment
-        const atVal = rec && rec.at !== null && rec.at !== undefined && rec.at !== "" ? rec.at : "";
-        const qeVal = rec && rec.qe !== null && rec.qe !== undefined && rec.qe !== "" ? rec.qe : "";
-        const examTotal = cs ? Math.round(cs.rawExam * 100) / 100 : 0;
-        const examPS = cs ? cs.examPct.toFixed(2) : "0.00";
-        const examWS = cs ? cs.examWS.toFixed(2) : "0.00";
-
-        // Initial Grade and Quarterly Grade
-        const ig = rec ? (Math.round(initialGrade(rec, subjectName) * 100) / 100) : null;
-        const qg = liveGradeFor(s.id);
-
-        const row = [
-          s.full_name || "", s.id_no || "",
-          ...wwValues, wwTotal, wwPS, wwWS,
-          ...ptValues, ptTotal, ptPS, ptWS,
-          atVal, qeVal, examTotal, examPS, examWS,
-          ig !== null ? ig.toFixed(2) : "",
-          qg !== null ? qg : ""
-        ];
-        rows.push(row);
+        const has = (v: any) => v !== null && v !== undefined && v !== "";
+        const atVal = rec && has(rec.at) ? rec.at : "";
+        const qeVal = rec && has(rec.qe) ? rec.qe : "";
+        const status = has(atVal) && has(qeVal) ? "COMPLETE" : "INCOMPLETE";
+        rows.push([s.full_name || "", s.id_no || "", atVal, qeVal, status]);
       });
 
       await writeStyledSheet(rows, {
         sheetName: "Class Record",
-        headerRow: 3,
+        headerRow: 2,
         fileName: `Class_Record_${sectionName.replace(/\s+/g, "_")}.xlsx`,
       });
       showToast("Class Record exported successfully!");
