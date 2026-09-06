@@ -8,10 +8,17 @@ import "./login.css";
 
 type ToastType = "success" | "error" | "info";
 
-// hCaptcha site key. Set NEXT_PUBLIC_HCAPTCHA_SITE_KEY to your own key for real
-// bot protection; it falls back to hCaptcha's public TEST key so the "I am human"
-// gate is visible out of the box (the test key always passes — swap it in prod).
-const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001";
+// hCaptcha site key for the "I am human" gate. Real bot protection needs a real
+// site key in NEXT_PUBLIC_HCAPTCHA_SITE_KEY (free from hcaptcha.com) plus the
+// matching SECRET key enabled in Supabase → Authentication → Attack Protection.
+// Until a real key is configured we render NO captcha: an unconfigured widget
+// falls back to hCaptcha's public TEST key, which always passes (zero protection)
+// and shows a red "for testing only" warning to users — worse than none. The
+// test key is therefore treated the same as "not set". Set the env var and the
+// captcha comes back automatically, no code change needed.
+const HCAPTCHA_TEST_KEY = "10000000-ffff-ffff-ffff-000000000001";
+const RAW_HCAPTCHA_KEY = (process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "").trim();
+const HCAPTCHA_SITE_KEY = RAW_HCAPTCHA_KEY && RAW_HCAPTCHA_KEY !== HCAPTCHA_TEST_KEY ? RAW_HCAPTCHA_KEY : "";
 
 export default function LoginPage() {
   const sb = getSupabase();
