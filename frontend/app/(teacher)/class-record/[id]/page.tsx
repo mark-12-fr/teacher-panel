@@ -202,8 +202,23 @@ export default function ClassRecordGridPage() {
   // them from the header (see changeCount). Clamped to the physical DB columns.
   const MODULE_MAX = 25;
   const ACTIVITY_MAX = 10;
-  const moduleCount = Math.min(Math.max(Math.round(Number(section?.module_count) || 15), 1), MODULE_MAX);
-  const activityCount = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
+  // A quarter's column count is its own override (section.module_counts["2"]…)
+  // when set, else the section default. Scores always live in module_1..count /
+  // activity_1..count — only how many columns show, and their numbering, changes.
+  const countFor = (counts: any, q: any, dflt: number, hi: number) => {
+    const n = Number(counts && counts[String(q)]);
+    return isFinite(n) && n >= 1 ? Math.min(Math.round(n), hi) : dflt;
+  };
+  const sectionModuleDflt = Math.min(Math.max(Math.round(Number(section?.module_count) || 15), 1), MODULE_MAX);
+  const sectionActivityDflt = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
+  const moduleCount = countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX);
+  const activityCount = countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX);
+  // The 2nd quarter of a semester continues the 1st's numbering (Q2 after Q1, Q4
+  // after Q3); it resets each semester, and College terms don't continue.
+  const isSecondQ = !college && (String(viewQuarter) === "2" || String(viewQuarter) === "4");
+  const firstQofSem = String(viewQuarter) === "4" ? "3" : "1";
+  const moduleOffset = isSecondQ ? countFor(section?.module_counts, firstQofSem, sectionModuleDflt, MODULE_MAX) : 0;
+  const activityOffset = isSecondQ ? countFor(section?.activity_counts, firstQofSem, sectionActivityDflt, ACTIVITY_MAX) : 0;
   const MODULES = useMemo(() => Array.from({ length: moduleCount }, (_, i) => `module_${i + 1}`), [moduleCount]);
   const ACTIVITIES = useMemo(() => Array.from({ length: activityCount }, (_, i) => `activity_${i + 1}`), [activityCount]);
   const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL], [MODULES, ACTIVITIES]);
@@ -223,12 +238,15 @@ export default function ClassRecordGridPage() {
     const max = kind === "module" ? MODULE_MAX : ACTIVITY_MAX;
     const next = Math.min(Math.max(cur + delta, 1), max);
     if (next === cur) return;
-    const field = kind === "module" ? "module_count" : "activity_count";
+    // Store the change against the VIEWED quarter (its own override).
+    const field = kind === "module" ? "module_counts" : "activity_counts";
+    const counts = { ...((section && section[field]) || {}) };
+    counts[String(viewQuarter)] = next;
     setCountBusy(true);
     try {
-      await apiPatch(`/api/sections/${sectionId}`, { [field]: next });
+      await apiPatch(`/api/sections/${sectionId}`, { [field]: counts });
       invalidateCached(`sec_${sectionId}`);
-      setSection((s: any) => ({ ...(s || {}), [field]: next }));
+      setSection((s: any) => ({ ...(s || {}), [field]: counts }));
     } catch {
       showToast("Couldn't update columns — please try again.", true);
     } finally {
@@ -1175,10 +1193,10 @@ export default function ClassRecordGridPage() {
               </tr>
               <tr>
                 {Array.from({ length: moduleCount }, (_, i) => i + 1).map((n) => (
-                  <th key={`m${n}`} className={n === moduleCount ? "group-divider" : undefined}>{n}</th>
+                  <th key={`m${n}`} className={n === moduleCount ? "group-divider" : undefined}>{moduleOffset + n}</th>
                 ))}
                 {Array.from({ length: activityCount }, (_, i) => i + 1).map((n) => (
-                  <th key={`a${n}`} className={n === activityCount ? "group-divider" : undefined}>{n}</th>
+                  <th key={`a${n}`} className={n === activityCount ? "group-divider" : undefined}>{activityOffset + n}</th>
                 ))}
                 {!college && (
                   <>

@@ -33,6 +33,8 @@ class SectionUpdate(BaseModel):
     school_level: Optional[str] = None
     module_count: Optional[int] = Field(default=None, ge=1, le=25)
     activity_count: Optional[int] = Field(default=None, ge=1, le=10)
+    module_counts: Optional[Dict[str, int]] = None    # per-quarter, {"1": 12, ...}
+    activity_counts: Optional[Dict[str, int]] = None
 
     class Config:
         extra = "ignore"
