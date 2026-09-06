@@ -75,6 +75,13 @@ class Section(Base):
     # stay in module_*/activity_*. Bounded by the physical columns (25 / 10).
     module_count = Column(Integer, nullable=False, server_default=sa_text("15"))
     activity_count = Column(Integer, nullable=False, server_default=sa_text("10"))
+    # Per-quarter overrides of the two counts, keyed by quarter "1".."4"
+    # (e.g. {"1": 12, "2": 13}). Missing quarters fall back to the counts above.
+    # Scores still live in module_1..count / activity_1..count per quarter; these
+    # only drive how many columns show and how the 2nd quarter of a semester
+    # continues the 1st's numbering.
+    module_counts = Column(JSONB, nullable=False, server_default=sa_text("'{}'::jsonb"))
+    activity_counts = Column(JSONB, nullable=False, server_default=sa_text("'{}'::jsonb"))
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 

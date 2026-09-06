@@ -130,7 +130,23 @@ async def update_section(
     db: AsyncSession = Depends(get_db),
 ):
     section = await own_section(db, teacher, section_id)
+
+    def _clean_counts(raw, hi):
+        # Keep only quarter keys "1".."4" with an int value clamped to [1, hi].
+        out = {}
+        for q, val in (raw or {}).items():
+            if str(q) in ("1", "2", "3", "4"):
+                try:
+                    out[str(q)] = max(1, min(hi, int(val)))
+                except (TypeError, ValueError):
+                    continue
+        return out
+
     for k, v in body.model_dump(exclude_unset=True).items():
+        if k == "module_counts":
+            v = _clean_counts(v, 25)
+        elif k == "activity_counts":
+            v = _clean_counts(v, 10)
         setattr(section, k, v)
     await db.commit()
     await db.refresh(section)
