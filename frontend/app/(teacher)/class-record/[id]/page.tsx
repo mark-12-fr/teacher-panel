@@ -34,12 +34,12 @@ type GradeQuarterCard = {
   | { hasData: false; grade: null; comp: null; delta: null }
 );
 
-// The Module / Activity columns shown are per-section (section.module_count /
-// activity_count, default 15 / 10) and are derived inside the component. The DB
-// still has module_1..25 and activity_1..10, so shrinking only hides trailing
-// columns (never drops data) and growing re-exposes them; the grade only ever
-// counts the values a record actually has. TAIL is fixed.
-const TAIL = ["at", "pt_1", "pt_2", "qe"];
+// The Module / Activity / PT columns shown are per-section and per-quarter
+// (section.module_count / activity_count / pt_counts) and are derived inside the
+// component. The DB still has module_1..25, activity_1..10 and pt_1..2, so the
+// grade only ever counts the values a record actually has (removing a column
+// deletes its value, so a hidden score can't secretly count). The grid tail
+// (AT, the PTs, QE) is built as TAIL_FIELDS inside the component.
 // College sections created before term support stored numeric quarters
 // (1,2 in 1st Sem; 3,4 in 2nd Sem). Map those legacy values to the term they
 // correspond to so old college sections get proper Prelim/Midterm/Final tabs.
@@ -202,6 +202,7 @@ export default function ClassRecordGridPage() {
   // them from the header (see changeCount). Clamped to the physical DB columns.
   const MODULE_MAX = 25;
   const ACTIVITY_MAX = 10;
+  const PT_MAX = 2;
   // A quarter's column count is its own override (section.module_counts["2"]…)
   // when set, else the section default. Scores always live in module_1..count /
   // activity_1..count — only how many columns show, and their numbering, changes.
@@ -213,6 +214,7 @@ export default function ClassRecordGridPage() {
   const sectionActivityDflt = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
   const moduleCount = countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX);
   const activityCount = countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX);
+  const ptCount = countFor(section?.pt_counts, viewQuarter, 2, PT_MAX);
   // The 2nd quarter of a semester continues the 1st's numbering (Q2 after Q1, Q4
   // after Q3); it resets each semester, and College terms don't continue.
   const isSecondQ = !college && (String(viewQuarter) === "2" || String(viewQuarter) === "4");
@@ -221,7 +223,11 @@ export default function ClassRecordGridPage() {
   const activityOffset = isSecondQ ? countFor(section?.activity_counts, firstQofSem, sectionActivityDflt, ACTIVITY_MAX) : 0;
   const MODULES = useMemo(() => Array.from({ length: moduleCount }, (_, i) => `module_${i + 1}`), [moduleCount]);
   const ACTIVITIES = useMemo(() => Array.from({ length: activityCount }, (_, i) => `activity_${i + 1}`), [activityCount]);
-  const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL], [MODULES, ACTIVITIES]);
+  // Performance Task columns are count-driven too (pt_1..ptCount). The grid tail
+  // is AT, then the PTs, then QE.
+  const PT_FIELDS = useMemo(() => Array.from({ length: ptCount }, (_, i) => `pt_${i + 1}`), [ptCount]);
+  const TAIL_FIELDS = useMemo(() => ["at", ...PT_FIELDS, "qe"], [PT_FIELDS]);
+  const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL_FIELDS], [MODULES, ACTIVITIES, TAIL_FIELDS]);
   const [countBusy, setCountBusy] = useState(false);
 
   function showToast(msg: string, err = false) {
@@ -232,14 +238,14 @@ export default function ClassRecordGridPage() {
   // Grow / shrink the Module or Activity columns for this section. Persisted on
   // the section so the facilitator panel shows the same count. Non-destructive:
   // shrinking just hides trailing columns, the scores stay in the DB.
-  async function changeCount(kind: "module" | "activity", delta: number) {
+  async function changeCount(kind: "module" | "activity" | "pt", delta: number) {
     if (countBusy) return;
-    const cur = kind === "module" ? moduleCount : activityCount;
-    const max = kind === "module" ? MODULE_MAX : ACTIVITY_MAX;
+    const cur = kind === "module" ? moduleCount : kind === "activity" ? activityCount : ptCount;
+    const max = kind === "module" ? MODULE_MAX : kind === "activity" ? ACTIVITY_MAX : PT_MAX;
     const next = Math.min(Math.max(cur + delta, 1), max);
     if (next === cur) return;
     // Store the change against the VIEWED quarter (its own override).
-    const field = kind === "module" ? "module_counts" : "activity_counts";
+    const field = kind === "module" ? "module_counts" : kind === "activity" ? "activity_counts" : "pt_counts";
     const counts = { ...((section && section[field]) || {}) };
     counts[String(viewQuarter)] = next;
     setCountBusy(true);
@@ -261,7 +267,7 @@ export default function ClassRecordGridPage() {
   // dropping one column simply removes its contribution — the perfect-score
   // totals are separate subject config. The facilitator panel reads the same
   // per-quarter count and the shifted data, so it stays in sync automatically.
-  async function removeColumn(kind: "module" | "activity", pos: number) {
+  async function removeColumn(kind: "module" | "activity" | "pt", pos: number) {
     if (countBusy) return;
     if (quarterLocked) {
       showToast("Switch to the active quarter before removing a column.", true);
@@ -272,10 +278,10 @@ export default function ClassRecordGridPage() {
       return;
     }
     const prefix = kind;
-    const count = kind === "module" ? moduleCount : activityCount;
+    const count = kind === "module" ? moduleCount : kind === "activity" ? activityCount : ptCount;
     if (pos < 1 || pos > count || count <= 1) return;
-    const label = kind === "module" ? "Module" : "Activity";
-    const shownNum = (kind === "module" ? moduleOffset : activityOffset) + pos;
+    const label = kind === "module" ? "Module" : kind === "activity" ? "Activity" : "PT";
+    const shownNum = kind === "pt" ? pos : (kind === "module" ? moduleOffset : activityOffset) + pos;
 
     // Each student's record for the viewed quarter, and whether the column being
     // removed actually holds a score (that's what triggers the confirm).
@@ -314,7 +320,7 @@ export default function ClassRecordGridPage() {
         await apiPost(`/api/sections/${sectionId}/class-records`, payload);
       }
       // Drop the column count by one for the viewed quarter.
-      const field = kind === "module" ? "module_counts" : "activity_counts";
+      const field = kind === "module" ? "module_counts" : kind === "activity" ? "activity_counts" : "pt_counts";
       const counts = { ...(((section && (section as any)[field]) as any) || {}) };
       counts[String(viewQuarter)] = count - 1;
       await apiPatch(`/api/sections/${sectionId}`, { [field]: counts });
@@ -547,7 +553,7 @@ export default function ClassRecordGridPage() {
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
   // sticky columns (#, ID, Name) + Modules + 10 Activities + AT/PT 1/PT 2/QE
   // (senior high only) + TOTAL and GRADE.
-  const gridColSpan = 3 + moduleCount + activityCount + (college ? 0 : 4) + 3;
+  const gridColSpan = 3 + moduleCount + activityCount + (college ? 0 : ptCount + 2) + 3;
   const quarterTabs = college ? COLLEGE_TERMS.map((t) => t.db) : ["1", "2", "3", "4"];
   const qLabel = (q: string) => (college ? q : `Q${q}`);
 
@@ -1240,8 +1246,17 @@ export default function ClassRecordGridPage() {
                 {!college && (
                   <>
                     <th className="header-group header-at">AT</th>
-                    <th className="header-group header-pt">PT 1</th>
-                    <th className="header-group header-pt">PT 2</th>
+                    {PT_FIELDS.map((f, i) => (
+                      <th key={f} className="header-group header-pt">
+                        <span style={colHeaderWrap}>
+                          PT {i + 1}
+                          {i === ptCount - 1 && ptCount < PT_MAX && (
+                            <button type="button" style={colBtn(countBusy)} disabled={countBusy}
+                              onClick={() => changeCount("pt", 1)} title="Add a Performance Task column">+</button>
+                          )}
+                        </span>
+                      </th>
+                    ))}
                     <th className="header-group header-qe">QE</th>
                   </>
                 )}
@@ -1271,8 +1286,15 @@ export default function ClassRecordGridPage() {
                 {!college && (
                   <>
                     <th>50</th>
-                    <th>50</th>
-                    <th>50</th>
+                    {PT_FIELDS.map((f, i) => (
+                      <th key={f}>
+                        <span style={colNumWrap}>
+                          50
+                          <button type="button" style={colXBtn(countBusy || ptCount <= 1)} disabled={countBusy || ptCount <= 1}
+                            onClick={() => removeColumn("pt", i + 1)} title={`Remove PT ${i + 1} — its scores are deleted`}>×</button>
+                        </span>
+                      </th>
+                    ))}
                     <th>50</th>
                   </>
                 )}
@@ -1304,7 +1326,7 @@ export default function ClassRecordGridPage() {
                       </td>
                       {MODULES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === moduleCount - 1} />)}
                       {ACTIVITIES.map((f, i) => <ScoreCell key={f} sid={s.id} field={f} divider={i === activityCount - 1} />)}
-                      {!college && TAIL.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
+                      {!college && TAIL_FIELDS.map((f) => <ScoreCell key={f} sid={s.id} field={f} />)}
                       {(() => {
                         const t = totalScoreFor(s.id);
                         return (
