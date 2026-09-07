@@ -254,11 +254,94 @@ export default function ClassRecordGridPage() {
     }
   }
 
+  // Remove a SPECIFIC Module or Activity column (not just the last one). The
+  // columns after it shift down to close the gap (renumber), and the removed
+  // column's scores are deleted for every student in the viewed quarter. Grades
+  // stay correct because grading sums each component by column prefix, so
+  // dropping one column simply removes its contribution — the perfect-score
+  // totals are separate subject config. The facilitator panel reads the same
+  // per-quarter count and the shifted data, so it stays in sync automatically.
+  async function removeColumn(kind: "module" | "activity", pos: number) {
+    if (countBusy) return;
+    if (quarterLocked) {
+      showToast("Switch to the active quarter before removing a column.", true);
+      return;
+    }
+    if (pendingRef.current.size > 0) {
+      showToast("Save your pending scores first, then remove a column.", true);
+      return;
+    }
+    const prefix = kind;
+    const count = kind === "module" ? moduleCount : activityCount;
+    if (pos < 1 || pos > count || count <= 1) return;
+    const label = kind === "module" ? "Module" : "Activity";
+    const shownNum = (kind === "module" ? moduleOffset : activityOffset) + pos;
+
+    // Each student's record for the viewed quarter, and whether the column being
+    // removed actually holds a score (that's what triggers the confirm).
+    const recs: Rec[] = [];
+    let hasData = false;
+    for (const s of students) {
+      const r = recForView(s.id);
+      if (!r) continue;
+      recs.push(r);
+      const v = (r as any)[`${prefix}_${pos}`];
+      if (v !== null && v !== undefined && v !== "") hasData = true;
+    }
+    if (
+      hasData &&
+      !window.confirm(
+        `Remove ${label} ${shownNum}? Its scores will be deleted for every student, and the ${label.toLowerCase()}s after it will shift down (renumber).`
+      )
+    ) {
+      return;
+    }
+
+    setCountBusy(true);
+    try {
+      // Shift each record: positions pos..count-1 take the next column's value,
+      // the last position is cleared. Only changed fields are sent (upsert by id).
+      const payload = recs.map((r) => {
+        const scores: Record<string, any> = {};
+        for (let i = pos; i < count; i++) {
+          const nv = (r as any)[`${prefix}_${i + 1}`];
+          scores[`${prefix}_${i}`] = nv === undefined || nv === "" ? null : nv;
+        }
+        scores[`${prefix}_${count}`] = null;
+        return { id: r.id, student_id: r.student_id, quarter: r.quarter != null ? r.quarter : currentQuarter, scores };
+      });
+      if (payload.length > 0) {
+        await apiPost(`/api/sections/${sectionId}/class-records`, payload);
+      }
+      // Drop the column count by one for the viewed quarter.
+      const field = kind === "module" ? "module_counts" : "activity_counts";
+      const counts = { ...(((section && (section as any)[field]) as any) || {}) };
+      counts[String(viewQuarter)] = count - 1;
+      await apiPatch(`/api/sections/${sectionId}`, { [field]: counts });
+      invalidateCached(`rec_${sectionId}`);
+      invalidateCached(`sec_${sectionId}`);
+      setSection((s: any) => ({ ...(s || {}), [field]: counts }));
+      await loadRecords(true);
+      showToast(`${label} ${shownNum} removed.`);
+    } catch {
+      showToast("Couldn't remove the column — please try again.", true);
+    } finally {
+      setCountBusy(false);
+    }
+  }
+
   const colHeaderWrap: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 };
   const colBtn = (disabled: boolean): CSSProperties => ({
     cursor: disabled ? "not-allowed" : "pointer", border: "none", borderRadius: 4,
     width: 18, height: 18, lineHeight: 1, fontSize: 14, fontWeight: 700,
     background: "rgba(255,255,255,0.30)", color: "inherit", opacity: disabled ? 0.35 : 1, padding: 0, flexShrink: 0,
+  });
+  // The per-column "×" that removes THAT specific Module / Activity column.
+  const colNumWrap: CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3 };
+  const colXBtn = (disabled: boolean): CSSProperties => ({
+    cursor: disabled ? "not-allowed" : "pointer", border: "none", borderRadius: 3,
+    width: 14, height: 14, lineHeight: 1, fontSize: 11, fontWeight: 700,
+    background: "rgba(220,38,38,0.12)", color: "#dc2626", opacity: disabled ? 0.3 : 1, padding: 0, flexShrink: 0,
   });
 
   // Warn before a tab close / refresh drops staged-but-unsaved scores.
@@ -1142,8 +1225,6 @@ export default function ClassRecordGridPage() {
                 <th rowSpan={2} className="sticky-col text-left group-divider">Student Name</th>
                 <th colSpan={moduleCount} className="header-group group-divider header-modules">
                   <span style={colHeaderWrap}>
-                    <button type="button" style={colBtn(countBusy || moduleCount <= 1)} disabled={countBusy || moduleCount <= 1}
-                      onClick={() => changeCount("module", -1)} title="Remove the last Module column (scores are kept)">−</button>
                     MODULES
                     <button type="button" style={colBtn(countBusy || moduleCount >= MODULE_MAX)} disabled={countBusy || moduleCount >= MODULE_MAX}
                       onClick={() => changeCount("module", 1)} title="Add a Module column">+</button>
@@ -1151,8 +1232,6 @@ export default function ClassRecordGridPage() {
                 </th>
                 <th colSpan={activityCount} className="header-group group-divider header-activities">
                   <span style={colHeaderWrap}>
-                    <button type="button" style={colBtn(countBusy || activityCount <= 1)} disabled={countBusy || activityCount <= 1}
-                      onClick={() => changeCount("activity", -1)} title="Remove the last Activity column (scores are kept)">−</button>
                     ACTIVITIES
                     <button type="button" style={colBtn(countBusy || activityCount >= ACTIVITY_MAX)} disabled={countBusy || activityCount >= ACTIVITY_MAX}
                       onClick={() => changeCount("activity", 1)} title="Add an Activity column">+</button>
@@ -1172,10 +1251,22 @@ export default function ClassRecordGridPage() {
               </tr>
               <tr>
                 {Array.from({ length: moduleCount }, (_, i) => i + 1).map((n) => (
-                  <th key={`m${n}`} className={n === moduleCount ? "group-divider" : undefined}>{moduleOffset + n}</th>
+                  <th key={`m${n}`} className={n === moduleCount ? "group-divider" : undefined}>
+                    <span style={colNumWrap}>
+                      {moduleOffset + n}
+                      <button type="button" style={colXBtn(countBusy || moduleCount <= 1)} disabled={countBusy || moduleCount <= 1}
+                        onClick={() => removeColumn("module", n)} title={`Remove Module ${moduleOffset + n} — the ones after it shift down`}>×</button>
+                    </span>
+                  </th>
                 ))}
                 {Array.from({ length: activityCount }, (_, i) => i + 1).map((n) => (
-                  <th key={`a${n}`} className={n === activityCount ? "group-divider" : undefined}>{activityOffset + n}</th>
+                  <th key={`a${n}`} className={n === activityCount ? "group-divider" : undefined}>
+                    <span style={colNumWrap}>
+                      {activityOffset + n}
+                      <button type="button" style={colXBtn(countBusy || activityCount <= 1)} disabled={countBusy || activityCount <= 1}
+                        onClick={() => removeColumn("activity", n)} title={`Remove Activity ${activityOffset + n} — the ones after it shift down`}>×</button>
+                    </span>
+                  </th>
                 ))}
                 {!college && (
                   <>
