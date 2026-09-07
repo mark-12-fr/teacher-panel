@@ -35,6 +35,7 @@ class SectionUpdate(BaseModel):
     activity_count: Optional[int] = Field(default=None, ge=1, le=10)
     module_counts: Optional[Dict[str, int]] = None    # per-quarter, {"1": 12, ...}
     activity_counts: Optional[Dict[str, int]] = None
+    pt_counts: Optional[Dict[str, int]] = None         # per-quarter PT count, 1-2
 
     class Config:
         extra = "ignore"
