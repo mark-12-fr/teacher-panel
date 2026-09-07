@@ -147,8 +147,6 @@ async def update_section(
             v = _clean_counts(v, 25)
         elif k == "activity_counts":
             v = _clean_counts(v, 10)
-        elif k == "pt_counts":
-            v = _clean_counts(v, 2)
         setattr(section, k, v)
     await db.commit()
     await db.refresh(section)

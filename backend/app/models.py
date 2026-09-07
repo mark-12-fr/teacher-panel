@@ -82,9 +82,6 @@ class Section(Base):
     # continues the 1st's numbering.
     module_counts = Column(JSONB, nullable=False, server_default=sa_text("'{}'::jsonb"))
     activity_counts = Column(JSONB, nullable=False, server_default=sa_text("'{}'::jsonb"))
-    # Per-quarter count of Performance Task columns (pt_1..pt_2), keyed "1".."4",
-    # default 2. Same shape as module_counts; lets a quarter drop to a single PT.
-    pt_counts = Column(JSONB, nullable=False, server_default=sa_text("'{}'::jsonb"))
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 
