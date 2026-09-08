@@ -1298,9 +1298,9 @@ export default function ClassRecordGridPage() {
             }}
           >
             <i className="fa-solid fa-id-card" style={{ fontSize: 34, color: "var(--accent-blue)", marginBottom: 14, display: "block" }} />
-            <h3 style={{ margin: "0 0 8px", fontSize: "1.15rem", fontWeight: 700 }}>Report Card — Coming Soon</h3>
+            <h3 style={{ margin: "0 0 8px", fontSize: "1.15rem", fontWeight: 700 }}>Report Card</h3>
             <p style={{ margin: "0 0 20px", fontSize: "0.92rem", color: "var(--text-muted)", lineHeight: 1.55 }}>
-              The official DepEd report-card template will be added here shortly.
+              This feature is coming soon.
             </p>
             <button
               onClick={() => setComingSoon(false)}
