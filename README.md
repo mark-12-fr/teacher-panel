@@ -161,7 +161,7 @@ Open `http://localhost:3000` — sign in with your Supabase Auth credentials.
 
 | Member | Role |
 |--------|------|
-| Mark Frizas | Full-Stack Developer |
+| Mark Frizas | Team Lead |
 | Rutz Cabrera | Frontend Developer |
 | Jean Rose Banay | Backend Developer |
 
