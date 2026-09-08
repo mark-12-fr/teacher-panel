@@ -324,9 +324,11 @@ export default function FacilitatorsPage() {
             />
             <div>
               {!editingId && (
-                <input type="text" className="modal-input" placeholder="Account ID (e.g. FACI-001)" value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })} />
+                <>
+                  <input type="text" className="modal-input" placeholder="Account ID (e.g. FACI-001)" value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })} />
+                  <input type="text" className="modal-input" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                </>
               )}
-              <input type="text" className="modal-input" placeholder={editingId ? "New Password (leave blank to keep)" : "Password"} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button onClick={() => setModal(false)} style={{ flex: 1, padding: 12, borderRadius: 8, border: "none", cursor: "pointer", background: "var(--input-bg)", color: "var(--text-dark)", fontWeight: 500 }}>Cancel</button>
