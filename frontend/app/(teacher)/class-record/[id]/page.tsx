@@ -869,8 +869,7 @@ export default function ClassRecordGridPage() {
         "Activities",
         "PERFORMANCE TASK",
         "ACHIEVEMENT TEST",
-        "PERIODICAL EXAM",
-        "Status"
+        "PERIODICAL EXAM"
       ]);
 
       // Helper: check if a value is filled
@@ -894,13 +893,9 @@ export default function ClassRecordGridPage() {
         const modulesStr = moduleList.join(", ");
         const activitiesStr = activityList.join(", ");
 
-        // Status: COMPLETE if all modules + activities + AT + QE are filled, else INCOMPLETE
-        const allModulesFilled = Array.from({ length: 15 }, (_, i) => isFilled(rec?.[`module_${i + 1}`])).every(Boolean);
-        const allActivitiesFilled = Array.from({ length: 10 }, (_, i) => isFilled(rec?.[`activity_${i + 1}`])).every(Boolean);
         const atFilled = isFilled(rec?.at);
         const qeFilled = isFilled(rec?.qe);
         const ptFilled = isFilled(rec?.pt_1) || isFilled(rec?.pt_2);
-        const status = (allModulesFilled && allActivitiesFilled && ptFilled && atFilled && qeFilled) ? "COMPLETE" : "INCOMPLETE";
 
         // Performance Task status
         const ptStatus = ptFilled ? "SUBMITTED" : "";
@@ -919,8 +914,7 @@ export default function ClassRecordGridPage() {
           activitiesStr,
           ptStatus,
           atStatus,
-          qeStatus,
-          status
+          qeStatus
         ];
         rows.push(row);
       });
@@ -971,6 +965,15 @@ export default function ClassRecordGridPage() {
 
   const exportBtn = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+      <button
+        className="export-btn"
+        onClick={() =>
+          showToast("Report Card printing is coming soon — the official DepEd report-card template will be added here shortly.")
+        }
+        title="Coming soon"
+      >
+        <i className="fa-solid fa-id-card" /> Print Report Card
+      </button>
       <button className="export-btn" onClick={exportExcel}>
         <i className="fa-solid fa-file-excel" /> Export Excel
       </button>
