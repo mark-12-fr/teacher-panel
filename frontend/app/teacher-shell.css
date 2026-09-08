@@ -618,7 +618,7 @@
         }
 
         .bottom-card-lg {
-            grid-column: span 3;
+            grid-column: span 4;
             min-height: 180px;
         }
 
