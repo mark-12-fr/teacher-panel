@@ -97,20 +97,16 @@ export default function DashboardPage() {
   const [activeSem, setActiveSem] = useState("both");
   const [passing, setPassing] = useState(75);
   const [top, setTop] = useState<TopStudent[]>([]);
+  const [needsAttention, setNeedsAttention] = useState<TopStudent[]>([]);
 
   const [schedules, setSchedules] = useState<any[]>([]);
-  const [notices, setNotices] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
-  const [noteInput, setNoteInput] = useState("");
 
   const [clock, setClock] = useState({ time: "", date: "" });
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [schedModal, setSchedModal] = useState(false);
-  const [noticeModal, setNoticeModal] = useState(false);
   const [sched, setSched] = useState({ subject: "", time: "", details: "" });
-  const [notice, setNotice] = useState({ text: "", date: "", time: "" });
 
   const [attModal, setAttModal] = useState<{ open: boolean; title: string; list: any[] }>({ open: false, title: "", list: [] });
   const [secModal, setSecModal] = useState(false);
@@ -279,17 +275,16 @@ export default function DashboardPage() {
       activeSem: sem,
       passing: dashPassing,
       top: allScores.slice(0, 5),
+      // Students below the passing grade, lowest first — the "Needs Attention"
+      // widget (allScores is a copy, so filter+sort doesn't disturb `top`).
+      needsAttention: allScores.filter((s) => s.grade < dashPassing).sort((a, b) => a.grade - b.grade),
     };
   }, []);
 
   const fetchSchedules = useCallback(async () => { try { return (await apiGet("/api/schedules")).schedules || []; } catch { return []; } }, []);
-  const fetchNotices = useCallback(async () => { try { return (await apiGet("/api/notices")).notices || []; } catch { return []; } }, []);
-  const fetchNotes = useCallback(async () => { try { return (await apiGet("/api/notes")).notes || []; } catch { return []; } }, []);
 
   const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 300000 });
   const schedCache = useCachedData("dash_cache_sched", fetchSchedules, { ttl: 300000 });
-  const noticeCache = useCachedData("dash_cache_notice", fetchNotices, { ttl: 300000 });
-  const noteCache = useCachedData("dash_cache_note", fetchNotes, { ttl: 300000 });
 
   // Apply cached data to state
   useEffect(() => {
@@ -310,22 +305,13 @@ export default function DashboardPage() {
     setActiveSem(d.activeSem);
     setPassing(d.passing);
     setTop(d.top);
+    setNeedsAttention(d.needsAttention || []);
   }, [statsCache.data]);
 
   useEffect(() => {
     if (!schedCache.data) return;
     setSchedules(schedCache.data);
   }, [schedCache.data]);
-
-  useEffect(() => {
-    if (!noticeCache.data) return;
-    setNotices(noticeCache.data);
-  }, [noticeCache.data]);
-
-  useEffect(() => {
-    if (!noteCache.data) return;
-    setNotes(noteCache.data);
-  }, [noteCache.data]);
 
   // Only show error on full failure (no cached data at all)
   useEffect(() => {
@@ -621,91 +607,6 @@ export default function DashboardPage() {
       }
     }
   }
-  async function saveNotice() {
-    if (!notice.text.trim() || !notice.date) return showToast("Please fill in the notice and date.", true);
-    const colors = ["blue", "orange", "green"];
-    const entry = { id: tempId(), text: notice.text.trim(), date: notice.date, time: notice.time || null, color: colors[Math.floor(Math.random() * colors.length)] };
-    noticeCache.abortInFlight();
-    setNotices((prev) => [entry, ...prev]);
-    setNotice({ text: "", date: "", time: "" });
-    setNoticeModal(false);
-    const payload = { text: entry.text, date: entry.date, time: entry.time, color: entry.color };
-    try {
-      await apiPost("/api/notices", payload);
-      noticeCache.refresh();
-    } catch {
-      if (isOffline()) {
-        runWhenOnline("dash-notice-" + entry.id, () =>
-          apiPost("/api/notices", payload).then(() => noticeCache.refresh())
-        );
-        showToast("Offline — notice will save when you reconnect.");
-      } else {
-        setNotices((prev) => prev.filter((x) => x.id !== entry.id));
-        showToast("Failed to add notice.", true);
-      }
-    }
-  }
-  async function deleteNotice(id: string) {
-    const removed = notices.find((x) => x.id === id);
-    noticeCache.abortInFlight();
-    setNotices((prev) => prev.filter((x) => x.id !== id));
-    try {
-      await apiDelete(`/api/notices/${id}`);
-      noticeCache.refresh();
-    } catch {
-      if (isOffline()) {
-        runWhenOnline("dash-notice-del-" + id, () =>
-          apiDelete(`/api/notices/${id}`).then(() => noticeCache.refresh())
-        );
-        showToast("Offline — notice will be removed when you reconnect.");
-      } else {
-        if (removed) setNotices((prev) => [removed, ...prev]);
-        showToast("Failed to delete notice.", true);
-      }
-    }
-  }
-  async function addNote() {
-    const t = noteInput.trim();
-    if (!t) return;
-    const entry = { id: tempId(), content: t };
-    noteCache.abortInFlight();
-    setNotes((prev) => [entry, ...prev]);
-    setNoteInput("");
-    try {
-      await apiPost("/api/notes", { content: t });
-      noteCache.refresh();
-    } catch {
-      if (isOffline()) {
-        runWhenOnline("dash-note-" + entry.id, () =>
-          apiPost("/api/notes", { content: t }).then(() => noteCache.refresh())
-        );
-        showToast("Offline — note will save when you reconnect.");
-      } else {
-        setNotes((prev) => prev.filter((x) => x.id !== entry.id));
-        showToast("Failed to save note.", true);
-      }
-    }
-  }
-  async function deleteNote(id: string) {
-    const removed = notes.find((x) => x.id === id);
-    noteCache.abortInFlight();
-    setNotes((prev) => prev.filter((x) => x.id !== id));
-    try {
-      await apiDelete(`/api/notes/${id}`);
-      noteCache.refresh();
-    } catch {
-      if (isOffline()) {
-        runWhenOnline("dash-note-del-" + id, () =>
-          apiDelete(`/api/notes/${id}`).then(() => noteCache.refresh())
-        );
-        showToast("Offline — note will be removed when you reconnect.");
-      } else {
-        if (removed) setNotes((prev) => [removed, ...prev]);
-        showToast("Failed to delete note.", true);
-      }
-    }
-  }
-
   function showAttendanceDetails(type: "present" | "absent") {
     const list = todayAttRef.current
       .filter((r) => (type === "present" ? r.status === "Present" : r.status !== "Present"))
@@ -713,17 +614,6 @@ export default function DashboardPage() {
     setAttModal({ open: true, title: type === "present" ? "Today's Present Students" : "Today's Absent & Late Students", list });
   }
 
-  const fmtNoticeDateTime = (n: any) => {
-    let s = "";
-    if (n.date) s = new Date(n.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    if (n.time) {
-      const [h, m] = String(n.time).split(":");
-      const hour = parseInt(h);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      s += ` - ${hour % 12 || 12}:${m} ${ampm}`;
-    }
-    return s;
-  };
   const schedStatus = (time: string) => {
     if (!time) return "upcoming";
     try {
@@ -908,50 +798,40 @@ export default function DashboardPage() {
           </ul>
         </div>
 
-        <div className="dash-card bottom-card-sm">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <h4>Notice Board</h4>
-            <button onClick={() => setNoticeModal(true)} style={{ background: "#3b82f6", color: "white", border: "none", width: 30, height: 30, borderRadius: 8, cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <i className="fa-solid fa-plus" style={{ fontSize: 14 }} />
-            </button>
+        <div className="dash-card bottom-card-lg">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
+            <h4 style={{ margin: 0 }}>Needs Attention</h4>
+            {needsAttention.length > 0 && (
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#dc2626", background: "rgba(220,38,38,0.12)", padding: "3px 9px", borderRadius: 20 }}>
+                {needsAttention.length} below {passing}%
+              </span>
+            )}
           </div>
-          <div style={{ maxHeight: 140, overflowY: "auto", width: "100%" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <tbody>
-                {notices.length === 0 ? (
-                  <tr><td colSpan={3} style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "20px 0" }}>No notices.</td></tr>
-                ) : (
-                  notices.map((n) => (
-                    <tr key={n.id}>
-                      <td className="notice-dot-cell"><div className={`notice-dot ${n.color}`} style={{ marginTop: 6 }} /></td>
-                      <td className="notice-main-cell">
-                        <div className="notice-text" style={{ marginBottom: 2 }}>{n.text}</div>
-                        <div className="notice-date">{fmtNoticeDateTime(n)}</div>
-                      </td>
-                      <td className="notice-action-cell"><button className="delete-btn" onClick={() => deleteNotice(n.id)}><i className="fa-solid fa-trash-can" /></button></td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="dash-card notes-card">
-          <h4 style={{ marginBottom: 15 }}>Quick Notes</h4>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
-            <input type="text" placeholder="Write a reminder..." value={noteInput} onChange={(e) => setNoteInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addNote()} style={{ flexGrow: 1, height: 35, padding: "0 10px", borderRadius: 8, outline: "none", fontSize: "0.9rem" }} />
-            <button onClick={addNote} style={{ cursor: "pointer", background: "#3b82f6", color: "white", border: "none", borderRadius: 8, width: 35, height: 35, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <i className="fa-solid fa-plus" style={{ fontSize: 14 }} />
-            </button>
-          </div>
-          <ul className="list-container" style={{ maxHeight: 120, overflowY: "auto" }}>
-            {notes.map((n) => (
-              <li className="item-row" key={n.id}>
-                <span style={{ fontSize: "0.9rem", color: "var(--text-dark)", overflowWrap: "break-word" }}>{n.content}</span>
-                <button className="delete-btn" onClick={() => deleteNote(n.id)}><i className="fa-solid fa-trash-can" /></button>
+          <ul className="list-container" style={{ maxHeight: 200, overflowY: "auto", padding: 0 }}>
+            {needsAttention.length === 0 ? (
+              <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 20 }}>
+                <i className="fa-solid fa-circle-check" style={{ color: "#16a34a", marginRight: 6 }} />
+                Everyone is passing — no one below {passing}%.
               </li>
-            ))}
+            ) : (
+              needsAttention.map((s, i) => (
+                <li className="item-row" key={i} style={{ padding: "7px 5px", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, flex: 1, minWidth: 0 }}>
+                    <span style={{ minWidth: 26, height: 26, borderRadius: "50%", background: "rgba(220,38,38,0.12)", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", flexShrink: 0 }}>
+                      <i className="fa-solid fa-triangle-exclamation" />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "0.87rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: 3 }}>{s.section}</div>
+                      <div style={{ height: 4, background: "var(--border-color)", borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.min(s.grade, 100)}%`, background: "#ef4444", borderRadius: 3 }} />
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontWeight: 800, fontSize: "0.93rem", color: "#dc2626", flexShrink: 0 }}>{s.grade}%</span>
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </div>
@@ -978,23 +858,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Notice modal */}
-      {noticeModal && (
-        <div className="modal-overlay" style={{ display: "flex" }}>
-          <div className="modal-content">
-            <h4 style={{ marginBottom: 15 }}>New Notice</h4>
-            <textarea placeholder="Notice Details (e.g. Faculty meeting - Friday 3:00 PM)" value={notice.text} onChange={(e) => setNotice({ ...notice, text: e.target.value })} style={{ width: "100%", padding: 10, marginBottom: 10, borderRadius: 6, outline: "none", resize: "vertical", minHeight: 80, fontFamily: "Inter, sans-serif" }} />
-            <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
-              <input type="date" value={notice.date} onChange={(e) => setNotice({ ...notice, date: e.target.value })} style={{ flex: 1, padding: 10, borderRadius: 6, outline: "none", fontFamily: "Inter, sans-serif" }} />
-              <input type="time" value={notice.time} onChange={(e) => setNotice({ ...notice, time: e.target.value })} style={{ flex: 1, padding: 10, borderRadius: 6, outline: "none", fontFamily: "Inter, sans-serif" }} />
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setNoticeModal(false)} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", cursor: "pointer", background: "#f1f5f9", color: "#333" }}>Cancel</button>
-              <button onClick={saveNotice} style={{ flex: 2, background: "#3b82f6", color: "white", padding: 10, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>Post Notice</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Attendance detail modal */}
       {attModal.open && (
