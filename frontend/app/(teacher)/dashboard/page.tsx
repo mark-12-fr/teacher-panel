@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
-import { apiDelete, apiGet, apiPost } from "@/lib/api";
-import { isOffline, runWhenOnline } from "@/lib/offline";
+import { apiGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
@@ -98,15 +97,13 @@ export default function DashboardPage() {
   const [passing, setPassing] = useState(75);
   const [top, setTop] = useState<TopStudent[]>([]);
   const [needsAttention, setNeedsAttention] = useState<TopStudent[]>([]);
-
-  const [schedules, setSchedules] = useState<any[]>([]);
+  const [sectionOverview, setSectionOverview] = useState<
+    { id: string; title: string; subject: string; students: number; avg: number | null; failing: number }[]
+  >([]);
 
   const [clock, setClock] = useState({ time: "", date: "" });
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [schedModal, setSchedModal] = useState(false);
-  const [sched, setSched] = useState({ subject: "", time: "", details: "" });
 
   const [attModal, setAttModal] = useState<{ open: boolean; title: string; list: any[] }>({ open: false, title: "", list: [] });
   const [secModal, setSecModal] = useState(false);
@@ -278,13 +275,29 @@ export default function DashboardPage() {
       // Students below the passing grade, lowest first — the "Needs Attention"
       // widget (allScores is a copy, so filter+sort doesn't disturb `top`).
       needsAttention: allScores.filter((s) => s.grade < dashPassing).sort((a, b) => a.grade - b.grade),
+      // Per-section roll-up for the "Sections at a Glance" widget: roster size,
+      // class average (of graded students) and how many are below passing.
+      sectionOverview: sections
+        .map((s: any) => {
+          const secScores = allScores.filter((a) => a.section === s.title);
+          const students = bulkStudents.filter((st: any) => String(st.section_id) === String(s.id)).length;
+          const avg = secScores.length
+            ? Math.round((secScores.reduce((x, y) => x + y.grade, 0) / secScores.length) * 100) / 100
+            : null;
+          return {
+            id: String(s.id),
+            title: s.title || "Section",
+            subject: s.subject || "",
+            students,
+            avg,
+            failing: secScores.filter((a) => a.grade < dashPassing).length,
+          };
+        })
+        .sort((a, b) => String(a.title).localeCompare(String(b.title))),
     };
   }, []);
 
-  const fetchSchedules = useCallback(async () => { try { return (await apiGet("/api/schedules")).schedules || []; } catch { return []; } }, []);
-
   const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 300000 });
-  const schedCache = useCachedData("dash_cache_sched", fetchSchedules, { ttl: 300000 });
 
   // Apply cached data to state
   useEffect(() => {
@@ -306,12 +319,8 @@ export default function DashboardPage() {
     setPassing(d.passing);
     setTop(d.top);
     setNeedsAttention(d.needsAttention || []);
+    setSectionOverview(d.sectionOverview || []);
   }, [statsCache.data]);
-
-  useEffect(() => {
-    if (!schedCache.data) return;
-    setSchedules(schedCache.data);
-  }, [schedCache.data]);
 
   // Only show error on full failure (no cached data at all)
   useEffect(() => {
@@ -559,80 +568,13 @@ export default function DashboardPage() {
 
   // ── Cache helpers (write-through to localStorage) ─────────────────────────
   // ── Optimistic CRUD handlers ──────────────────────────────────────────────
-  const tempId = () => "_opt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
-  async function saveSchedule() {
-    if (!sched.subject.trim() || !sched.time || !sched.details.trim()) return showToast("Please fill in all fields.", true);
-    const [h, m] = sched.time.split(":");
-    const hour = parseInt(h);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    const entry = { id: tempId(), subject: sched.subject.trim(), time: `${hour12}:${m} ${ampm}`, details: sched.details.trim() };
-    schedCache.abortInFlight();
-    setSchedules((prev) => [entry, ...prev]);
-    setSched({ subject: "", time: "", details: "" });
-    setSchedModal(false);
-    const payload = { subject: entry.subject, time: entry.time, details: entry.details };
-    try {
-      await apiPost("/api/schedules", payload);
-      schedCache.refresh();
-    } catch {
-      if (isOffline()) {
-        runWhenOnline("dash-sched-" + entry.id, () =>
-          apiPost("/api/schedules", payload).then(() => schedCache.refresh())
-        );
-        showToast("Offline — schedule will save when you reconnect.");
-      } else {
-        setSchedules((prev) => prev.filter((x) => x.id !== entry.id));
-        showToast("Failed to add schedule.", true);
-      }
-    }
-  }
-  async function deleteSchedule(id: string) {
-    const removed = schedules.find((x) => x.id === id);
-    schedCache.abortInFlight();
-    setSchedules((prev) => prev.filter((x) => x.id !== id));
-    try {
-      await apiDelete(`/api/schedules/${id}`);
-      schedCache.refresh();
-    } catch {
-      if (isOffline()) {
-        runWhenOnline("dash-sched-del-" + id, () =>
-          apiDelete(`/api/schedules/${id}`).then(() => schedCache.refresh())
-        );
-        showToast("Offline — schedule will be removed when you reconnect.");
-      } else {
-        if (removed) setSchedules((prev) => [removed, ...prev]);
-        showToast("Failed to delete schedule.", true);
-      }
-    }
-  }
   function showAttendanceDetails(type: "present" | "absent") {
     const list = todayAttRef.current
       .filter((r) => (type === "present" ? r.status === "Present" : r.status !== "Present"))
       .sort((a, b) => String(a.section).localeCompare(String(b.section)));
     setAttModal({ open: true, title: type === "present" ? "Today's Present Students" : "Today's Absent & Late Students", list });
   }
-
-  const schedStatus = (time: string) => {
-    if (!time) return "upcoming";
-    try {
-      const parts = time.trim().split(/\s+/);
-      const [hR, mR] = parts[0].split(":");
-      const ampm = (parts[1] || "AM").toUpperCase();
-      let h = parseInt(hR);
-      if (ampm === "PM" && h !== 12) h += 12;
-      if (ampm === "AM" && h === 12) h = 0;
-      const d = new Date();
-      d.setHours(h, parseInt(mR) || 0, 0, 0);
-      const now = Date.now();
-      if (now > d.getTime() + 3600000) return "past";
-      if (now >= d.getTime()) return "current";
-      return "upcoming";
-    } catch {
-      return "upcoming";
-    }
-  };
 
   const semLabel = activeSem === "1st Sem" ? "1st Semester" : activeSem === "2nd Sem" ? "2nd Semester" : "1st-2nd Semester";
   // The quarters the active semester actually covers — 1st Sem is Q1–Q2, 2nd Sem
@@ -733,31 +675,36 @@ export default function DashboardPage() {
         </div>
 
         <div className="dash-card side-list">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <h4>Today&apos;s Schedule</h4>
-            <button onClick={() => setSchedModal(true)} style={{ background: "#3b82f6", color: "white", border: "none", width: 30, height: 30, borderRadius: 8, cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <i className="fa-solid fa-plus" style={{ fontSize: 14 }} />
-            </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h4 style={{ margin: 0 }}>Sections at a Glance</h4>
+            <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)" }}>{sectionOverview.length} section{sectionOverview.length === 1 ? "" : "s"}</span>
           </div>
-          <ul className="list-container" style={{ maxHeight: 190, overflowY: "auto" }}>
-            {schedules.length === 0 ? (
-              <li className="empty-msg" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "20px 0" }}>No classes for today.</li>
+          <ul className="list-container" style={{ maxHeight: 230, overflowY: "auto", padding: 0 }}>
+            {sectionOverview.length === 0 ? (
+              <li className="empty-msg" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "20px 0" }}>No sections yet.</li>
             ) : (
-              schedules.map((s) => {
-                const status = schedStatus(s.time);
+              sectionOverview.map((s) => {
+                const avgClr = s.avg === null ? "var(--text-muted)" : s.avg >= passing ? "#16a34a" : "#dc2626";
                 return (
-                  <li className={`item-row${status === "current" ? " sched-now" : ""}`} key={s.id}>
+                  <li
+                    className="item-row"
+                    key={s.id}
+                    onClick={() => { window.location.href = `/class-record/${s.id}`; }}
+                    style={{ padding: "9px 6px", alignItems: "center", gap: 10, cursor: "pointer" }}
+                    title="Open this section's class record"
+                  >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
-                        <span style={{ color: status === "past" ? "var(--text-muted)" : "var(--text-dark)", fontSize: "0.88rem", fontWeight: status === "current" ? 700 : 600 }}>{s.subject}</span>
-                        {status === "current" && <span style={{ fontSize: "0.65rem", color: "#22c55e", fontWeight: 700, background: "rgba(34,197,94,0.12)", padding: "2px 7px", borderRadius: 4, marginLeft: 6 }}>NOW</span>}
+                      <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                        <span>{s.students} student{s.students === 1 ? "" : "s"}</span>
+                        {s.failing > 0 && <span style={{ color: "#dc2626", fontWeight: 600 }}>{s.failing} failing</span>}
                       </div>
-                      <small style={{ color: status === "past" ? "var(--text-muted)" : "var(--text-dark)", opacity: status === "past" ? 1 : 0.72, fontSize: "0.78rem" }}>
-                        {s.time}
-                        {s.details ? " · " + s.details : ""}
-                      </small>
                     </div>
-                    <i className="fa-solid fa-trash-can delete-btn" onClick={() => deleteSchedule(s.id)} />
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: "0.95rem", color: avgClr }}>{s.avg === null ? "—" : s.avg}</div>
+                      <div style={{ fontSize: "0.6rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>avg</div>
+                    </div>
+                    <i className="fa-solid fa-chevron-right" style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }} />
                   </li>
                 );
               })
@@ -842,21 +789,6 @@ export default function DashboardPage() {
         <span>{toast.msg}</span>
       </div>
 
-      {/* Schedule modal */}
-      {schedModal && (
-        <div className="modal-overlay" style={{ display: "flex" }}>
-          <div className="modal-content">
-            <h4 style={{ marginBottom: 15 }}>New Schedule</h4>
-            <input type="text" placeholder="Subject" value={sched.subject} onChange={(e) => setSched({ ...sched, subject: e.target.value })} style={{ width: "100%", padding: 10, marginBottom: 10, borderRadius: 6, outline: "none" }} />
-            <input type="time" value={sched.time} onChange={(e) => setSched({ ...sched, time: e.target.value })} style={{ width: "100%", padding: 10, marginBottom: 10, borderRadius: 6, outline: "none", fontFamily: "Inter, sans-serif" }} />
-            <input type="text" placeholder="Section & Room" value={sched.details} onChange={(e) => setSched({ ...sched, details: e.target.value })} style={{ width: "100%", padding: 10, marginBottom: 15, borderRadius: 6, outline: "none" }} />
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setSchedModal(false)} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", cursor: "pointer", background: "#f1f5f9", color: "#333" }}>Cancel</button>
-              <button onClick={saveSchedule} style={{ flex: 2, background: "#3b82f6", color: "white", padding: 10, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>Add Now</button>
-            </div>
-          </div>
-        </div>
-      )}
 
 
       {/* Attendance detail modal */}
