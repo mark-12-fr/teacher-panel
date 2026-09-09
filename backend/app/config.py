@@ -58,7 +58,7 @@ class Settings:
     GEMINI_MODEL: str = ""
     VAPID_PUBLIC_KEY: str = ""
     VAPID_PRIVATE_KEY: str = ""
-    VAPID_SUBJECT: str = "mailto:admin@acadtrack.app"
+    VAPID_SUBJECT: str = "mjrvertex@gmail.com"
     PUSH_WEBHOOK_SECRET: str = ""
 
     def __init__(self) -> None:
@@ -78,7 +78,7 @@ class Settings:
         self.GEMINI_MODEL = os.getenv("GEMINI_MODEL", "")
         self.VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
         self.VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
-        self.VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "mailto:admin@acadtrack.app")
+        self.VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "mjrvertex@gmail.com")
         self.PUSH_WEBHOOK_SECRET = os.getenv("PUSH_WEBHOOK_SECRET", "").strip()
 
 
