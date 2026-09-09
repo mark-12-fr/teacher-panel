@@ -166,6 +166,7 @@ export default function ClassRecordGridPage() {
   const [records, setRecords] = useState<Rec[]>([]);
   const recordsRef = useRef<Rec[]>([]);
   const [detailStudent, setDetailStudent] = useState<any>(null);
+  const [comingSoon, setComingSoon] = useState(false); // centered "report card coming soon" popup
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
 
@@ -869,8 +870,7 @@ export default function ClassRecordGridPage() {
         "Activities",
         "PERFORMANCE TASK",
         "ACHIEVEMENT TEST",
-        "PERIODICAL EXAM",
-        "Status"
+        "PERIODICAL EXAM"
       ]);
 
       // Helper: check if a value is filled
@@ -894,13 +894,9 @@ export default function ClassRecordGridPage() {
         const modulesStr = moduleList.join(", ");
         const activitiesStr = activityList.join(", ");
 
-        // Status: COMPLETE if all modules + activities + AT + QE are filled, else INCOMPLETE
-        const allModulesFilled = Array.from({ length: 15 }, (_, i) => isFilled(rec?.[`module_${i + 1}`])).every(Boolean);
-        const allActivitiesFilled = Array.from({ length: 10 }, (_, i) => isFilled(rec?.[`activity_${i + 1}`])).every(Boolean);
         const atFilled = isFilled(rec?.at);
         const qeFilled = isFilled(rec?.qe);
         const ptFilled = isFilled(rec?.pt_1) || isFilled(rec?.pt_2);
-        const status = (allModulesFilled && allActivitiesFilled && ptFilled && atFilled && qeFilled) ? "COMPLETE" : "INCOMPLETE";
 
         // Performance Task status
         const ptStatus = ptFilled ? "SUBMITTED" : "";
@@ -919,8 +915,7 @@ export default function ClassRecordGridPage() {
           activitiesStr,
           ptStatus,
           atStatus,
-          qeStatus,
-          status
+          qeStatus
         ];
         rows.push(row);
       });
@@ -971,6 +966,13 @@ export default function ClassRecordGridPage() {
 
   const exportBtn = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+      <button
+        className="export-btn"
+        onClick={() => setComingSoon(true)}
+        title="Coming soon"
+      >
+        <i className="fa-solid fa-id-card" /> Print Report Card
+      </button>
       <button className="export-btn" onClick={exportExcel}>
         <i className="fa-solid fa-file-excel" /> Export Excel
       </button>
@@ -1278,6 +1280,39 @@ export default function ClassRecordGridPage() {
           college={college}
           onClose={() => setDetailStudent(null)}
         />
+      )}
+
+      {comingSoon && (
+        <div className="grade-modal-overlay" onClick={() => setComingSoon(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--card-bg)",
+              color: "var(--text-dark)",
+              borderRadius: 16,
+              padding: "28px 26px",
+              maxWidth: 380,
+              width: "calc(100% - 40px)",
+              textAlign: "center",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <i className="fa-solid fa-id-card" style={{ fontSize: 34, color: "var(--accent-blue)", marginBottom: 14, display: "block" }} />
+            <h3 style={{ margin: "0 0 8px", fontSize: "1.15rem", fontWeight: 700 }}>Report Card</h3>
+            <p style={{ margin: "0 0 20px", fontSize: "0.92rem", color: "var(--text-muted)", lineHeight: 1.55 }}>
+              This feature is coming soon.
+            </p>
+            <button
+              onClick={() => setComingSoon(false)}
+              style={{
+                background: "var(--accent-blue)", color: "#fff", border: "none",
+                borderRadius: 9, padding: "10px 26px", fontWeight: 600, fontSize: "0.92rem", cursor: "pointer",
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
