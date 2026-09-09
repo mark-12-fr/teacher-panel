@@ -450,82 +450,35 @@
             grid-column: span 8;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(
-                135deg,
-                #04071a 0%,
-                #0c1445 25%,
-                #1a0b55 50%,
-                #0e1040 75%,
-                #04071a 100%
-            );
-            background-size: 400% 400%;
-            animation: gradientMove 18s ease infinite;
-            border-radius: 22px;
+            /* Calm, static deep gradient — no perpetual motion, no random
+               multi-hue sweep (that's the "gradient with nothing to say" tell). */
+            background: linear-gradient(135deg, #0b1030 0%, #161d4a 55%, #0b1030 100%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
             color: white;
-            padding: 35px;
+            padding: 32px 35px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow:
-                0 30px 60px -12px rgba(79, 70, 229, 0.45),
-                0 0 0 1px rgba(99, 102, 241, 0.18),
-                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.4);
             margin-bottom: 10px;
         }
 
-        /* Large indigo/violet orb — top right */
+        /* One quiet, STATIC accent glow (no drift animation, no second orb). */
         .div-banner::before {
             content: '';
             position: absolute;
-            width: 480px;
-            height: 480px;
+            width: 420px;
+            height: 420px;
             border-radius: 50%;
-            background: radial-gradient(circle,
-                rgba(99, 102, 241, 0.5)  0%,
-                rgba(139, 92, 246, 0.25) 40%,
-                transparent              70%);
-            top: -190px;
-            right: -70px;
-            animation: orb-drift 13s ease-in-out infinite;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.20) 0%, transparent 70%);
+            top: -210px;
+            right: -90px;
             pointer-events: none;
         }
 
-        /* Smaller cyan/blue orb — bottom centre-left */
-        .div-banner::after {
-            content: '';
-            position: absolute;
-            width: 320px;
-            height: 320px;
-            border-radius: 50%;
-            background: radial-gradient(circle,
-                rgba(56, 189, 248, 0.28)  0%,
-                rgba(59, 130, 246, 0.12)  40%,
-                transparent               70%);
-            bottom: -120px;
-            left: 28%;
-            animation: orb-drift-2 19s ease-in-out infinite;
-            pointer-events: none;
-        }
-
-        /* Subtle one-shot shine sweep */
-        .div-banner .banner-shine {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-            border-radius: inherit;
-        }
-        .div-banner .banner-shine::after {
-            content: '';
-            position: absolute;
-            top: 0; bottom: 0;
-            width: 60px;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(255, 255, 255, 0.06),
-                transparent);
-            animation: shine-slide 8s ease-in-out infinite 2s;
-        }
+        /* Drop the shine sweep — decorative motion reads as AI-made. */
+        .div-banner .banner-shine { display: none; }
 
         .welcome-text h2 {
             font-size: 1.6rem;
@@ -539,9 +492,10 @@
             background: var(--card-bg);
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 4px 6px -1px var(--shadow-color);
-            border: 2px solid transparent;
-            transition: background 0.3s, box-shadow 0.3s;
+            /* Grounded, not floating: a real hairline border + a soft, low shadow. */
+            box-shadow: 0 1px 2px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
         }
 
         .stat-card {
@@ -1018,17 +972,17 @@
             height: 3px;
             border-radius: 16px 16px 0 0;
         }
-        /* Every stat card wears the same blue accent. The four variant classes
-           stay (they still carry each card's own faint background tint and the
-           markup is unchanged) — only the top line is unified. */
+        /* One flat, disciplined accent line on every stat card — no per-card
+           gradient soup, no faint tinted backgrounds (that "four colors, four
+           numbers" look). The variant classes stay so the markup is unchanged. */
         .stat-card-blue::before,
         .stat-card-green::before,
         .stat-card-yellow::before,
-        .stat-card-purple::before { background: linear-gradient(90deg, #3b82f6, #6366f1); }
-        .stat-card-blue  { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(59,130,246,0.05) 100%); }
-        .stat-card-green { background: linear-gradient(160deg, var(--card-bg) 70%, rgba(34,197,94,0.05) 100%); }
-        .stat-card-yellow{ background: linear-gradient(160deg, var(--card-bg) 70%, rgba(245,158,11,0.05) 100%); }
-        .stat-card-purple{ background: linear-gradient(160deg, var(--card-bg) 70%, rgba(168,85,247,0.05) 100%); }
+        .stat-card-purple::before { background: var(--accent-blue); }
+        .stat-card-blue,
+        .stat-card-green,
+        .stat-card-yellow,
+        .stat-card-purple { background: var(--card-bg); }
 
         /* ── Attendance rate badge ── */
         .attend-rate {
