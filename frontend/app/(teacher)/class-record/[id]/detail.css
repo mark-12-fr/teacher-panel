@@ -535,6 +535,37 @@
             font-weight: 400;
         }
 
+        /* ── Column hover indicator ── */
+        .col-hover-indicator {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 260px;
+            right: 0;
+            z-index: 50;
+            background: var(--accent-blue);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 5px 16px;
+            text-align: center;
+            letter-spacing: 0.02em;
+            pointer-events: none;
+        }
+        .col-hover-indicator.group-modules    { background: #2563eb; }
+        .col-hover-indicator.group-activities { background: #16a34a; }
+        .col-hover-indicator.group-at         { background: #d97706; }
+        .col-hover-indicator.group-pt         { background: #ea580c; }
+        .col-hover-indicator.group-qe         { background: #9333ea; }
+        [data-theme="dark"] .col-hover-indicator.group-modules    { background: #3b82f6; }
+        [data-theme="dark"] .col-hover-indicator.group-activities { background: #22c55e; }
+        [data-theme="dark"] .col-hover-indicator.group-at         { background: #f59e0b; }
+        [data-theme="dark"] .col-hover-indicator.group-pt         { background: #f97316; }
+        [data-theme="dark"] .col-hover-indicator.group-qe         { background: #a855f7; }
+        @media (max-width: 768px) {
+            .col-hover-indicator { left: 0; }
+        }
+
         .q-activate-btn {
             background: #10b981;
             color: #fff;

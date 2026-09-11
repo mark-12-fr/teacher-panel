@@ -460,6 +460,51 @@ export default function ClassRecordGridPage() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // Column hover indicator — show module/activity group name when hovering score cells
+  useEffect(() => {
+    const table = document.getElementById("recordTable");
+    const indicator = document.getElementById("colHoverIndicator");
+    if (!table || !indicator) return;
+
+    function fieldToLabel(field: string): { text: string; group: string } | null {
+      const m = field.match(/^module_(\d+)$/);
+      if (m) return { text: `Module ${m[1]}`, group: "group-modules" };
+      const a = field.match(/^activity_(\d+)$/);
+      if (a) return { text: `Activity ${a[1]}`, group: "group-activities" };
+      if (field === "at")   return { text: "AT",   group: "group-at" };
+      if (field === "pt_1") return { text: "PT 1", group: "group-pt" };
+      if (field === "pt_2") return { text: "PT 2", group: "group-pt" };
+      if (field === "qe")   return { text: "QE",   group: "group-qe" };
+      return null;
+    }
+
+    function onOver(e: MouseEvent) {
+      if (!indicator) return;
+      const td = (e.target as HTMLElement).closest?.("td[data-field]") as HTMLElement | null;
+      if (!td) return;
+      const info = fieldToLabel(td.dataset.field || "");
+      if (!info) return;
+      indicator.textContent = info.text;
+      indicator.className = "col-hover-indicator " + info.group;
+      indicator.style.display = "block";
+    }
+
+    function onOut(e: MouseEvent) {
+      if (!indicator || !table) return;
+      const related = e.relatedTarget as HTMLElement | null;
+      if (related && table.contains(related)) return;
+      indicator.style.display = "none";
+      indicator.className = "col-hover-indicator";
+    }
+
+    table.addEventListener("mouseover", onOver);
+    table.addEventListener("mouseout", onOut);
+    return () => {
+      table.removeEventListener("mouseover", onOver);
+      table.removeEventListener("mouseout", onOut);
+    };
+  }, []);
+
   const quarterLocked = String(viewQuarter) !== String(currentQuarter);
   const semesterLocked = viewSemester !== currentSemester;
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
@@ -1265,6 +1310,8 @@ export default function ClassRecordGridPage() {
           </table>
         </div>
       </div>
+
+      <div id="colHoverIndicator" className="col-hover-indicator" />
 
       <div className={`toast-notification ${toast.err ? "error" : ""} ${toast.show ? "show" : ""}`}>
         <i className={`fa-solid ${toast.err ? "fa-circle-exclamation" : "fa-circle-check"}`} />
