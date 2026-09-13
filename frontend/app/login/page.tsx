@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase";
 import { clearUserCache } from "@/hooks/useAuth";
 import HCaptchaBox from "@/components/HCaptchaBox";
 import "./login.css";
@@ -120,28 +120,96 @@ export default function LoginPage() {
     if (rememberMe) localStorage.setItem("remembered_email", email.trim());
     else localStorage.removeItem("remembered_email");
 
-    const { data, error } = await sb.auth.signInWithPassword({
-      email: email.trim(),
-      password: password.trim(),
-      options: captchaToken ? { captchaToken } : undefined,
-    });
-    if (error) {
-      showToast("Incorrect email or password. Please try again.", "error");
-      setLoginBtn("idle");
-      resetCaptcha(); // hCaptcha tokens are single-use — clear it for the retry
-    } else {
-      // Switching to a different account? Drop the previous user's cached
-      // identity and chat so it can't be shown for this one.
-      if (data.user && localStorage.getItem("cached_user_id") !== data.user.id) {
-        clearUserCache();
-      }
-      // Keep the legacy keys the old app used (some shared scripts read them).
-      localStorage.removeItem("faci_id");
-      if (data.session) localStorage.setItem("access_token", data.session.access_token);
-      if (data.user) localStorage.setItem("user_id", data.user.id);
+    const em = email.trim();
+    const pw = password.trim();
+
+    // Shared success finaliser (same for the edge-function path and the fallback).
+    const finish = async (userId: string | null) => {
+      // Switching accounts? Drop the previous user's cached identity/chat.
+      if (userId && localStorage.getItem("cached_user_id") !== userId) clearUserCache();
+      localStorage.removeItem("faci_id"); // legacy key some shared scripts read
+      const { data: sess } = await sb.auth.getSession();
+      if (sess.session) localStorage.setItem("access_token", sess.session.access_token);
+      if (userId) localStorage.setItem("user_id", userId);
       showToast("Login successful. Redirecting...");
       setLoginBtn("done");
       setTimeout(() => (window.location.href = "/dashboard"), 1000);
+    };
+
+    // Fallback: direct Supabase Auth. Used ONLY if the lockout function can't be
+    // reached, so a network hiccup can never lock the teacher out of their account.
+    const directAuth = async () => {
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: em,
+        password: pw,
+        options: captchaToken ? { captchaToken } : undefined,
+      });
+      if (error) {
+        showToast("Incorrect email or password. Please try again.", "error");
+        setLoginBtn("idle");
+        resetCaptcha();
+      } else {
+        await finish(data.user ? data.user.id : null);
+      }
+    };
+
+    // Primary: server-side login WITH brute-force lockout (teacher-login edge
+    // function). After 3 wrong attempts the account is locked for 5 minutes.
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
+      let res: Response;
+      try {
+        res = await fetch(`${SUPABASE_URL}/functions/v1/teacher-login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ email: em, password: pw, captchaToken: captchaToken || undefined }),
+          signal: ctrl.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
+      const result: { access_token?: string; refresh_token?: string; user?: { id?: string }; remaining?: number } =
+        await res.json().catch(() => ({}));
+
+      if (res.ok && result.access_token && result.refresh_token) {
+        const { error: setErr } = await sb.auth.setSession({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+        });
+        if (setErr) {
+          await directAuth(); // session install hiccup → fall back
+          return;
+        }
+        await finish(result.user && result.user.id ? result.user.id : null);
+      } else if (res.status === 429) {
+        showToast(
+          "For your security, your account is temporarily locked after several incorrect attempts. Please try again after 5 minutes.",
+          "error",
+        );
+        setLoginBtn("idle");
+        resetCaptcha();
+      } else if (res.status === 401) {
+        let msg = "Incorrect email or password. Please try again.";
+        if (typeof result.remaining === "number") {
+          const tries = result.remaining === 1 ? "1 attempt" : `${result.remaining} attempts`;
+          msg = `Incorrect email or password. You have ${tries} left before your account is locked.`;
+        }
+        showToast(msg, "error");
+        setLoginBtn("idle");
+        resetCaptcha();
+      } else {
+        // 5xx / couldn't reach the auth service → fall back to direct sign-in
+        await directAuth();
+      }
+    } catch {
+      // network error / abort → fall back to direct sign-in
+      await directAuth();
     }
   }
 
