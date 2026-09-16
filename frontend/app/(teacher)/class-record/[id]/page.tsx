@@ -214,16 +214,22 @@ export default function ClassRecordGridPage() {
   };
   const sectionModuleDflt = Math.min(Math.max(Math.round(Number(section?.module_count) || 15), 1), MODULE_MAX);
   const sectionActivityDflt = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
-  const moduleCount = countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX);
-  const activityCount = countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX);
   // Modules: the 2nd quarter of a semester continues the 1st's numbering (Q2
   // after Q1, Q4 after Q3); it resets each semester, and College terms don't
-  // continue. Activities restart at 1 every quarter (no carry-over from the
-  // 1st quarter), at the teacher's request.
+  // continue. Activities restart at 1 every quarter (no carry-over).
   const isSecondQ = !college && (String(viewQuarter) === "2" || String(viewQuarter) === "4");
   const firstQofSem = String(viewQuarter) === "4" ? "3" : "1";
   const moduleOffset = isSecondQ ? countFor(section?.module_counts, firstQofSem, sectionModuleDflt, MODULE_MAX) : 0;
   const activityOffset = 0;
+  // Per-quarter effective caps (at the teacher's request): in the 2nd quarter the
+  // Module numbering continues from Q1 and must not run past MODULE_MAX (25), so
+  // the count is limited to the module slots still left below 25; Activities
+  // (which restart at 1) show at most 5 in the 2nd quarter.
+  const SECOND_Q_ACTIVITY_MAX = 5;
+  const moduleMaxForQ = isSecondQ ? Math.max(0, MODULE_MAX - moduleOffset) : MODULE_MAX;
+  const activityMaxForQ = isSecondQ ? SECOND_Q_ACTIVITY_MAX : ACTIVITY_MAX;
+  const moduleCount = Math.min(countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX), moduleMaxForQ);
+  const activityCount = Math.min(countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX), activityMaxForQ);
   const MODULES = useMemo(() => Array.from({ length: moduleCount }, (_, i) => `module_${i + 1}`), [moduleCount]);
   const ACTIVITIES = useMemo(() => Array.from({ length: activityCount }, (_, i) => `activity_${i + 1}`), [activityCount]);
   const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL], [MODULES, ACTIVITIES]);
@@ -240,7 +246,7 @@ export default function ClassRecordGridPage() {
   async function changeCount(kind: "module" | "activity", delta: number) {
     if (countBusy) return;
     const cur = kind === "module" ? moduleCount : activityCount;
-    const max = kind === "module" ? MODULE_MAX : ACTIVITY_MAX;
+    const max = kind === "module" ? moduleMaxForQ : activityMaxForQ;
     const next = Math.min(Math.max(cur + delta, 1), max);
     if (next === cur) return;
     // Store the change against the VIEWED quarter (its own override).
