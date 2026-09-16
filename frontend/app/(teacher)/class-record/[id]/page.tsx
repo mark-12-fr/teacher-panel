@@ -1189,7 +1189,7 @@ export default function ClassRecordGridPage() {
               </span>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", cursor: "pointer" }}>
                 <input type="checkbox" checked={applyAllQ} onChange={(e) => setApplyAllQ(e.target.checked)} style={{ cursor: "pointer" }} />
-                Apply to all my {college ? "College" : "Junior/Senior High"} sections
+                All sections
               </label>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
                 {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
@@ -1216,7 +1216,7 @@ export default function ClassRecordGridPage() {
               </span>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", cursor: "pointer" }}>
                 <input type="checkbox" checked={applyAllS} onChange={(e) => setApplyAllS(e.target.checked)} style={{ cursor: "pointer" }} />
-                Apply to ALL my sections
+                All sections
               </label>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingS} onClick={activateSemester}>
                 {activatingS ? "Saving..." : `Activate ${viewSemester}`}
