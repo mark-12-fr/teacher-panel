@@ -48,6 +48,43 @@ interface TopStudent {
   grade: number;
 }
 
+// One facilitator's snapshot for the dashboard "Facilitators" card: whether
+// they're active, and whether they've finished encoding this quarter's scores
+// and today's attendance for their section.
+interface FaciStatus {
+  id: string;
+  name: string;
+  section: string;
+  subject: string;
+  lastLogin: string | null;
+  hasSection: boolean;
+  total: number;
+  graded: number;
+  ungraded: number;
+  scoresComplete: boolean;
+  attendanceTaken: boolean;
+  needsAttention: boolean;
+}
+
+// Relative "last seen" from a facilitator's last_login — mirrors the
+// Facilitators page: active when seen within the last 3 minutes.
+function getLastSeenText(lastLogin?: string | null): { text: string; isActive: boolean } {
+  if (!lastLogin) return { text: "Never logged in", isActive: false };
+  let raw = String(lastLogin).trim().replace(" ", "T");
+  if (!/(z|[+-]\d{2}:?\d{2})$/i.test(raw)) raw += "Z";
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return { text: "Unknown", isActive: false };
+  const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
+  const isActive = diffMin < 3;
+  let text: string;
+  if (diffMin < 1) text = "Active now";
+  else if (diffMin < 60) text = `${diffMin} min ago`;
+  else if (diffMin < 1440) text = `${Math.floor(diffMin / 60)}h ago`;
+  else if (diffMin < 2880) text = "Yesterday";
+  else text = `${Math.floor(diffMin / 1440)} days ago`;
+  return { text, isActive };
+}
+
 const cardsInit = { sections: 0, students: 0, present: 0, absent: 0 };
 
 function useGreeting() {
@@ -100,7 +137,7 @@ export default function DashboardPage() {
   const [activeSem, setActiveSem] = useState("both");
   const [passing, setPassing] = useState(75);
   const [top, setTop] = useState<TopStudent[]>([]);
-  const [needsAttention, setNeedsAttention] = useState<TopStudent[]>([]);
+  const [facilitatorStatus, setFacilitatorStatus] = useState<FaciStatus[]>([]);
   const [sectionOverview, setSectionOverview] = useState<
     { id: string; title: string; subject: string; students: number; avg: number | null; failing: number }[]
   >([]);
@@ -155,7 +192,12 @@ export default function DashboardPage() {
     let bulkStudents: any[] = [];
     let bulkRecords: any[] = [];
     let bulkAttToday: any[] = [];
+    let facilitators: any[] = [];
     const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
+    // The facilitator roster isn't part of dashboard-bulk; fetch it alongside
+    // (in parallel) for the "Facilitators" card. Its failure is non-fatal — the
+    // rest of the dashboard still renders.
+    const faciPromise = apiGet(`/api/facilitators`).catch(() => ({ facilitators: [] }));
     try {
       // One request instead of the old 1 (sections) + 1 (subjects) + 3 PER
       // SECTION (students/attendance/records) fan-out — the backend already
@@ -170,6 +212,11 @@ export default function DashboardPage() {
     } catch {
       throw new Error("Failed to fetch dashboard data");
     }
+    try {
+      facilitators = (await faciPromise).facilitators || [];
+    } catch {
+      facilitators = [];
+    }
 
     let totalStudents = 0;
     let present = 0;
@@ -180,6 +227,12 @@ export default function DashboardPage() {
     // lowest preview) and the click-the-dot "all students" modal.
     const qStudents: Record<string, any[]> = { "1": [], "2": [], "3": [], "4": [] };
     const allScores: TopStudent[] = [];
+    // Per-section encoding snapshot (keyed by section title, which is how a
+    // facilitator row references its section): roster size, how many students
+    // have this active quarter's scores in, and whether attendance was taken
+    // today. Feeds the "Facilitators" card below.
+    const sectionStatus: Record<string, { total: number; graded: number; attToday: number }> = {};
+    let facilitatorStatus: FaciStatus[] = [];
 
     try {
       // Regroup the bulk (all-sections) arrays back into the same per-section
@@ -214,6 +267,7 @@ export default function DashboardPage() {
         // The section's *active* quarter (Q1–Q4, college terms mapped by
         // normalizeQtr). Rankings below read only this quarter's row.
         const activeQtr = normalizeQtr(s.quarter);
+        let sectionGraded = 0; // students with this quarter's scores in
 
         students.forEach((student: any) => {
           const studentRecords = records
@@ -242,9 +296,53 @@ export default function DashboardPage() {
           const activeRow = studentRecords.find((r: any) => normalizeQtr(r.quarter) === activeQtr);
           if (activeRow && rowHasScore(activeRow)) {
             allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(activeRow, s.subject) });
+            sectionGraded++;
           }
         });
+
+        sectionStatus[String(s.title)] = { total: students.length, graded: sectionGraded, attToday: attendance.length };
       });
+
+      // Build the "Facilitators" card: for each facilitator, is she active, and
+      // has she finished this quarter's scores + today's attendance for her
+      // section? Both completion states show as per-row chips; the attention
+      // flag itself is driven by activity + grades (see needsAttention below).
+      facilitatorStatus = facilitators
+        .map((f: any) => {
+          const seen = getLastSeenText(f.last_login);
+          const st = sectionStatus[String(f.section)];
+          const hasSection = !!st;
+          const total = hasSection ? st.total : 0;
+          const graded = hasSection ? st.graded : 0;
+          const ungraded = Math.max(0, total - graded);
+          const scoresComplete = hasSection && total > 0 && ungraded === 0;
+          const attendanceTaken = hasSection && st.attToday > 0;
+          const scoresPending = hasSection && total > 0 && ungraded > 0;
+          // "Needs attention" = inactive, no assigned section, or students still
+          // ungraded this quarter. Attendance completion is shown per-row (chip)
+          // but doesn't flag here, so no-class days don't mark everyone.
+          const needsAttention = !seen.isActive || !hasSection || scoresPending;
+          return {
+            id: String(f.id),
+            name: f.full_name || "Facilitator",
+            section: f.section || "—",
+            subject: f.subject || "",
+            lastLogin: f.last_login ?? null,
+            hasSection,
+            total,
+            graded,
+            ungraded,
+            scoresComplete,
+            attendanceTaken,
+            needsAttention,
+          };
+        })
+        // Facilitators needing attention first, then by name.
+        .sort((a, b) =>
+          a.needsAttention !== b.needsAttention
+            ? a.needsAttention ? -1 : 1
+            : String(a.name).localeCompare(String(b.name)),
+        );
     } catch {
       // Per-section data failures are non-fatal
     }
@@ -292,9 +390,10 @@ export default function DashboardPage() {
       activeSem: sem,
       passing: dashPassing,
       top: allScores.slice(0, 5),
-      // Students below the passing grade, lowest first — the "Needs Attention"
-      // widget (allScores is a copy, so filter+sort doesn't disturb `top`).
-      needsAttention: allScores.filter((s) => s.grade < dashPassing).sort((a, b) => a.grade - b.grade),
+      // Per-facilitator encoding + activity status for the "Facilitators" card
+      // (replaces the old student "Needs Attention" list, at the teacher's
+      // request). Failing students still surface via the pie's failing counts.
+      facilitatorStatus,
       // Per-section roll-up for the "Sections at a Glance" widget: roster size,
       // class average (of graded students) and how many are below passing.
       sectionOverview: sections
@@ -338,7 +437,7 @@ export default function DashboardPage() {
     setActiveSem(d.activeSem);
     setPassing(d.passing);
     setTop(d.top);
-    setNeedsAttention(d.needsAttention || []);
+    setFacilitatorStatus(d.facilitatorStatus || []);
     setSectionOverview(d.sectionOverview || []);
   }, [statsCache.data]);
 
@@ -372,6 +471,9 @@ export default function DashboardPage() {
           .on("postgres_changes", { event: "*", schema: "public", table: "students" }, refresh)
           .on("postgres_changes", { event: "*", schema: "public", table: "class_records" }, refresh)
           .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, (p: any) => {
+            if (String((p.new || p.old)?.teacher_id) === String(uid)) refresh();
+          })
+          .on("postgres_changes", { event: "*", schema: "public", table: "facilitators" }, (p: any) => {
             if (String((p.new || p.old)?.teacher_id) === String(uid)) refresh();
           })
           .subscribe();
@@ -710,6 +812,7 @@ export default function DashboardPage() {
   const firstLoad = statsCache.loading && !statsCache.data;
   // Sections with a roster are the ones the doughnut can actually slice.
   const pieSections = sectionOverview.filter((s) => s.students > 0);
+  const faciNeedsAttention = facilitatorStatus.filter((f) => f.needsAttention).length;
 
   return (
     <>
@@ -882,37 +985,75 @@ export default function DashboardPage() {
 
         <div className="dash-card bottom-card-lg">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
-            <h4 style={{ margin: 0 }}>Needs Attention</h4>
-            {needsAttention.length > 0 && (
-              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#dc2626", background: "rgba(220,38,38,0.12)", padding: "3px 9px", borderRadius: 20 }}>
-                {needsAttention.length} below {passing}%
-              </span>
-            )}
+            <h4 style={{ margin: 0 }}>Facilitators</h4>
+            {facilitatorStatus.length > 0 &&
+              (faciNeedsAttention > 0 ? (
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#d97706", background: "rgba(217,119,6,0.14)", padding: "3px 9px", borderRadius: 20 }}>
+                  {faciNeedsAttention} need{faciNeedsAttention === 1 ? "s" : ""} attention
+                </span>
+              ) : (
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#16a34a", background: "rgba(22,163,74,0.12)", padding: "3px 9px", borderRadius: 20 }}>
+                  <i className="fa-solid fa-circle-check" style={{ marginRight: 5 }} />All caught up
+                </span>
+              ))}
           </div>
-          <ul className="list-container" style={{ maxHeight: 200, overflowY: "auto", padding: 0 }}>
-            {needsAttention.length === 0 ? (
+          <ul className="list-container" style={{ maxHeight: 210, overflowY: "auto", padding: 0 }}>
+            {facilitatorStatus.length === 0 ? (
               <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 20 }}>
-                <i className="fa-solid fa-circle-check" style={{ color: "#16a34a", marginRight: 6 }} />
-                Everyone is passing — no one below {passing}%.
+                No facilitators yet.
               </li>
             ) : (
-              needsAttention.map((s, i) => (
-                <li className="item-row" key={i} style={{ padding: "7px 5px", alignItems: "center", gap: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, flex: 1, minWidth: 0 }}>
-                    <span style={{ minWidth: 26, height: 26, borderRadius: "50%", background: "rgba(220,38,38,0.12)", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", flexShrink: 0 }}>
-                      <i className="fa-solid fa-triangle-exclamation" />
-                    </span>
+              facilitatorStatus.map((f) => {
+                const seen = getLastSeenText(f.lastLogin);
+                const chip = (label: string, tone: "ok" | "warn" | "muted") => {
+                  const c =
+                    tone === "ok"
+                      ? { fg: "#16a34a", bg: "rgba(22,163,74,0.12)" }
+                      : tone === "warn"
+                      ? { fg: "#d97706", bg: "rgba(217,119,6,0.14)" }
+                      : { fg: "var(--text-muted)", bg: "var(--hover-bg)" };
+                  return (
+                    <span style={{ fontSize: "0.67rem", fontWeight: 700, color: c.fg, background: c.bg, padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{label}</span>
+                  );
+                };
+                const scoresChip = !f.hasSection
+                  ? chip("No section", "muted")
+                  : f.total === 0
+                  ? chip("No students", "muted")
+                  : f.scoresComplete
+                  ? chip("✓ Scores", "ok")
+                  : chip(`Scores ${f.graded}/${f.total}`, "warn");
+                const attnChip =
+                  !f.hasSection || f.total === 0
+                    ? null
+                    : f.attendanceTaken
+                    ? chip("✓ Attendance", "ok")
+                    : chip("Attendance —", "warn");
+                return (
+                  <li
+                    className="item-row"
+                    key={f.id}
+                    onClick={() => { window.location.href = "/facilitators"; }}
+                    title="Open the Facilitators page"
+                    style={{ padding: "8px 5px", alignItems: "center", gap: 10, cursor: "pointer" }}
+                  >
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: seen.isActive ? "#22c55e" : "#9ca3af", flexShrink: 0 }} title={seen.isActive ? "Active" : "Inactive"} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "0.87rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
-                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: 3 }}>{s.section}</div>
-                      <div style={{ height: 4, background: "var(--border-color)", borderRadius: 3, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${Math.min(s.grade, 100)}%`, background: "#ef4444", borderRadius: 3 }} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                        <span style={{ fontSize: "0.87rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                        <span style={{ fontSize: "0.68rem", color: seen.isActive ? "#16a34a" : "var(--text-muted)", fontWeight: seen.isActive ? 700 : 500, flexShrink: 0, whiteSpace: "nowrap" }}>{seen.text}</span>
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 5 }}>
+                        {f.section}{f.subject ? ` · ${f.subject}` : ""}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {scoresChip}
+                        {attnChip}
                       </div>
                     </div>
-                  </div>
-                  <span style={{ fontWeight: 800, fontSize: "0.93rem", color: "#dc2626", flexShrink: 0 }}>{s.grade}%</span>
-                </li>
-              ))
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>
