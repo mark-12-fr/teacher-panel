@@ -42,6 +42,8 @@ export default function SectionDetailPage() {
   const [viewSemester, setViewSemester] = useState("1st Sem");
   const [activatingQ, setActivatingQ] = useState(false);
   const [activatingS, setActivatingS] = useState(false);
+  const [applyAllQ, setApplyAllQ] = useState(false);
+  const [applyAllS, setApplyAllS] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState("");
@@ -123,18 +125,29 @@ export default function SectionDetailPage() {
   const qLabel = (q: string) => (isCollege ? q : `Q${q}`);
 
   async function activateQuarter() {
-    if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
+    const bulk = applyAllQ;
+    const scopeLabel = isCollege ? "College" : "Junior/Senior High";
+    const confirmMsg = bulk
+      ? `Apply ${qLabel(viewQuarter)} to ALL your ${scopeLabel} sections? Past records stay saved.`
+      : `Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`;
+    if (quarterLocked && !window.confirm(confirmMsg)) return;
     setActivatingQ(true);
     const payload = { quarter: viewQuarter };
+    const path = bulk ? `/api/sections/${sectionId}/activate-bulk` : `/api/sections/${sectionId}`;
     try {
-      await apiPatch(`/api/sections/${sectionId}`, payload);
-      invalidateCached(`sec_${sectionId}`);
+      const res = await apiPatch<{ updated?: number }>(path, payload);
+      invalidateCached(bulk ? undefined : `sec_${sectionId}`);
       setCurrentQuarter(viewQuarter);
-      showToast(`Section updated to ${qLabel(viewQuarter)}!`);
+      setApplyAllQ(false);
+      showToast(
+        bulk
+          ? `Applied ${qLabel(viewQuarter)} to ${res.updated ?? 0} ${scopeLabel} section(s)!`
+          : `Section updated to ${qLabel(viewQuarter)}!`
+      );
     } catch {
       if (isOffline()) {
-        runWhenOnline("section-quarter-" + sectionId, () =>
-          apiPatch(`/api/sections/${sectionId}`, payload).then(() => invalidateCached(`sec_${sectionId}`))
+        runWhenOnline("section-quarter-" + sectionId + (bulk ? "-bulk" : ""), () =>
+          apiPatch(path, payload).then(() => invalidateCached(bulk ? undefined : `sec_${sectionId}`))
         );
         showToast("Offline — quarter change will sync when you reconnect.");
       } else {
@@ -146,21 +159,34 @@ export default function SectionDetailPage() {
   }
 
   async function activateSemester() {
+    const bulk = applyAllS;
     const newQuarter = viewSemester === "1st Sem" ? (isCollege ? "Prelim" : "1") : isCollege ? "Prelim" : "3";
-    if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
+    const confirmMsg = bulk
+      ? `Switch ALL your sections to ${viewSemester}? Each section's quarter resets to its own starting quarter. Past records stay saved.`
+      : `Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`;
+    if (semesterLocked && !window.confirm(confirmMsg)) return;
     setActivatingS(true);
-    const payload = { semester: viewSemester, quarter: newQuarter };
+    // The bulk endpoint recomputes each section's own starting quarter server-side
+    // (a College section resets to "Prelim" regardless of this section's type), so
+    // only the single-section path needs to send the pre-computed quarter here.
+    const payload = bulk ? { semester: viewSemester } : { semester: viewSemester, quarter: newQuarter };
+    const path = bulk ? `/api/sections/${sectionId}/activate-bulk` : `/api/sections/${sectionId}`;
     try {
-      await apiPatch(`/api/sections/${sectionId}`, payload);
-      invalidateCached(`sec_${sectionId}`);
+      const res = await apiPatch<{ updated?: number }>(path, payload);
+      invalidateCached(bulk ? undefined : `sec_${sectionId}`);
       setCurrentSemester(viewSemester);
       setCurrentQuarter(newQuarter);
       setViewQuarter(newQuarter);
-      showToast(`Section updated to ${viewSemester}!`);
+      setApplyAllS(false);
+      showToast(
+        bulk
+          ? `Applied ${viewSemester} to ${res.updated ?? 0} section(s)!`
+          : `Section updated to ${viewSemester}!`
+      );
     } catch {
       if (isOffline()) {
-        runWhenOnline("section-semester-" + sectionId, () =>
-          apiPatch(`/api/sections/${sectionId}`, payload).then(() => invalidateCached(`sec_${sectionId}`))
+        runWhenOnline("section-semester-" + sectionId + (bulk ? "-bulk" : ""), () =>
+          apiPatch(path, payload).then(() => invalidateCached(bulk ? undefined : `sec_${sectionId}`))
         );
         showToast("Offline — semester change will sync when you reconnect.");
       } else {
@@ -284,6 +310,10 @@ export default function SectionDetailPage() {
             <span className="lock-banner" style={{ display: "inline-flex" }}>
               <i className="fa-solid fa-lock" /> {qLabel(viewQuarter)} is not yet active.
             </span>
+            <label className="bulk-apply-check">
+              <input type="checkbox" checked={applyAllQ} onChange={(e) => setApplyAllQ(e.target.checked)} />
+              Apply to all my {isCollege ? "College" : "Junior/Senior High"} sections
+            </label>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
               {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
             </button>
@@ -307,6 +337,10 @@ export default function SectionDetailPage() {
             <span className="lock-banner" style={{ display: "inline-flex" }}>
               <i className="fa-solid fa-lock" /> {viewSemester} is not yet active.
             </span>
+            <label className="bulk-apply-check">
+              <input type="checkbox" checked={applyAllS} onChange={(e) => setApplyAllS(e.target.checked)} />
+              Apply to ALL my sections
+            </label>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingS} onClick={activateSemester}>
               {activatingS ? "Saving..." : `Activate ${viewSemester}`}
             </button>
