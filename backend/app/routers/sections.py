@@ -13,7 +13,6 @@ from ..database import get_db
 from ..deps import own_section
 from ..models import Attendance, ClassRecord, Section, Student
 from ..schemas import (
-    SectionActivateBulkIn,
     SectionIn,
     SectionUpdate,
     StudentIn,
@@ -156,58 +155,6 @@ async def update_section(
     await cache_invalidate(f"tp:{teacher.id}:school_year*")
     await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
     return {"section": orm_to_dict(section)}
-
-
-@router.patch("/sections/{section_id}/activate-bulk")
-async def activate_bulk(
-    section_id: str,
-    body: SectionActivateBulkIn,
-    teacher: CurrentTeacher = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db),
-):
-    """Activate a quarter or semester across ALL of the teacher's sections at
-    once (the "Apply to all sections" checkbox next to Activate), instead of
-    opening every section one at a time.
-
-    - Semester is universal (every school level uses "1st Sem"/"2nd Sem"), so
-      it's applied to every section. Each section's quarter resets to ITS OWN
-      school-level's starting quarter for that semester — not copied from the
-      section that triggered the bulk action — mirroring the single-section
-      activateSemester() logic per section.
-    - A bare quarter ("1".."4" for JHS/SHS vs "Prelim"/"Midterm"/"Final" for
-      College) only makes sense within one quarter system, so it's applied
-      only to sections that share the triggering section's school-level type
-      (College vs non-College).
-    """
-    source = await own_section(db, teacher, section_id)
-    if not body.semester and not body.quarter:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to activate.")
-
-    sections = (
-        await db.execute(select(Section).where(Section.teacher_id == UUID(teacher.id)))
-    ).scalars().all()
-
-    updated = 0
-    if body.semester:
-        for sec in sections:
-            sec.semester = body.semester
-            is_college = sec.school_level == "College"
-            sec.quarter = "Prelim" if is_college else ("1" if body.semester == "1st Sem" else "3")
-            updated += 1
-    else:
-        source_is_college = source.school_level == "College"
-        for sec in sections:
-            if (sec.school_level == "College") != source_is_college:
-                continue
-            sec.quarter = body.quarter
-            updated += 1
-
-    await db.commit()
-    await cache_invalidate(f"tp:{teacher.id}:sections:*")
-    await cache_invalidate(f"tp:{teacher.id}:section:*")
-    await cache_invalidate(f"tp:{teacher.id}:school_year*")
-    await cache_invalidate(f"tp:{teacher.id}:dashboard_bulk:*")
-    return {"updated": updated}
 
 
 @router.delete("/sections/{section_id}")

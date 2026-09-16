@@ -40,14 +40,6 @@ class SectionUpdate(BaseModel):
         extra = "ignore"
 
 
-class SectionActivateBulkIn(BaseModel):
-    """Activate a quarter or semester across every section the teacher owns,
-    instead of one section at a time. Exactly one of the two is expected per
-    call (mirrors the two single-section activate actions on the frontend)."""
-    semester: Optional[str] = None
-    quarter: Optional[str] = None
-
-
 # ── Students ────────────────────────────────────────────────────────────────
 class StudentIn(BaseModel):
     full_name: str

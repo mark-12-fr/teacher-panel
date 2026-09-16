@@ -125,29 +125,46 @@ export default function SectionDetailPage() {
   const qLabel = (q: string) => (isCollege ? q : `Q${q}`);
 
   async function activateQuarter() {
-    const bulk = applyAllQ;
     const scopeLabel = isCollege ? "College" : "Junior/Senior High";
-    const confirmMsg = bulk
-      ? `Apply ${qLabel(viewQuarter)} to ALL your ${scopeLabel} sections? Past records stay saved.`
-      : `Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`;
-    if (quarterLocked && !window.confirm(confirmMsg)) return;
+
+    // Apply to ALL sections: fetch the teacher's sections and update each one
+    // through the existing single-section endpoint (no dependency on a separate
+    // bulk endpoint). Only sections sharing this one's quarter system are touched.
+    if (applyAllQ) {
+      if (quarterLocked && !window.confirm(`Apply ${qLabel(viewQuarter)} to ALL your ${scopeLabel} sections? Past records stay saved.`)) return;
+      setActivatingQ(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const targets = (r.sections || []).filter((s) => (s.school_level === "College") === isCollege);
+        const results = await Promise.allSettled(
+          targets.map((s) => apiPatch(`/api/sections/${s.id}`, { quarter: viewQuarter }))
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentQuarter(viewQuarter);
+        setApplyAllQ(false);
+        showToast(`Applied ${qLabel(viewQuarter)} to ${ok} ${scopeLabel} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingQ(false);
+      }
+      return;
+    }
+
+    // Single section (this one only).
+    if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
     const payload = { quarter: viewQuarter };
-    const path = bulk ? `/api/sections/${sectionId}/activate-bulk` : `/api/sections/${sectionId}`;
     try {
-      const res = await apiPatch<{ updated?: number }>(path, payload);
-      invalidateCached(bulk ? undefined : `sec_${sectionId}`);
+      await apiPatch(`/api/sections/${sectionId}`, payload);
+      invalidateCached(`sec_${sectionId}`);
       setCurrentQuarter(viewQuarter);
-      setApplyAllQ(false);
-      showToast(
-        bulk
-          ? `Applied ${qLabel(viewQuarter)} to ${res.updated ?? 0} ${scopeLabel} section(s)!`
-          : `Section updated to ${qLabel(viewQuarter)}!`
-      );
+      showToast(`Section updated to ${qLabel(viewQuarter)}!`);
     } catch {
       if (isOffline()) {
-        runWhenOnline("section-quarter-" + sectionId + (bulk ? "-bulk" : ""), () =>
-          apiPatch(path, payload).then(() => invalidateCached(bulk ? undefined : `sec_${sectionId}`))
+        runWhenOnline("section-quarter-" + sectionId, () =>
+          apiPatch(`/api/sections/${sectionId}`, payload).then(() => invalidateCached(`sec_${sectionId}`))
         );
         showToast("Offline — quarter change will sync when you reconnect.");
       } else {
@@ -159,34 +176,54 @@ export default function SectionDetailPage() {
   }
 
   async function activateSemester() {
-    const bulk = applyAllS;
     const newQuarter = viewSemester === "1st Sem" ? (isCollege ? "Prelim" : "1") : isCollege ? "Prelim" : "3";
-    const confirmMsg = bulk
-      ? `Switch ALL your sections to ${viewSemester}? Each section's quarter resets to its own starting quarter. Past records stay saved.`
-      : `Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`;
-    if (semesterLocked && !window.confirm(confirmMsg)) return;
+
+    // Apply to ALL sections: update each of the teacher's sections through the
+    // existing single-section endpoint. Semester is universal; each section's
+    // quarter resets to ITS OWN school-level's starting quarter (College ->
+    // Prelim, else -> 1 or 3), computed per section.
+    if (applyAllS) {
+      if (semesterLocked && !window.confirm(`Switch ALL your sections to ${viewSemester}? Each section's quarter resets to its own starting quarter. Past records stay saved.`)) return;
+      setActivatingS(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const all = r.sections || [];
+        const results = await Promise.allSettled(
+          all.map((s) => {
+            const secQuarter = s.school_level === "College" ? "Prelim" : (viewSemester === "1st Sem" ? "1" : "3");
+            return apiPatch(`/api/sections/${s.id}`, { semester: viewSemester, quarter: secQuarter });
+          })
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentSemester(viewSemester);
+        setCurrentQuarter(newQuarter);
+        setViewQuarter(newQuarter);
+        setApplyAllS(false);
+        showToast(`Applied ${viewSemester} to ${ok} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingS(false);
+      }
+      return;
+    }
+
+    // Single section (this one only).
+    if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
-    // The bulk endpoint recomputes each section's own starting quarter server-side
-    // (a College section resets to "Prelim" regardless of this section's type), so
-    // only the single-section path needs to send the pre-computed quarter here.
-    const payload = bulk ? { semester: viewSemester } : { semester: viewSemester, quarter: newQuarter };
-    const path = bulk ? `/api/sections/${sectionId}/activate-bulk` : `/api/sections/${sectionId}`;
+    const payload = { semester: viewSemester, quarter: newQuarter };
     try {
-      const res = await apiPatch<{ updated?: number }>(path, payload);
-      invalidateCached(bulk ? undefined : `sec_${sectionId}`);
+      await apiPatch(`/api/sections/${sectionId}`, payload);
+      invalidateCached(`sec_${sectionId}`);
       setCurrentSemester(viewSemester);
       setCurrentQuarter(newQuarter);
       setViewQuarter(newQuarter);
-      setApplyAllS(false);
-      showToast(
-        bulk
-          ? `Applied ${viewSemester} to ${res.updated ?? 0} section(s)!`
-          : `Section updated to ${viewSemester}!`
-      );
+      showToast(`Section updated to ${viewSemester}!`);
     } catch {
       if (isOffline()) {
-        runWhenOnline("section-semester-" + sectionId + (bulk ? "-bulk" : ""), () =>
-          apiPatch(path, payload).then(() => invalidateCached(bulk ? undefined : `sec_${sectionId}`))
+        runWhenOnline("section-semester-" + sectionId, () =>
+          apiPatch(`/api/sections/${sectionId}`, payload).then(() => invalidateCached(`sec_${sectionId}`))
         );
         showToast("Offline — semester change will sync when you reconnect.");
       } else {
