@@ -607,10 +607,13 @@ export default function DashboardPage() {
     const sliceBorder = isDark ? "#1f2937" : "#ffffff";
     const total = withStudents.reduce((n, s) => n + s.students, 0);
 
-    // Center label (total students) drawn straight onto the canvas hole.
+    // Center label (total students) drawn onto the doughnut hole. Runs in
+    // afterDatasetsDraw (before the tooltip) AND hides itself while a slice is
+    // hovered, so the number never bleeds through / over the tooltip box.
     const centerText = {
       id: "pieCenterText",
-      afterDraw(chart: any) {
+      afterDatasetsDraw(chart: any) {
+        if (chart.getActiveElements?.().length) return;
         const area = chart.chartArea;
         if (!area) return;
         const cx = (area.left + area.right) / 2;
