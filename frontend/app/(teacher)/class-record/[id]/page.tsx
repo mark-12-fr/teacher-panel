@@ -181,6 +181,8 @@ export default function ClassRecordGridPage() {
   const [viewSemester, setViewSemester] = useState("1st Sem");
   const [activatingQ, setActivatingQ] = useState(false);
   const [activatingS, setActivatingS] = useState(false);
+  const [applyAllQ, setApplyAllQ] = useState(false);
+  const [applyAllS, setApplyAllS] = useState(false);
 
   const lastLocalSave = useRef(0);
 
@@ -583,6 +585,34 @@ export default function ClassRecordGridPage() {
   }
 
   async function activateQuarter() {
+    const scopeLabel = college ? "College" : "Junior/Senior High";
+
+    // Apply to ALL sections (checkbox): update every one of the teacher's
+    // sections in the same quarter system through the existing single-section
+    // endpoint. No dependency on a separate bulk endpoint.
+    if (applyAllQ) {
+      if (quarterLocked && !window.confirm(`Apply ${qLabel(viewQuarter)} to ALL your ${scopeLabel} sections? Past records stay saved.`)) return;
+      setActivatingQ(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const targets = (r.sections || []).filter((s) => (s.school_level === "College") === college);
+        const results = await Promise.allSettled(
+          targets.map((s) => apiPatch(`/api/sections/${s.id}`, { quarter: viewQuarter }))
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentQuarter(viewQuarter);
+        setDataVersion((v) => v + 1);
+        setApplyAllQ(false);
+        showToast(`Applied ${qLabel(viewQuarter)} to ${ok} ${scopeLabel} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingQ(false);
+      }
+      return;
+    }
+
     if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
     try {
@@ -600,6 +630,38 @@ export default function ClassRecordGridPage() {
 
   async function activateSemester() {
     const newQuarter = viewSemester === "1st Sem" ? (college ? "Prelim" : "1") : college ? "Prelim" : "3";
+
+    // Apply to ALL sections (checkbox): semester is universal; each section's
+    // quarter resets to its own school-level's starting quarter (College ->
+    // Prelim, else -> 1 or 3), computed per section.
+    if (applyAllS) {
+      if (semesterLocked && !window.confirm(`Switch ALL your sections to ${viewSemester}? Each section's quarter resets to its own starting quarter. Past records stay saved.`)) return;
+      setActivatingS(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const all = r.sections || [];
+        const results = await Promise.allSettled(
+          all.map((s) => {
+            const secQuarter = s.school_level === "College" ? "Prelim" : (viewSemester === "1st Sem" ? "1" : "3");
+            return apiPatch(`/api/sections/${s.id}`, { semester: viewSemester, quarter: secQuarter });
+          })
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentSemester(viewSemester);
+        setCurrentQuarter(newQuarter);
+        setViewQuarter(newQuarter);
+        setDataVersion((v) => v + 1);
+        setApplyAllS(false);
+        showToast(`Applied ${viewSemester} to ${ok} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingS(false);
+      }
+      return;
+    }
+
     if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
     try {
@@ -1125,6 +1187,10 @@ export default function ClassRecordGridPage() {
               <span className="lock-banner" style={{ display: "inline-flex" }}>
                 <i className="fa-solid fa-lock" /> {qLabel(viewQuarter)} is not yet active.
               </span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", cursor: "pointer" }}>
+                <input type="checkbox" checked={applyAllQ} onChange={(e) => setApplyAllQ(e.target.checked)} style={{ cursor: "pointer" }} />
+                Apply to all my {college ? "College" : "Junior/Senior High"} sections
+              </label>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
                 {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
               </button>
@@ -1148,6 +1214,10 @@ export default function ClassRecordGridPage() {
               <span className="lock-banner" style={{ display: "inline-flex" }}>
                 <i className="fa-solid fa-lock" /> {viewSemester} is not yet active.
               </span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", cursor: "pointer" }}>
+                <input type="checkbox" checked={applyAllS} onChange={(e) => setApplyAllS(e.target.checked)} style={{ cursor: "pointer" }} />
+                Apply to ALL my sections
+              </label>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingS} onClick={activateSemester}>
                 {activatingS ? "Saving..." : `Activate ${viewSemester}`}
               </button>
