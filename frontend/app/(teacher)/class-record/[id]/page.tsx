@@ -214,12 +214,14 @@ export default function ClassRecordGridPage() {
   const sectionActivityDflt = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
   const moduleCount = countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX);
   const activityCount = countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX);
-  // The 2nd quarter of a semester continues the 1st's numbering (Q2 after Q1, Q4
-  // after Q3); it resets each semester, and College terms don't continue.
+  // Modules: the 2nd quarter of a semester continues the 1st's numbering (Q2
+  // after Q1, Q4 after Q3); it resets each semester, and College terms don't
+  // continue. Activities restart at 1 every quarter (no carry-over from the
+  // 1st quarter), at the teacher's request.
   const isSecondQ = !college && (String(viewQuarter) === "2" || String(viewQuarter) === "4");
   const firstQofSem = String(viewQuarter) === "4" ? "3" : "1";
   const moduleOffset = isSecondQ ? countFor(section?.module_counts, firstQofSem, sectionModuleDflt, MODULE_MAX) : 0;
-  const activityOffset = isSecondQ ? countFor(section?.activity_counts, firstQofSem, sectionActivityDflt, ACTIVITY_MAX) : 0;
+  const activityOffset = 0;
   const MODULES = useMemo(() => Array.from({ length: moduleCount }, (_, i) => `module_${i + 1}`), [moduleCount]);
   const ACTIVITIES = useMemo(() => Array.from({ length: activityCount }, (_, i) => `activity_${i + 1}`), [activityCount]);
   const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL], [MODULES, ACTIVITIES]);
