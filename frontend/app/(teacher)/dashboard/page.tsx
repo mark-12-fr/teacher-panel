@@ -11,7 +11,6 @@ import { Skel, SkeletonStatCard } from "@/components/Skeleton";
 
 Chart.register(...registerables);
 
-const filled = (v: any) => v !== null && v !== undefined && v !== "";
 // College terms carry no 1–4 digit, so the plain digit-strip below collapsed
 // Prelim / Midterm / Final all into "1" — piling every college term's data into
 // Q1 on the dashboard. Map them to the matching quarter slot first so college
@@ -37,6 +36,11 @@ function sectionAverages(list: any[]) {
     .map((x) => ({ section: x.section, avg: x.total / x.count, count: x.count }))
     .sort((a, b) => b.avg - a.avg);
 }
+
+// Slice / dot colour for a section's this-quarter health: green passing,
+// red below passing, slate when the quarter has no grades yet.
+const healthColor = (avg: number | null, pass: number) =>
+  avg == null ? "#94a3b8" : avg >= pass ? "#22c55e" : "#ef4444";
 
 interface TopStudent {
   name: string;
@@ -117,6 +121,10 @@ export default function DashboardPage() {
   const qStudentsRef = useRef<Record<string, any[]>>({ "1": [], "2": [], "3": [], "4": [] });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  // "Sections at a Glance" doughnut: one slice per section, sized by roster,
+  // coloured by this-quarter health.
+  const pieRef = useRef<HTMLCanvasElement>(null);
+  const pieChartRef = useRef<Chart<"doughnut", number[], string> | null>(null);
   // Signature of the stats last applied to state, so a poll/realtime refresh
   // that returns identical data doesn't re-set state and redraw the chart.
   const lastAppliedSig = useRef<string>("");
@@ -184,6 +192,17 @@ export default function DashboardPage() {
         records: bulkRecords.filter((r: any) => String(r.section_id) === String(s.id)),
       }));
 
+      // Does a class_records row carry any real score? Shared by the
+      // per-quarter chart totals and the active-quarter rankings below.
+      const rowHasScore = (row: any) => {
+        for (const key in row) {
+          if ((key.startsWith("module_") || key.startsWith("activity_") || key.startsWith("pt_") || key === "at" || key === "qe") && Number(row[key]) > 0) {
+            return true;
+          }
+        }
+        return false;
+      };
+
       perSection.forEach(({ s, students, attendance, records }) => {
         totalStudents += students.length;
         attendance.forEach((r: any) => {
@@ -192,21 +211,20 @@ export default function DashboardPage() {
           todayAtt.push({ status: r.status, student_name: r.student_name, section: s.title });
         });
 
+        // The section's *active* quarter (Q1–Q4, college terms mapped by
+        // normalizeQtr). Rankings below read only this quarter's row.
+        const activeQtr = normalizeQtr(s.quarter);
+
         students.forEach((student: any) => {
           const studentRecords = records
             .filter((r: any) => r.student_id === student.id)
             .sort((a: any, b: any) => Number(normalizeQtr(a.quarter)) - Number(normalizeQtr(b.quarter)));
           if (!studentRecords.length) return;
 
+          // Every quarter with scores feeds the Class Performance line chart +
+          // click-a-dot modal — that view stays cumulative across the year.
           studentRecords.forEach((row: any) => {
-            let hasScore = false;
-            for (const key in row) {
-              if ((key.startsWith("module_") || key.startsWith("activity_") || key.startsWith("pt_") || key === "at" || key === "qe") && Number(row[key]) > 0) {
-                hasScore = true;
-                break;
-              }
-            }
-            if (!hasScore) return;
+            if (!rowHasScore(row)) return;
             const qtr = normalizeQtr(row.quarter);
             const grade = finalGrade(row, s.subject);
             if (qTotals[qtr]) {
@@ -216,13 +234,15 @@ export default function DashboardPage() {
             }
           });
 
-          const merged = studentRecords.reduce((acc: any, curr: any) => {
-            Object.keys(curr).forEach((k) => {
-              if (filled(curr[k])) acc[k] = curr[k];
-            });
-            return acc;
-          }, {});
-          allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(merged, s.subject) });
+          // Top Students / Needs Attention / Sections at a Glance track ONLY
+          // the section's active quarter, so when the teacher advances to
+          // Q2/Q3/Q4 (or a new semester) the rankings reset and rebuild from
+          // that quarter's grades — empty at the start of a new quarter —
+          // instead of carrying the whole year's cumulative average.
+          const activeRow = studentRecords.find((r: any) => normalizeQtr(r.quarter) === activeQtr);
+          if (activeRow && rowHasScore(activeRow)) {
+            allScores.push({ name: student.full_name || "No Name", section: s.title, grade: finalGrade(activeRow, s.subject) });
+          }
         });
       });
     } catch {
@@ -566,6 +586,107 @@ export default function DashboardPage() {
     };
   }, [chartData, passing]);
 
+  // ── Sections-at-a-glance doughnut ─────────────────────────────────────────
+  // One slice per section, sized by roster count and coloured by the section's
+  // active-quarter health (green passing / red below / slate not-yet-graded),
+  // so it visually "resets" alongside Top Students when a new quarter starts.
+  useEffect(() => {
+    const canvas = pieRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    if (pieChartRef.current) {
+      pieChartRef.current.destroy();
+      pieChartRef.current = null;
+    }
+
+    const withStudents = sectionOverview.filter((s) => s.students > 0);
+    if (!withStudents.length) return;
+
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const sliceBorder = isDark ? "#1f2937" : "#ffffff";
+    const total = withStudents.reduce((n, s) => n + s.students, 0);
+
+    // Center label (total students) drawn straight onto the canvas hole.
+    const centerText = {
+      id: "pieCenterText",
+      afterDraw(chart: any) {
+        const area = chart.chartArea;
+        if (!area) return;
+        const cx = (area.left + area.right) / 2;
+        const cy = (area.top + area.bottom) / 2;
+        const c = chart.ctx;
+        c.save();
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillStyle = isDark ? "#f1f5f9" : "#0f172a";
+        c.font = "800 1.55rem Inter, sans-serif";
+        c.fillText(String(total), cx, cy - 7);
+        c.fillStyle = isDark ? "#94a3b8" : "#64748b";
+        c.font = "700 0.6rem Inter, sans-serif";
+        c.fillText("STUDENTS", cx, cy + 13);
+        c.restore();
+      },
+    };
+
+    pieChartRef.current = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: withStudents.map((s) => s.title),
+        datasets: [
+          {
+            data: withStudents.map((s) => s.students),
+            backgroundColor: withStudents.map((s) => healthColor(s.avg, passing)),
+            borderColor: sliceBorder,
+            borderWidth: 2.5,
+            hoverOffset: 6,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "62%",
+        layout: { padding: 4 },
+        onClick: (_evt: any, elements: any[]) => {
+          const el = (elements || [])[0];
+          if (!el) return;
+          const sec = withStudents[el.index];
+          if (sec) window.location.href = `/class-record/${sec.id}`;
+        },
+        onHover: (evt: any, elements: any[]) => {
+          const t = evt?.native?.target as HTMLElement | undefined;
+          if (t) t.style.cursor = (elements || []).length ? "pointer" : "default";
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            padding: 11,
+            boxPadding: 5,
+            titleFont: { family: "Inter", size: 13, weight: 700 },
+            bodyFont: { family: "Inter", size: 12 },
+            callbacks: {
+              title: (items: any[]) => withStudents[items[0].dataIndex]?.title || "",
+              label: (item: any) => {
+                const s = withStudents[item.dataIndex];
+                if (!s) return "";
+                const lines = [`${s.students} student${s.students === 1 ? "" : "s"}`];
+                lines.push(s.avg == null ? "Not yet graded this quarter" : `Class avg: ${s.avg}%`);
+                if (s.failing > 0) lines.push(`${s.failing} below ${passing}%`);
+                return lines;
+              },
+            },
+          },
+        },
+      },
+      plugins: [centerText],
+    });
+    return () => {
+      pieChartRef.current?.destroy();
+      pieChartRef.current = null;
+    };
+  }, [sectionOverview, passing]);
+
   // ── Cache helpers (write-through to localStorage) ─────────────────────────
   // ── Optimistic CRUD handlers ──────────────────────────────────────────────
 
@@ -584,6 +705,8 @@ export default function DashboardPage() {
   const validChart = chartData.filter((v) => v != null && (v as number) > 0) as number[];
   const overallAvg = validChart.length ? Math.round(validChart.reduce((a, b) => a + b, 0) / validChart.length) : null;
   const firstLoad = statsCache.loading && !statsCache.data;
+  // Sections with a roster are the ones the doughnut can actually slice.
+  const pieSections = sectionOverview.filter((s) => s.students > 0);
 
   return (
     <>
@@ -679,37 +802,46 @@ export default function DashboardPage() {
             <h4 style={{ margin: 0 }}>Sections at a Glance</h4>
             <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)" }}>{sectionOverview.length} section{sectionOverview.length === 1 ? "" : "s"}</span>
           </div>
-          <ul className="list-container" style={{ maxHeight: 230, overflowY: "auto", padding: 0 }}>
-            {sectionOverview.length === 0 ? (
-              <li className="empty-msg" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "20px 0" }}>No sections yet.</li>
-            ) : (
-              sectionOverview.map((s) => {
-                const avgClr = s.avg === null ? "var(--text-muted)" : s.avg >= passing ? "#16a34a" : "#dc2626";
-                return (
-                  <li
-                    className="item-row"
-                    key={s.id}
-                    onClick={() => { window.location.href = `/class-record/${s.id}`; }}
-                    style={{ padding: "9px 6px", alignItems: "center", gap: 10, cursor: "pointer" }}
-                    title="Open this section's class record"
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
-                        <span>{s.students} student{s.students === 1 ? "" : "s"}</span>
-                        {s.failing > 0 && <span style={{ color: "#dc2626", fontWeight: 600 }}>{s.failing} failing</span>}
+          {sectionOverview.length === 0 ? (
+            <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "40px 0" }}>No sections yet.</div>
+          ) : (
+            <>
+              {pieSections.length > 0 ? (
+                <div style={{ position: "relative", height: 190, marginBottom: 6 }}>
+                  {firstLoad ? <Skel width="100%" height="100%" radius={10} /> : <canvas ref={pieRef} />}
+                </div>
+              ) : (
+                <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "28px 0 20px" }}>No students enrolled yet.</div>
+              )}
+              {/* Legend doubles as the old navigable list: a coloured dot for
+                  this-quarter health, plus the section's average, click to open
+                  its class record. */}
+              <ul className="list-container" style={{ maxHeight: 150, overflowY: "auto", padding: 0 }}>
+                {sectionOverview.map((s) => {
+                  const clr = healthColor(s.avg, passing);
+                  return (
+                    <li
+                      className="item-row"
+                      key={s.id}
+                      onClick={() => { window.location.href = `/class-record/${s.id}`; }}
+                      style={{ padding: "7px 6px", alignItems: "center", gap: 9, cursor: "pointer" }}
+                      title="Open this section's class record"
+                    >
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: clr, flex: "0 0 auto" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", gap: 8, flexWrap: "wrap", marginTop: 1 }}>
+                          <span>{s.students} student{s.students === 1 ? "" : "s"}</span>
+                          {s.failing > 0 && <span style={{ color: "#dc2626", fontWeight: 600 }}>{s.failing} failing</span>}
+                        </div>
                       </div>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: "0.95rem", color: avgClr }}>{s.avg === null ? "—" : s.avg}</div>
-                      <div style={{ fontSize: "0.6rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>avg</div>
-                    </div>
-                    <i className="fa-solid fa-chevron-right" style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }} />
-                  </li>
-                );
-              })
-            )}
-          </ul>
+                      <span style={{ fontWeight: 800, fontSize: "0.92rem", color: s.avg === null ? "var(--text-muted)" : clr, flexShrink: 0 }}>{s.avg === null ? "—" : `${s.avg}%`}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </div>
 
         <div className="dash-card bottom-card-lg">
