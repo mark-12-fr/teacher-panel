@@ -349,7 +349,7 @@ export default function SectionDetailPage() {
             </span>
             <label className="bulk-apply-check">
               <input type="checkbox" checked={applyAllQ} onChange={(e) => setApplyAllQ(e.target.checked)} />
-              Apply to all my {isCollege ? "College" : "Junior/Senior High"} sections
+              All sections
             </label>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
               {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
@@ -376,7 +376,7 @@ export default function SectionDetailPage() {
             </span>
             <label className="bulk-apply-check">
               <input type="checkbox" checked={applyAllS} onChange={(e) => setApplyAllS(e.target.checked)} />
-              Apply to ALL my sections
+              All sections
             </label>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingS} onClick={activateSemester}>
               {activatingS ? "Saving..." : `Activate ${viewSemester}`}

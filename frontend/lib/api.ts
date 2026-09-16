@@ -144,10 +144,14 @@ export function invalidateCached(key?: string) {
       localStorage.removeItem(CACHE_PREFIX + key);
       return;
     }
+    // No key = "clear everything": both the stale-while-revalidate data cache
+    // (data_cache_*) AND the list/dashboard caches (list_cache_*, dash_cache_*)
+    // used by useCachedData — so section-list badges (e.g. the quarter tag)
+    // refresh after a bulk quarter/semester change instead of lingering stale.
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+      if (k && (k.startsWith(CACHE_PREFIX) || k.startsWith("list_cache_") || k.startsWith("dash_cache_"))) keys.push(k);
     }
     keys.forEach((k) => localStorage.removeItem(k));
   } catch {
