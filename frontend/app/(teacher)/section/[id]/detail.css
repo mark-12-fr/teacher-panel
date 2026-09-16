@@ -372,6 +372,16 @@
             margin-left: auto;
             white-space: nowrap;
         }
+        .bulk-apply-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .bulk-apply-check input[type="checkbox"] { cursor: pointer; }
         .q-activate-btn {
             background: #10b981;
             color: #fff;
@@ -916,6 +926,10 @@
             .q-tab, .s-tab {
                 padding: 5px 10px;
                 font-size: 0.75rem;
+            }
+
+            .bulk-apply-check {
+                font-size: 0.7rem;
             }
 
             .search-container {
