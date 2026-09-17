@@ -42,10 +42,11 @@ function sectionAverages(list: any[]) {
 // quarter has no grades yet. Shown with the number as its label, never alone.
 const healthColor = (avg: number | null, pass: number) =>
   avg == null ? "#898781" : avg >= pass ? "#0ca30c" : "#d03b3b";
-// How many categorical hues (--sec-1..N) the doughnut + legend share before a
-// 9th section folds to neutral. Matches teacher-shell.css.
+// The blue ramp (--sec-1..8) the doughnut + legend share: --sec-1 is the
+// deepest/most prominent shade, assigned to the largest section. Beyond 8
+// sections the extra ones hold the lightest step. Matches teacher-shell.css.
 const SECTION_HUE_COUNT = 8;
-const sectionHueVar = (i: number) => (i < SECTION_HUE_COUNT ? `var(--sec-${i + 1})` : "#898781");
+const sectionHueVar = (rank: number) => `var(--sec-${Math.min(Math.max(rank, 0), SECTION_HUE_COUNT - 1) + 1})`;
 
 interface TopStudent {
   name: string;
@@ -707,7 +708,11 @@ export default function DashboardPage() {
       pieChartRef.current = null;
     }
 
-    const withStudents = sectionOverview.filter((s) => s.students > 0);
+    // Largest section first, so the single-hue shade ramp reads as a smooth
+    // gradient around the ring (deepest shade = biggest roster).
+    const withStudents = sectionOverview
+      .filter((s) => s.students > 0)
+      .sort((a, b) => b.students - a.students);
     if (!withStudents.length) return;
 
     const isDark = document.documentElement.getAttribute("data-theme") === "dark";
@@ -717,12 +722,8 @@ export default function DashboardPage() {
     const sliceBorder = cssVar("--card-bg", isDark ? "#1f2937" : "#ffffff");
     const inkPrimary = cssVar("--text-dark", isDark ? "#f9fafb" : "#111827");
     const inkMuted = cssVar("--text-muted", isDark ? "#9ca3af" : "#6b7280");
-    // Each section keeps a stable hue = its position in the full section list,
-    // so the doughnut and legend agree and a slice never repaints on a change.
-    const hueFor = (id: string) => {
-      const idx = sectionOverview.findIndex((o) => o.id === id);
-      return idx >= 0 && idx < SECTION_HUE_COUNT ? cssVar(`--sec-${idx + 1}`, "#898781") : "#898781";
-    };
+    // Shade by size rank: --sec-1 (deepest) for the largest section, fading out.
+    const rampAt = (rank: number) => cssVar(`--sec-${Math.min(rank, SECTION_HUE_COUNT - 1) + 1}`, "#6da7ec");
     const total = withStudents.reduce((n, s) => n + s.students, 0);
 
     // Center label (total students) drawn onto the doughnut hole. Runs in
@@ -757,7 +758,7 @@ export default function DashboardPage() {
         datasets: [
           {
             data: withStudents.map((s) => s.students),
-            backgroundColor: withStudents.map((s) => hueFor(s.id)),
+            backgroundColor: withStudents.map((_, i) => rampAt(i)),
             borderColor: sliceBorder,
             hoverBorderColor: sliceBorder,
             borderWidth: 3,
@@ -837,6 +838,9 @@ export default function DashboardPage() {
   // Sections with a roster are the ones the doughnut can actually slice.
   const pieSections = sectionOverview.filter((s) => s.students > 0);
   const pieTotal = pieSections.reduce((n, s) => n + s.students, 0);
+  // Legend mirrors the doughnut: largest section first, shaded by the same rank
+  // (its index here), so each swatch matches its slice.
+  const rankedSections = [...sectionOverview].sort((a, b) => b.students - a.students);
   const faciNeedsAttention = facilitatorStatus.filter((f) => f.needsAttention).length;
 
   return (
@@ -949,7 +953,7 @@ export default function DashboardPage() {
                   pill on the right is this-quarter health. Click opens the
                   section's class record. */}
               <ul className="list-container" style={{ maxHeight: 150, overflowY: "auto", padding: 0 }}>
-                {sectionOverview.map((s, idx) => {
+                {rankedSections.map((s, idx) => {
                   const statusClr = healthColor(s.avg, passing);
                   const share = pieTotal > 0 && s.students > 0 ? Math.round((s.students / pieTotal) * 100) : null;
                   const pillBg = s.avg === null ? "var(--hover-bg)" : s.avg >= passing ? "rgba(12,163,12,0.12)" : "rgba(208,59,59,0.12)";
