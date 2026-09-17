@@ -13,6 +13,10 @@
             --modal-border: #ddd;
             --shadow-color: rgba(0, 0, 0, 0.05);
             --hover-bg: #f3f4f6;
+            /* Categorical section hues for the "Sections at a Glance" doughnut.
+               Validated CVD-safe order (dataviz reference), light steps. */
+            --sec-1: #2a78d6; --sec-2: #eb6834; --sec-3: #1baf7a; --sec-4: #eda100;
+            --sec-5: #e87ba4; --sec-6: #008300; --sec-7: #4a3aa7; --sec-8: #e34948;
         }
 
         [data-theme="dark"] {
@@ -26,6 +30,9 @@
             --modal-border: #374151;
             --shadow-color: rgba(0, 0, 0, 0.3);
             --hover-bg: #374151;
+            /* Same eight hues stepped for the dark surface (validated set). */
+            --sec-1: #3987e5; --sec-2: #d95926; --sec-3: #199e70; --sec-4: #c98500;
+            --sec-5: #d55181; --sec-6: #008300; --sec-7: #9085e9; --sec-8: #e66767;
         }
 
         html {

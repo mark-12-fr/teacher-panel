@@ -37,10 +37,15 @@ function sectionAverages(list: any[]) {
     .sort((a, b) => b.avg - a.avg);
 }
 
-// Slice / dot colour for a section's this-quarter health: green passing,
-// red below passing, slate when the quarter has no grades yet.
+// Health status colour for a section's this-quarter average — the fixed,
+// accessible dataviz status palette (good / critical), muted ink when the
+// quarter has no grades yet. Shown with the number as its label, never alone.
 const healthColor = (avg: number | null, pass: number) =>
-  avg == null ? "#94a3b8" : avg >= pass ? "#22c55e" : "#ef4444";
+  avg == null ? "#898781" : avg >= pass ? "#0ca30c" : "#d03b3b";
+// How many categorical hues (--sec-1..N) the doughnut + legend share before a
+// 9th section folds to neutral. Matches teacher-shell.css.
+const SECTION_HUE_COUNT = 8;
+const sectionHueVar = (i: number) => (i < SECTION_HUE_COUNT ? `var(--sec-${i + 1})` : "#898781");
 
 interface TopStudent {
   name: string;
@@ -689,9 +694,9 @@ export default function DashboardPage() {
   }, [chartData, passing]);
 
   // ── Sections-at-a-glance doughnut ─────────────────────────────────────────
-  // One slice per section, sized by roster count and coloured by the section's
-  // active-quarter health (green passing / red below / slate not-yet-graded),
-  // so it visually "resets" alongside Top Students when a new quarter starts.
+  // One slice per section, sized by roster and coloured with the shared
+  // categorical palette (--sec-1..8), so every section stays distinct in any
+  // grading state. Section health lives in the legend, not the slice colour.
   useEffect(() => {
     const canvas = pieRef.current;
     if (!canvas) return;
@@ -706,7 +711,18 @@ export default function DashboardPage() {
     if (!withStudents.length) return;
 
     const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-    const sliceBorder = isDark ? "#1f2937" : "#ffffff";
+    const rootStyle = getComputedStyle(canvas);
+    const cssVar = (name: string, fallback: string) => rootStyle.getPropertyValue(name).trim() || fallback;
+    // Slice gap = the card surface, so slices read as separated tiles.
+    const sliceBorder = cssVar("--card-bg", isDark ? "#1f2937" : "#ffffff");
+    const inkPrimary = cssVar("--text-dark", isDark ? "#f9fafb" : "#111827");
+    const inkMuted = cssVar("--text-muted", isDark ? "#9ca3af" : "#6b7280");
+    // Each section keeps a stable hue = its position in the full section list,
+    // so the doughnut and legend agree and a slice never repaints on a change.
+    const hueFor = (id: string) => {
+      const idx = sectionOverview.findIndex((o) => o.id === id);
+      return idx >= 0 && idx < SECTION_HUE_COUNT ? cssVar(`--sec-${idx + 1}`, "#898781") : "#898781";
+    };
     const total = withStudents.reduce((n, s) => n + s.students, 0);
 
     // Center label (total students) drawn onto the doughnut hole. Runs in
@@ -724,11 +740,11 @@ export default function DashboardPage() {
         c.save();
         c.textAlign = "center";
         c.textBaseline = "middle";
-        c.fillStyle = isDark ? "#f1f5f9" : "#0f172a";
-        c.font = "800 1.55rem Inter, sans-serif";
-        c.fillText(String(total), cx, cy - 7);
-        c.fillStyle = isDark ? "#94a3b8" : "#64748b";
-        c.font = "700 0.6rem Inter, sans-serif";
+        c.fillStyle = inkPrimary;
+        c.font = "700 1.6rem Inter, system-ui, sans-serif";
+        c.fillText(String(total), cx, cy - 8);
+        c.fillStyle = inkMuted;
+        c.font = "700 0.58rem Inter, system-ui, sans-serif";
         c.fillText("STUDENTS", cx, cy + 13);
         c.restore();
       },
@@ -741,18 +757,20 @@ export default function DashboardPage() {
         datasets: [
           {
             data: withStudents.map((s) => s.students),
-            backgroundColor: withStudents.map((s) => healthColor(s.avg, passing)),
+            backgroundColor: withStudents.map((s) => hueFor(s.id)),
             borderColor: sliceBorder,
-            borderWidth: 2.5,
-            hoverOffset: 6,
+            hoverBorderColor: sliceBorder,
+            borderWidth: 3,
+            borderRadius: 3,
+            hoverOffset: 7,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: "62%",
-        layout: { padding: 4 },
+        cutout: "66%",
+        layout: { padding: 6 },
         onClick: (_evt: any, elements: any[]) => {
           const el = (elements || [])[0];
           if (!el) return;
@@ -766,8 +784,13 @@ export default function DashboardPage() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            padding: 11,
-            boxPadding: 5,
+            backgroundColor: isDark ? "#0b0f19" : "#111827",
+            titleColor: "#ffffff",
+            bodyColor: "#e5e7eb",
+            padding: 12,
+            boxPadding: 6,
+            cornerRadius: 10,
+            displayColors: false,
             titleFont: { family: "Inter", size: 13, weight: 700 },
             bodyFont: { family: "Inter", size: 12 },
             callbacks: {
@@ -775,8 +798,9 @@ export default function DashboardPage() {
               label: (item: any) => {
                 const s = withStudents[item.dataIndex];
                 if (!s) return "";
-                const lines = [`${s.students} student${s.students === 1 ? "" : "s"}`];
-                lines.push(s.avg == null ? "Not yet graded this quarter" : `Class avg: ${s.avg}%`);
+                const share = total > 0 ? Math.round((s.students / total) * 100) : 0;
+                const lines = [`${s.students} student${s.students === 1 ? "" : "s"} · ${share}% of roster`];
+                lines.push(s.avg == null ? "Not yet graded this quarter" : `Class avg ${s.avg}%`);
                 if (s.failing > 0) lines.push(`${s.failing} below ${passing}%`);
                 return lines;
               },
@@ -812,6 +836,7 @@ export default function DashboardPage() {
   const firstLoad = statsCache.loading && !statsCache.data;
   // Sections with a roster are the ones the doughnut can actually slice.
   const pieSections = sectionOverview.filter((s) => s.students > 0);
+  const pieTotal = pieSections.reduce((n, s) => n + s.students, 0);
   const faciNeedsAttention = facilitatorStatus.filter((f) => f.needsAttention).length;
 
   return (
@@ -919,29 +944,47 @@ export default function DashboardPage() {
               ) : (
                 <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "28px 0 20px" }}>No students enrolled yet.</div>
               )}
-              {/* Legend doubles as the old navigable list: a coloured dot for
-                  this-quarter health, plus the section's average, click to open
-                  its class record. */}
+              {/* Legend + navigable list: a categorical swatch matches the
+                  slice (identity), the sub-line carries size/share, and the
+                  pill on the right is this-quarter health. Click opens the
+                  section's class record. */}
               <ul className="list-container" style={{ maxHeight: 150, overflowY: "auto", padding: 0 }}>
-                {sectionOverview.map((s) => {
-                  const clr = healthColor(s.avg, passing);
+                {sectionOverview.map((s, idx) => {
+                  const statusClr = healthColor(s.avg, passing);
+                  const share = pieTotal > 0 && s.students > 0 ? Math.round((s.students / pieTotal) * 100) : null;
+                  const pillBg = s.avg === null ? "var(--hover-bg)" : s.avg >= passing ? "rgba(12,163,12,0.12)" : "rgba(208,59,59,0.12)";
                   return (
                     <li
                       className="item-row"
                       key={s.id}
                       onClick={() => { window.location.href = `/class-record/${s.id}`; }}
-                      style={{ padding: "7px 6px", alignItems: "center", gap: 9, cursor: "pointer" }}
+                      style={{ padding: "7px 6px", alignItems: "center", gap: 10, cursor: "pointer" }}
                       title="Open this section's class record"
                     >
-                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: clr, flex: "0 0 auto" }} />
+                      <span style={{ width: 11, height: 11, borderRadius: 3, background: sectionHueVar(idx), flex: "0 0 auto" }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
-                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", gap: 8, flexWrap: "wrap", marginTop: 1 }}>
-                          <span>{s.students} student{s.students === 1 ? "" : "s"}</span>
-                          {s.failing > 0 && <span style={{ color: "#dc2626", fontWeight: 600 }}>{s.failing} failing</span>}
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>
+                          {s.students} student{s.students === 1 ? "" : "s"}
+                          {share !== null ? ` · ${share}%` : ""}
+                          {s.failing > 0 ? ` · ${s.failing} below` : ""}
                         </div>
                       </div>
-                      <span style={{ fontWeight: 800, fontSize: "0.92rem", color: s.avg === null ? "var(--text-muted)" : clr, flexShrink: 0 }}>{s.avg === null ? "—" : `${s.avg}%`}</span>
+                      <span
+                        style={{
+                          flex: "0 0 auto",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          color: s.avg === null ? "var(--text-muted)" : statusClr,
+                          background: pillBg,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                        title={s.avg === null ? "No grades yet this quarter" : s.avg >= passing ? "Class average — passing" : "Class average — below passing"}
+                      >
+                        {s.avg === null ? "—" : `${s.avg}%`}
+                      </span>
                     </li>
                   );
                 })}
