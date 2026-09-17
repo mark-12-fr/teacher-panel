@@ -598,6 +598,9 @@ export default function DashboardPage() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Supersample (>=2x) so the axis labels + line stay crisp on
+        // fractional-DPI displays and at browser zoom.
+        devicePixelRatio: Math.max(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1),
         layout: { padding: { top: 8, right: 4 } },
         interaction: { mode: "index", intersect: false },
         // Click a quarter dot → full "all students' averages" modal.
@@ -760,10 +763,10 @@ export default function DashboardPage() {
         c.textAlign = "center";
         c.textBaseline = "middle";
         c.fillStyle = inkPrimary;
-        c.font = "700 1.6rem Inter, system-ui, sans-serif";
+        c.font = "700 26px Inter, system-ui, sans-serif";
         c.fillText(String(total), cx, cy - 8);
         c.fillStyle = inkMuted;
-        c.font = "700 0.58rem Inter, system-ui, sans-serif";
+        c.font = "700 9px Inter, system-ui, sans-serif";
         c.fillText("STUDENTS", cx, cy + 13);
         c.restore();
       },
@@ -788,6 +791,10 @@ export default function DashboardPage() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Render at >=2x so the centre text and slice edges stay crisp on
+        // fractional-DPI laptops / browser zoom (Chart.js otherwise renders at
+        // the raw device ratio, which can look soft).
+        devicePixelRatio: Math.max(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1),
         cutout: "66%",
         layout: { padding: 6 },
         onClick: (_evt: any, elements: any[]) => {
