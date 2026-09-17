@@ -148,6 +148,14 @@ export default function DashboardPage() {
     { id: string; title: string; subject: string; students: number; avg: number | null; failing: number }[]
   >([]);
 
+  // Track the active theme so the Chart.js charts (which read their colours at
+  // build time) rebuild when the teacher toggles light/dark — otherwise a chart
+  // built in one theme keeps its colours (e.g. near-white centre text stranded
+  // on a white card) after switching.
+  const [theme, setTheme] = useState<string>(() =>
+    typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
+  );
+
   const [clock, setClock] = useState({ time: "", date: "" });
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -189,6 +197,16 @@ export default function DashboardPage() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Watch <html data-theme> so the charts recolour on a light/dark toggle.
+  useEffect(() => {
+    const root = document.documentElement;
+    const read = () => setTheme(root.getAttribute("data-theme") === "dark" ? "dark" : "light");
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
   }, []);
 
   // ── Cache helpers ──────────────────────────────────────────────────────
@@ -519,7 +537,7 @@ export default function DashboardPage() {
     if (!ctx) return;
     if (chartRef.current) chartRef.current.destroy();
 
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const isDark = theme === "dark";
     const gridColor = isDark ? "rgba(148, 163, 184, 0.1)" : "rgba(15, 23, 42, 0.06)";
     const labelColor = isDark ? "#9ca3af" : "#64748b";
     const neutralClr = isDark ? "#818cf8" : "#3b82f6";
@@ -692,7 +710,7 @@ export default function DashboardPage() {
       chartRef.current = null;
       document.getElementById("dashQTooltip")?.remove();
     };
-  }, [chartData, passing]);
+  }, [chartData, passing, theme]);
 
   // ── Sections-at-a-glance doughnut ─────────────────────────────────────────
   // One slice per section, sized by roster and coloured with the shared
@@ -715,7 +733,7 @@ export default function DashboardPage() {
       .sort((a, b) => b.students - a.students);
     if (!withStudents.length) return;
 
-    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const isDark = theme === "dark";
     const rootStyle = getComputedStyle(canvas);
     const cssVar = (name: string, fallback: string) => rootStyle.getPropertyValue(name).trim() || fallback;
     // Slice gap = the card surface, so slices read as separated tiles.
@@ -815,7 +833,7 @@ export default function DashboardPage() {
       pieChartRef.current?.destroy();
       pieChartRef.current = null;
     };
-  }, [sectionOverview, passing]);
+  }, [sectionOverview, passing, theme]);
 
   // ── Cache helpers (write-through to localStorage) ─────────────────────────
   // ── Optimistic CRUD handlers ──────────────────────────────────────────────
