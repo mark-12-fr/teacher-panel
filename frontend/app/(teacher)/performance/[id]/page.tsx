@@ -238,6 +238,10 @@ export default function PerformanceDetailPage() {
     charts.current.pie?.destroy();
     charts.current.bar?.destroy();
 
+    // Render the canvases at >=2x so text/lines stay crisp on fractional-DPI
+    // laptops and at browser zoom (Chart.js otherwise uses the raw ratio).
+    const dpr = Math.max(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
+
     const lctx = lineRef.current?.getContext("2d");
     if (lctx) {
       const grad = lctx.createLinearGradient(0, 0, 0, 250);
@@ -267,7 +271,7 @@ export default function PerformanceDetailPage() {
             },
           ],
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } },
+        options: { responsive: true, maintainAspectRatio: false, devicePixelRatio: dpr, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } },
       });
     }
 
@@ -279,7 +283,7 @@ export default function PerformanceDetailPage() {
           labels: ["90+", "85-89", "80-84", "<80"],
           datasets: [{ data: [stats.dist["90+"], stats.dist["85-89"], stats.dist["80-84"], stats.dist["<80"]], backgroundColor: ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"], borderWidth: 2, borderColor: "#ffffff" }],
         },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "60%", plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 }, padding: 10 } } } },
+        options: { responsive: true, maintainAspectRatio: false, devicePixelRatio: dpr, cutout: "60%", plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 }, padding: 10 } } } },
       });
     }
 
@@ -291,7 +295,7 @@ export default function PerformanceDetailPage() {
           labels: ["WW", "PT", "Exam"],
           datasets: [{ label: "Average Score", data: [Number((stats.totalWW / n).toFixed(2)), Number((stats.totalPT / n).toFixed(2)), Number((stats.totalExam / n).toFixed(2))], backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"], borderRadius: 4, maxBarThickness: 40 }],
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } },
+        options: { responsive: true, maintainAspectRatio: false, devicePixelRatio: dpr, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } },
       });
     }
 
