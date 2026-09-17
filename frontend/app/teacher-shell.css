@@ -13,10 +13,12 @@
             --modal-border: #ddd;
             --shadow-color: rgba(0, 0, 0, 0.05);
             --hover-bg: #f3f4f6;
-            /* Categorical section hues for the "Sections at a Glance" doughnut.
-               Validated CVD-safe order (dataviz reference), light steps. */
-            --sec-1: #2a78d6; --sec-2: #eb6834; --sec-3: #1baf7a; --sec-4: #eda100;
-            --sec-5: #e87ba4; --sec-6: #008300; --sec-7: #4a3aa7; --sec-8: #e34948;
+            /* "Sections at a Glance" doughnut — one refined blue hue in graduated
+               shades (deepest = largest section) for a cohesive, premium look.
+               Steps from the dataviz blue sequential ramp; --sec-1 is the most
+               prominent shade on this surface. Light steps (deep -> light). */
+            --sec-1: #104281; --sec-2: #1c5cab; --sec-3: #256abf; --sec-4: #2a78d6;
+            --sec-5: #3987e5; --sec-6: #5598e7; --sec-7: #6da7ec; --sec-8: #86b6ef;
         }
 
         [data-theme="dark"] {
@@ -30,9 +32,10 @@
             --modal-border: #374151;
             --shadow-color: rgba(0, 0, 0, 0.3);
             --hover-bg: #374151;
-            /* Same eight hues stepped for the dark surface (validated set). */
-            --sec-1: #3987e5; --sec-2: #d95926; --sec-3: #199e70; --sec-4: #c98500;
-            --sec-5: #d55181; --sec-6: #008300; --sec-7: #9085e9; --sec-8: #e66767;
+            /* Same blue ramp stepped for the dark surface: --sec-1 stays the most
+               prominent (lightest on dark), fading to deep blue. */
+            --sec-1: #cde2fb; --sec-2: #b7d3f6; --sec-3: #9ec5f4; --sec-4: #86b6ef;
+            --sec-5: #6da7ec; --sec-6: #5598e7; --sec-7: #3987e5; --sec-8: #2a78d6;
         }
 
         html {
