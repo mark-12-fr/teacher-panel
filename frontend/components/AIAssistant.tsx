@@ -35,7 +35,7 @@ const SUGGESTIONS: { icon: string; label: string; query: string }[] = [
 
 const TYPING_HTML = '<span class="ai-typing-dots"><span></span><span></span><span></span></span>';
 const GREETING =
-  "Hi there! 👋 I'm your AcadTrack assistant. Ask me about your students, grades, attendance, top or struggling students, missing requirements, or a quick class summary. Tip: you can scope a question to a section or term — e.g. \"top students in HUMSS 1\" or \"Q2 grades\". I understand Hiligaynon, Filipino, and English.";
+  "Hello, I'm your AI assistant, I can help you with your students' progress.  ";
 
 function chatKey() {
   const who = (typeof localStorage !== "undefined" && localStorage.getItem("cached_user_name")) || "teacher";
