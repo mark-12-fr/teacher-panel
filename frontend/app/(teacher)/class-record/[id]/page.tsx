@@ -181,6 +181,8 @@ export default function ClassRecordGridPage() {
   const [viewSemester, setViewSemester] = useState("1st Sem");
   const [activatingQ, setActivatingQ] = useState(false);
   const [activatingS, setActivatingS] = useState(false);
+  const [applyAllQ, setApplyAllQ] = useState(false);
+  const [applyAllS, setApplyAllS] = useState(false);
 
   const lastLocalSave = useRef(0);
 
@@ -212,14 +214,22 @@ export default function ClassRecordGridPage() {
   };
   const sectionModuleDflt = Math.min(Math.max(Math.round(Number(section?.module_count) || 15), 1), MODULE_MAX);
   const sectionActivityDflt = Math.min(Math.max(Math.round(Number(section?.activity_count) || 10), 1), ACTIVITY_MAX);
-  const moduleCount = countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX);
-  const activityCount = countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX);
-  // The 2nd quarter of a semester continues the 1st's numbering (Q2 after Q1, Q4
-  // after Q3); it resets each semester, and College terms don't continue.
+  // Modules: the 2nd quarter of a semester continues the 1st's numbering (Q2
+  // after Q1, Q4 after Q3); it resets each semester, and College terms don't
+  // continue. Activities restart at 1 every quarter (no carry-over).
   const isSecondQ = !college && (String(viewQuarter) === "2" || String(viewQuarter) === "4");
   const firstQofSem = String(viewQuarter) === "4" ? "3" : "1";
   const moduleOffset = isSecondQ ? countFor(section?.module_counts, firstQofSem, sectionModuleDflt, MODULE_MAX) : 0;
-  const activityOffset = isSecondQ ? countFor(section?.activity_counts, firstQofSem, sectionActivityDflt, ACTIVITY_MAX) : 0;
+  const activityOffset = 0;
+  // Per-quarter effective caps (at the teacher's request): in the 2nd quarter the
+  // Module numbering continues from Q1 and must not run past MODULE_MAX (25), so
+  // the count is limited to the module slots still left below 25; Activities
+  // (which restart at 1) show at most 5 in the 2nd quarter.
+  const SECOND_Q_ACTIVITY_MAX = 5;
+  const moduleMaxForQ = isSecondQ ? Math.max(0, MODULE_MAX - moduleOffset) : MODULE_MAX;
+  const activityMaxForQ = isSecondQ ? SECOND_Q_ACTIVITY_MAX : ACTIVITY_MAX;
+  const moduleCount = Math.min(countFor(section?.module_counts, viewQuarter, sectionModuleDflt, MODULE_MAX), moduleMaxForQ);
+  const activityCount = Math.min(countFor(section?.activity_counts, viewQuarter, sectionActivityDflt, ACTIVITY_MAX), activityMaxForQ);
   const MODULES = useMemo(() => Array.from({ length: moduleCount }, (_, i) => `module_${i + 1}`), [moduleCount]);
   const ACTIVITIES = useMemo(() => Array.from({ length: activityCount }, (_, i) => `activity_${i + 1}`), [activityCount]);
   const ALL_SCORE_FIELDS = useMemo(() => [...MODULES, ...ACTIVITIES, ...TAIL], [MODULES, ACTIVITIES]);
@@ -236,7 +246,7 @@ export default function ClassRecordGridPage() {
   async function changeCount(kind: "module" | "activity", delta: number) {
     if (countBusy) return;
     const cur = kind === "module" ? moduleCount : activityCount;
-    const max = kind === "module" ? MODULE_MAX : ACTIVITY_MAX;
+    const max = kind === "module" ? moduleMaxForQ : activityMaxForQ;
     const next = Math.min(Math.max(cur + delta, 1), max);
     if (next === cur) return;
     // Store the change against the VIEWED quarter (its own override).
@@ -460,6 +470,51 @@ export default function ClassRecordGridPage() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // Column hover indicator — show module/activity group name when hovering score cells
+  useEffect(() => {
+    const table = document.getElementById("recordTable");
+    const indicator = document.getElementById("colHoverIndicator");
+    if (!table || !indicator) return;
+
+    function fieldToLabel(field: string): { text: string; group: string } | null {
+      const m = field.match(/^module_(\d+)$/);
+      if (m) return { text: `Module ${m[1]}`, group: "group-modules" };
+      const a = field.match(/^activity_(\d+)$/);
+      if (a) return { text: `Activity ${a[1]}`, group: "group-activities" };
+      if (field === "at")   return { text: "AT",   group: "group-at" };
+      if (field === "pt_1") return { text: "PT 1", group: "group-pt" };
+      if (field === "pt_2") return { text: "PT 2", group: "group-pt" };
+      if (field === "qe")   return { text: "QE",   group: "group-qe" };
+      return null;
+    }
+
+    function onOver(e: MouseEvent) {
+      if (!indicator) return;
+      const td = (e.target as HTMLElement).closest?.("td[data-field]") as HTMLElement | null;
+      if (!td) return;
+      const info = fieldToLabel(td.dataset.field || "");
+      if (!info) return;
+      indicator.textContent = info.text;
+      indicator.className = "col-hover-indicator " + info.group;
+      indicator.style.display = "block";
+    }
+
+    function onOut(e: MouseEvent) {
+      if (!indicator || !table) return;
+      const related = e.relatedTarget as HTMLElement | null;
+      if (related && table.contains(related)) return;
+      indicator.style.display = "none";
+      indicator.className = "col-hover-indicator";
+    }
+
+    table.addEventListener("mouseover", onOver);
+    table.addEventListener("mouseout", onOut);
+    return () => {
+      table.removeEventListener("mouseover", onOver);
+      table.removeEventListener("mouseout", onOut);
+    };
+  }, []);
+
   const quarterLocked = String(viewQuarter) !== String(currentQuarter);
   const semesterLocked = viewSemester !== currentSemester;
   // Width of the grid in columns, for the "no students" / skeleton rows: the 3
@@ -536,6 +591,34 @@ export default function ClassRecordGridPage() {
   }
 
   async function activateQuarter() {
+    const scopeLabel = college ? "College" : "Junior/Senior High";
+
+    // Apply to ALL sections (checkbox): update every one of the teacher's
+    // sections in the same quarter system through the existing single-section
+    // endpoint. No dependency on a separate bulk endpoint.
+    if (applyAllQ) {
+      if (quarterLocked && !window.confirm(`Apply ${qLabel(viewQuarter)} to ALL your ${scopeLabel} sections? Past records stay saved.`)) return;
+      setActivatingQ(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const targets = (r.sections || []).filter((s) => (s.school_level === "College") === college);
+        const results = await Promise.allSettled(
+          targets.map((s) => apiPatch(`/api/sections/${s.id}`, { quarter: viewQuarter }))
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentQuarter(viewQuarter);
+        setDataVersion((v) => v + 1);
+        setApplyAllQ(false);
+        showToast(`Applied ${qLabel(viewQuarter)} to ${ok} ${scopeLabel} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingQ(false);
+      }
+      return;
+    }
+
     if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
     try {
@@ -553,6 +636,38 @@ export default function ClassRecordGridPage() {
 
   async function activateSemester() {
     const newQuarter = viewSemester === "1st Sem" ? (college ? "Prelim" : "1") : college ? "Prelim" : "3";
+
+    // Apply to ALL sections (checkbox): semester is universal; each section's
+    // quarter resets to its own school-level's starting quarter (College ->
+    // Prelim, else -> 1 or 3), computed per section.
+    if (applyAllS) {
+      if (semesterLocked && !window.confirm(`Switch ALL your sections to ${viewSemester}? Each section's quarter resets to its own starting quarter. Past records stay saved.`)) return;
+      setActivatingS(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const all = r.sections || [];
+        const results = await Promise.allSettled(
+          all.map((s) => {
+            const secQuarter = s.school_level === "College" ? "Prelim" : (viewSemester === "1st Sem" ? "1" : "3");
+            return apiPatch(`/api/sections/${s.id}`, { semester: viewSemester, quarter: secQuarter });
+          })
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentSemester(viewSemester);
+        setCurrentQuarter(newQuarter);
+        setViewQuarter(newQuarter);
+        setDataVersion((v) => v + 1);
+        setApplyAllS(false);
+        showToast(`Applied ${viewSemester} to ${ok} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingS(false);
+      }
+      return;
+    }
+
     if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
     try {
@@ -1078,6 +1193,10 @@ export default function ClassRecordGridPage() {
               <span className="lock-banner" style={{ display: "inline-flex" }}>
                 <i className="fa-solid fa-lock" /> {qLabel(viewQuarter)} is not yet active.
               </span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", cursor: "pointer" }}>
+                <input type="checkbox" checked={applyAllQ} onChange={(e) => setApplyAllQ(e.target.checked)} style={{ cursor: "pointer" }} />
+                All sections
+              </label>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
                 {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
               </button>
@@ -1101,6 +1220,10 @@ export default function ClassRecordGridPage() {
               <span className="lock-banner" style={{ display: "inline-flex" }}>
                 <i className="fa-solid fa-lock" /> {viewSemester} is not yet active.
               </span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", cursor: "pointer" }}>
+                <input type="checkbox" checked={applyAllS} onChange={(e) => setApplyAllS(e.target.checked)} style={{ cursor: "pointer" }} />
+                All sections
+              </label>
               <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingS} onClick={activateSemester}>
                 {activatingS ? "Saving..." : `Activate ${viewSemester}`}
               </button>
@@ -1265,6 +1388,8 @@ export default function ClassRecordGridPage() {
           </table>
         </div>
       </div>
+
+      <div id="colHoverIndicator" className="col-hover-indicator" />
 
       <div className={`toast-notification ${toast.err ? "error" : ""} ${toast.show ? "show" : ""}`}>
         <i className={`fa-solid ${toast.err ? "fa-circle-exclamation" : "fa-circle-check"}`} />

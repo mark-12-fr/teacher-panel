@@ -42,6 +42,8 @@ export default function SectionDetailPage() {
   const [viewSemester, setViewSemester] = useState("1st Sem");
   const [activatingQ, setActivatingQ] = useState(false);
   const [activatingS, setActivatingS] = useState(false);
+  const [applyAllQ, setApplyAllQ] = useState(false);
+  const [applyAllS, setApplyAllS] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState("");
@@ -123,6 +125,34 @@ export default function SectionDetailPage() {
   const qLabel = (q: string) => (isCollege ? q : `Q${q}`);
 
   async function activateQuarter() {
+    const scopeLabel = isCollege ? "College" : "Junior/Senior High";
+
+    // Apply to ALL sections: fetch the teacher's sections and update each one
+    // through the existing single-section endpoint (no dependency on a separate
+    // bulk endpoint). Only sections sharing this one's quarter system are touched.
+    if (applyAllQ) {
+      if (quarterLocked && !window.confirm(`Apply ${qLabel(viewQuarter)} to ALL your ${scopeLabel} sections? Past records stay saved.`)) return;
+      setActivatingQ(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const targets = (r.sections || []).filter((s) => (s.school_level === "College") === isCollege);
+        const results = await Promise.allSettled(
+          targets.map((s) => apiPatch(`/api/sections/${s.id}`, { quarter: viewQuarter }))
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentQuarter(viewQuarter);
+        setApplyAllQ(false);
+        showToast(`Applied ${qLabel(viewQuarter)} to ${ok} ${scopeLabel} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingQ(false);
+      }
+      return;
+    }
+
+    // Single section (this one only).
     if (quarterLocked && !window.confirm(`Switch active quarter to ${qLabel(viewQuarter)}? Past records stay saved.`)) return;
     setActivatingQ(true);
     const payload = { quarter: viewQuarter };
@@ -147,6 +177,39 @@ export default function SectionDetailPage() {
 
   async function activateSemester() {
     const newQuarter = viewSemester === "1st Sem" ? (isCollege ? "Prelim" : "1") : isCollege ? "Prelim" : "3";
+
+    // Apply to ALL sections: update each of the teacher's sections through the
+    // existing single-section endpoint. Semester is universal; each section's
+    // quarter resets to ITS OWN school-level's starting quarter (College ->
+    // Prelim, else -> 1 or 3), computed per section.
+    if (applyAllS) {
+      if (semesterLocked && !window.confirm(`Switch ALL your sections to ${viewSemester}? Each section's quarter resets to its own starting quarter. Past records stay saved.`)) return;
+      setActivatingS(true);
+      try {
+        const r = await apiGet<{ sections: any[] }>(`/api/sections`);
+        const all = r.sections || [];
+        const results = await Promise.allSettled(
+          all.map((s) => {
+            const secQuarter = s.school_level === "College" ? "Prelim" : (viewSemester === "1st Sem" ? "1" : "3");
+            return apiPatch(`/api/sections/${s.id}`, { semester: viewSemester, quarter: secQuarter });
+          })
+        );
+        const ok = results.filter((x) => x.status === "fulfilled").length;
+        invalidateCached();
+        setCurrentSemester(viewSemester);
+        setCurrentQuarter(newQuarter);
+        setViewQuarter(newQuarter);
+        setApplyAllS(false);
+        showToast(`Applied ${viewSemester} to ${ok} section(s)!`);
+      } catch {
+        showToast(isOffline() ? "You're offline — reconnect to apply to all sections." : "Failed to update sections.", true);
+      } finally {
+        setActivatingS(false);
+      }
+      return;
+    }
+
+    // Single section (this one only).
     if (semesterLocked && !window.confirm(`Switch to ${viewSemester}? Quarter will reset to ${qLabel(newQuarter)}. Past records stay saved.`)) return;
     setActivatingS(true);
     const payload = { semester: viewSemester, quarter: newQuarter };
@@ -284,6 +347,10 @@ export default function SectionDetailPage() {
             <span className="lock-banner" style={{ display: "inline-flex" }}>
               <i className="fa-solid fa-lock" /> {qLabel(viewQuarter)} is not yet active.
             </span>
+            <label className="bulk-apply-check">
+              <input type="checkbox" checked={applyAllQ} onChange={(e) => setApplyAllQ(e.target.checked)} />
+              All sections
+            </label>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingQ} onClick={activateQuarter}>
               {activatingQ ? "Saving..." : `Activate ${qLabel(viewQuarter)}`}
             </button>
@@ -307,6 +374,10 @@ export default function SectionDetailPage() {
             <span className="lock-banner" style={{ display: "inline-flex" }}>
               <i className="fa-solid fa-lock" /> {viewSemester} is not yet active.
             </span>
+            <label className="bulk-apply-check">
+              <input type="checkbox" checked={applyAllS} onChange={(e) => setApplyAllS(e.target.checked)} />
+              All sections
+            </label>
             <button className="q-activate-btn" style={{ display: "inline-flex" }} disabled={activatingS} onClick={activateSemester}>
               {activatingS ? "Saving..." : `Activate ${viewSemester}`}
             </button>

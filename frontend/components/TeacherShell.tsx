@@ -10,7 +10,10 @@ import { getSupabase } from "@/lib/supabase";
 import { useRequireAuth, signOut, clearUserCache } from "@/hooks/useAuth";
 import { applyTheme, currentTheme, pullTheme } from "@/lib/theme";
 import { usePageMetaValue } from "@/lib/page-meta";
-import AIAssistant from "@/components/AIAssistant";
+// AI assistant widget removed at the teacher's request; its stylesheet is kept
+// because it also positions the QuickAdd "+" button, the content bottom padding
+// and the sidebar school-year badge.
+import "@/app/ai-assistant.css";
 import QuickAddFab from "@/components/QuickAddFab";
 import OfflineBanner from "@/components/OfflineBanner";
 import NotificationBell from "@/components/NotificationBell";
@@ -336,7 +339,6 @@ export default function TeacherShell({
       </main>
 
       <QuickAddFab />
-      <AIAssistant />
       <OfflineBanner />
 
       {confirmLogout && (

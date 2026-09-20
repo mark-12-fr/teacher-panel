@@ -344,7 +344,7 @@ async def webhook(
     if settings.PUSH_WEBHOOK_SECRET:
         secret_ok = bool(x_mjr_secret) and x_mjr_secret == settings.PUSH_WEBHOOK_SECRET
         if not secret_ok:
-            print(f"[webhook] BAD SECRET received={x_mjr_secret!r} len={len(x_mjr_secret or '')}")
+            print("[webhook] rejected: bad or missing X-Mjr-Secret header")
             return {"skipped": "bad secret"}
     try:
         body = await request.json()
