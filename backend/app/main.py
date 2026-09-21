@@ -12,6 +12,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse, Response
 from sqlalchemy import text as sa_text
 
@@ -70,6 +71,12 @@ class ForceCORSMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "*"
             response.headers["Access-Control-Allow-Headers"] = "*"
+            # Cache the preflight result for 24h. Without this the browser
+            # re-sends an OPTIONS round-trip before EVERY request (the API
+            # calls carry Authorization, a non-simple header), which doubles
+            # the number of cross-origin round-trips to the API on every page
+            # load. With it, one OPTIONS per origin per day.
+            response.headers["Access-Control-Max-Age"] = "86400"
             return response
         # Add CORS headers after the inner handler (even if it errors out)
         if origin not in ALLOWED_ORIGINS:
@@ -82,6 +89,7 @@ class ForceCORSMiddleware(BaseHTTPMiddleware):
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Methods"] = "*"
         response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "86400"
         return response
 
 # Rate limiting (fail-open, per-teacher buckets — see ratelimit.py). Wired
@@ -93,6 +101,12 @@ class ForceCORSMiddleware(BaseHTTPMiddleware):
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# Compress every response body ≥1KB (gzip). The dashboard-bulk / class-records /
+# attendance payloads are the biggest things the frontend waits on — JSON
+# typically ~85-90% smaller over the wire, which is most of what the perceived
+# "page loads slow on open" cost on a metered/slower connection.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.add_middleware(ForceCORSMiddleware)
 

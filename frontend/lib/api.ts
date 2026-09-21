@@ -21,18 +21,36 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
   auth?: boolean; // default true
 }
 
-async function accessToken(): Promise<string | null> {
-  try {
-    const { data } = await getSupabase().auth.getSession();
-    return data.session?.access_token || null;
-  } catch {
-    return null;
+// Single-flight access-token lookup. On first open the shell warmup, the page's
+// own fetches, the notification poll, push setup and the theme handler can all
+// call api() within the same instant; each used to await a separate
+// auth.getSession() (which itself can trigger a refresh round-trip on a cold
+// session). Sharing one in-flight promise means the startup burst pays for
+// exactly one session read instead of N.
+let _tokenLookup: Promise<string | null> | null = null;
+function accessToken(): Promise<string | null> {
+  if (_tokenLookup === null) {
+    _tokenLookup = getSupabase()
+      .auth.getSession()
+      .then(({ data }) => data.session?.access_token || null)
+      .catch(() => null)
+      .finally(() => {
+        // Reset once resolved so a later batch re-reads — supabase-js
+        // auto-refreshes near expiry, and the next call should see that.
+        _tokenLookup = null;
+      });
   }
+  return _tokenLookup;
 }
 
 export async function api<T = any>(path: string, options: ApiOptions = {}): Promise<T> {
   const { body, auth = true, headers: extra, ...rest } = options;
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...(extra as any) };
+  // Only declare a JSON media type when there IS a body. Sending
+  // Content-Type: application/json on body-less requests (GET/DELETE) marks
+  // them as non-simple, which is an extra reason for the browser to CORS
+  // preflight (OPTIONS) them — a whole extra round-trip per request.
+  const headers: Record<string, string> = { ...(extra as any) };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {
     const token = await accessToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;

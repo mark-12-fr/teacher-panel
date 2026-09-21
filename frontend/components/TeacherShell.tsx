@@ -218,12 +218,24 @@ export default function TeacherShell({
     if (!ready) return;
     autoEnablePush();
     const warmup = async () => {
-      // Warm up Render server + cache initial data
-      try { await apiGet("/api/ping") } catch {}
-      try { await apiGet("/api/sections") } catch {}
-      try { await apiGet("/api/subjects") } catch {}
-      // Fetch active school year
-      try { const r = await apiGet<any>("/api/active-school-year"); if (r?.school_year) { setSchoolYear(r.school_year); localStorage.setItem("cached_school_year", r.school_year) } } catch {}
+      // Warm up the API server + fill the Redis caches in ONE parallel burst
+      // instead of a sequential ping→sections→subjects→school-year chain — on
+      // a cold server that was up to 4 serial round-trips before the page's
+      // own fetches could hit warm caches.
+      await Promise.allSettled([
+        apiGet("/api/ping").catch(() => {}),
+        apiGet("/api/sections").catch(() => {}),
+        apiGet("/api/subjects").catch(() => {}),
+        // Fetch active school year
+        apiGet<any>("/api/active-school-year")
+          .then((r) => {
+            if (r?.school_year) {
+              setSchoolYear(r.school_year);
+              localStorage.setItem("cached_school_year", r.school_year);
+            }
+          })
+          .catch(() => {}),
+      ]);
     };
     warmup();
     // Heartbeat every 1 second — keeps Render server always warm
