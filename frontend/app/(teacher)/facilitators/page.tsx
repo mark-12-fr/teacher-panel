@@ -6,7 +6,7 @@ import { isOffline, runWhenOnline } from "@/lib/offline";
 import { getSupabase } from "@/lib/supabase";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
-import { SkeletonTableRows } from "@/components/Skeleton";
+import { SkeletonTableRows, Skel } from "@/components/Skeleton";
 import SmoothSelect from "@/components/SmoothSelect";
 import DutyCertificateModal from "@/components/DutyCertificateModal";
 import "./facilitators.css";
@@ -210,14 +210,23 @@ export default function FacilitatorsPage() {
   return (
     <>
       <div className="top-info-card">
-        <div className="info-col">
-          <h3>TOTAL FACILITATORS</h3>
-          <h4>{stats.total}</h4>
-        </div>
-        <div className="info-col">
-          <h3>ACTIVE SECTIONS</h3>
-          <h4>{stats.activeSections}</h4>
-        </div>
+        {faciCache.loading && !faciCache.data ? (
+          <>
+            <div className="info-col"><Skel width={110} height={11} style={{ marginBottom: 8 }} /><Skel width={46} height={20} /></div>
+            <div className="info-col"><Skel width={110} height={11} style={{ marginBottom: 8 }} /><Skel width={46} height={20} /></div>
+          </>
+        ) : (
+          <>
+            <div className="info-col">
+              <h3>TOTAL FACILITATORS</h3>
+              <h4>{stats.total}</h4>
+            </div>
+            <div className="info-col">
+              <h3>ACTIVE SECTIONS</h3>
+              <h4>{stats.activeSections}</h4>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="search-container">
