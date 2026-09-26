@@ -67,7 +67,7 @@ html:root[data-theme="dark"] body::before {
 body {
   --card-bg: rgba(255, 255, 255, 0.58);
   --main-bg: rgba(232, 239, 255, 0.46);
-  --sidebar-bg: rgba(12, 18, 36, 0.74);
+  --sidebar-bg: rgba(12, 18, 36, 0.94);
   --input-bg: rgba(255, 255, 255, 0.55);
   --hover-bg: rgba(255, 255, 255, 0.28);
   --border-color: rgba(255, 255, 255, 0.26);
