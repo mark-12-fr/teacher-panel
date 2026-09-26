@@ -2,30 +2,18 @@
    privacy.html / terms.html. Scoped under .legal-page so its dark theme and
    reset don't leak into the rest of the app. */
 .legal-page {
-  --bg: rgba(15, 23, 42, 0.92);
-  --bg-soft: rgba(15, 23, 42, 0.72);
-  --card: rgba(30, 41, 59, 0.62);
+  --bg: #0f172a;
+  --bg-soft: #111827;
+  --card: #1e293b;
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --accent: #3b82f6;
-  --border: rgba(255, 255, 255, 0.14);
+  --border: #334155;
   min-height: 100vh;
+  background: var(--bg);
   color: var(--text);
   font-family: "Inter", system-ui, sans-serif;
   line-height: 1.7;
-}
-.legal-page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    linear-gradient(165deg, #0f172a 0%, #142352 55%, #0f1b3d 100%),
-    radial-gradient(circle at 12% 18%, rgba(59, 130, 246, 0.30) 0%, transparent 44%),
-    radial-gradient(circle at 88% 30%, rgba(99, 102, 241, 0.26) 0%, transparent 46%),
-    radial-gradient(circle at 72% 88%, rgba(14, 165, 233, 0.20) 0%, transparent 44%),
-    radial-gradient(circle at 22% 85%, rgba(139, 92, 246, 0.20) 0%, transparent 48%);
 }
 .legal-page * {
   margin: 0;
@@ -42,9 +30,8 @@
 }
 
 .legal-page .nav {
-  background: rgba(15, 23, 42, 0.68);
-  backdrop-filter: blur(16px) saturate(1.3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -112,14 +99,9 @@
 .legal-page .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 22px 26px;
   margin-top: 18px;
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  backdrop-filter: blur(14px) saturate(1.4);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 22px 50px -16px rgba(0, 0, 0, 0.5);
 }
 
 .legal-page footer {
