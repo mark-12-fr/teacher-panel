@@ -47,6 +47,11 @@
             background-color: var(--main-bg);
             color: var(--text-dark);
             overflow-x: hidden;
+            /* The shell no longer renders the old .layout wrapper (which held
+               this min-height), so on short pages the frosted pane ended at the
+               content's bottom edge and exposed the raw html gradient below it.
+               Keeping it here lets the pane always cover the full viewport. */
+            min-height: 100vh;
             transition: background-color 0.3s, color 0.3s;
         }
 
