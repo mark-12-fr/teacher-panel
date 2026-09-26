@@ -8,7 +8,7 @@
 
         .login-page {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #eef2f7 0%, #dbeafe 40%, #c7d2fe 100%);
+            background: linear-gradient(135deg, rgba(238, 242, 255, 0.42) 0%, rgba(219, 234, 254, 0.36) 40%, rgba(199, 210, 254, 0.36) 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -47,11 +47,13 @@
             max-width: 420px;
             padding: 40px 34px;
             border-radius: 20px;
-            background: #ffffff;
-            border: 1px solid #eef2f7;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            backdrop-filter: blur(18px) saturate(1.4);
             box-shadow:
-                0 14px 35px rgba(0, 0, 0, .08),
-                0 6px 14px rgba(0, 0, 0, .04);
+                0 20px 50px rgba(41, 58, 128, 0.24),
+                0 4px 12px rgba(30, 44, 90, 0.08);
             text-align: center;
         }
 

@@ -3,7 +3,7 @@
 .login-page {
             margin: 0;
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #eef2f7 0%, #dbeafe 40%, #c7d2fe 100%);
+            background: linear-gradient(135deg, rgba(238, 242, 255, 0.42) 0%, rgba(219, 234, 254, 0.36) 40%, rgba(199, 210, 254, 0.36) 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -98,12 +98,13 @@
             max-width: 420px;
             padding: 40px 32px;
             border-radius: 22px;
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.76);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            backdrop-filter: blur(18px) saturate(1.4);
+            border: 1px solid rgba(255, 255, 255, 0.65);
             box-shadow:
-                0 25px 60px rgba(0, 0, 0, .15),
-                0 10px 25px rgba(0, 0, 0, .08);
+                0 24px 55px rgba(41, 58, 128, 0.26),
+                0 4px 14px rgba(30, 44, 90, 0.10);
             text-align: center;
         }
 
