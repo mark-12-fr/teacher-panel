@@ -441,7 +441,13 @@
             padding: 24px;
             box-shadow: 0 4px 6px -1px var(--shadow-color);
             border: 2px solid transparent;
-            transition: background 0.3s, box-shadow 0.3s;
+            transition: background 0.3s, box-shadow 0.3s, transform 0.3s, border-color 0.3s;
+        }
+
+        .dash-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 32px -8px var(--shadow-color);
+            border-color: rgba(59, 130, 246, 0.3);
         }
 
         .stat-card {
@@ -501,15 +507,6 @@
         .main-chart {
             grid-column: span 5;
             min-height: 250px;
-            transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-                        box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-                        border-color 0.45s ease;
-        }
-
-        .main-chart:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 22px 40px -12px var(--shadow-color);
-            border-color: rgba(59, 130, 246, 0.5);
         }
 
         .side-list {
