@@ -26,9 +26,7 @@ export type MenuKey =
   | "attendance"
   | "performance"
   | "facilitators"
-  | "grading-system"
-  | "about"
-  | "help";
+  | "grading-system";
 
 const MENU: { key: MenuKey; href: string; icon: string; label: string }[] = [
   { key: "dashboard", href: "/dashboard", icon: "fa-table-columns", label: "Dashboard" },
@@ -38,8 +36,6 @@ const MENU: { key: MenuKey; href: string; icon: string; label: string }[] = [
   { key: "performance", href: "/performance", icon: "fa-arrow-trend-up", label: "Class Performance" },
   { key: "facilitators", href: "/facilitators", icon: "fa-users", label: "Facilitators" },
   { key: "grading-system", href: "/grading-system", icon: "fa-percent", label: "Grading System" },
-  { key: "about", href: "/about", icon: "fa-circle-info", label: "About" },
-  { key: "help", href: "/help", icon: "fa-circle-question", label: "Help" },
 ];
 
 function activeFromPath(path: string): MenuKey {
@@ -51,8 +47,6 @@ function activeFromPath(path: string): MenuKey {
   if (seg === "performance") return "performance";
   if (seg === "facilitators") return "facilitators";
   if (seg === "grading-system") return "grading-system";
-  if (seg === "about") return "about";
-  if (seg === "help") return "help";
   return "dashboard";
 }
 
