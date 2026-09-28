@@ -899,6 +899,10 @@ export default function DashboardPage() {
   // (its index here), so each swatch matches its slice.
   const rankedSections = [...sectionOverview].sort((a, b) => b.students - a.students);
   const faciNeedsAttention = facilitatorStatus.filter((f) => f.needsAttention).length;
+  // Attendance is only "taken" today once at least one student is marked; until
+  // then present/absent are both 0, which reads as "everyone absent" unless we
+  // say so explicitly.
+  const attendanceTaken = cards.present + cards.absent > 0;
 
   return (
     <>
@@ -935,7 +939,7 @@ export default function DashboardPage() {
               <div className="stat-icon-wrapper stat-icon-blue"><i className="fa-solid fa-users" /></div>
               <div>
                 <span className="stat-title">TOTAL STUDENTS</span>
-                <div className="stat-value">{cards.students}</div>
+                <div className="stat-value">{cards.students.toLocaleString()}</div>
               </div>
             </div>
 
@@ -951,8 +955,10 @@ export default function DashboardPage() {
               <div className="stat-icon-wrapper stat-icon-yellow"><i className="fa-solid fa-user-xmark" /></div>
               <div>
                 <span className="stat-title">TODAY&apos;S ABSENT &amp; LATE</span>
-                <div className="stat-value">{cards.absent}</div>
-                {rates && <div className={`attend-rate ${rates.a <= 20 ? "rate-good" : rates.a <= 40 ? "rate-warn" : "rate-bad"}`}>{rates.a}% absent/late</div>}
+                <div className="stat-value">{attendanceTaken ? cards.absent.toLocaleString() : "—"}</div>
+                {attendanceTaken
+                  ? rates && <div className={`attend-rate ${rates.a <= 20 ? "rate-good" : rates.a <= 40 ? "rate-warn" : "rate-bad"}`}>{rates.a}% absent/late</div>
+                  : <div className="attend-rate" style={{ color: "var(--text-muted)", background: "transparent" }}>Attendance not taken yet</div>}
               </div>
             </div>
 
@@ -960,8 +966,10 @@ export default function DashboardPage() {
               <div className="stat-icon-wrapper stat-icon-purple"><i className="fa-solid fa-user-check" /></div>
               <div>
                 <span className="stat-title">TODAY&apos;S PRESENT</span>
-                <div className="stat-value">{cards.present}</div>
-                {rates && <div className={`attend-rate ${rates.p >= 80 ? "rate-good" : rates.p >= 60 ? "rate-warn" : "rate-bad"}`}>{rates.p}% present today</div>}
+                <div className="stat-value">{attendanceTaken ? cards.present.toLocaleString() : "—"}</div>
+                {attendanceTaken
+                  ? rates && <div className={`attend-rate ${rates.p >= 80 ? "rate-good" : rates.p >= 60 ? "rate-warn" : "rate-bad"}`}>{rates.p}% present today</div>
+                  : <div className="attend-rate" style={{ color: "var(--text-muted)", background: "transparent" }}>Attendance not taken yet</div>}
               </div>
             </div>
           </>
@@ -975,6 +983,11 @@ export default function DashboardPage() {
                 <span className="chart-badge chart-badge-sem"><i className="fa-regular fa-calendar" style={{ fontSize: "0.65rem" }} /> {semLabel}</span>
                 <span className="chart-badge chart-badge-qtr"><i className="fa-solid fa-layer-group" style={{ fontSize: "0.65rem" }} /> {qtrLabel}</span>
                 <span className="chart-badge chart-badge-pass">{passing}% Passing</span>
+                {/* Color key so the green/red used across the dashboard is unambiguous. */}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />passing
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block", marginLeft: 6 }} />below {passing}%
+                </span>
               </div>
             </div>
             {overallAvg != null && (
@@ -1044,6 +1057,9 @@ export default function DashboardPage() {
                       <span
                         style={{
                           flex: "0 0 auto",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 3,
                           fontSize: "0.72rem",
                           fontWeight: 700,
                           padding: "2px 8px",
@@ -1054,7 +1070,12 @@ export default function DashboardPage() {
                         }}
                         title={s.avg === null ? "No grades yet this quarter" : s.avg >= passing ? "Class average — passing" : "Class average — below passing"}
                       >
-                        {s.avg === null ? "—" : `${s.avg}%`}
+                        {s.avg === null ? "—" : (
+                          <>
+                            <i className={`fa-solid ${s.avg >= passing ? "fa-circle-check" : "fa-circle-exclamation"}`} style={{ fontSize: "0.62rem" }} />
+                            {s.avg}%
+                          </>
+                        )}
                       </span>
                     </li>
                   );
@@ -1068,11 +1089,21 @@ export default function DashboardPage() {
           <h4 style={{ marginBottom: 15 }}>Top Students</h4>
           <ul className="list-container" style={{ maxHeight: 200, overflowY: "auto", padding: 0 }}>
             {top.length === 0 ? (
-              <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 20 }}>No performance data available yet</li>
+              <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 14, lineHeight: 1.55, padding: "0 14px", listStyle: "none" }}>
+                <i className="fa-regular fa-clipboard" style={{ display: "block", fontSize: "1.5rem", marginBottom: 8, opacity: 0.45 }} />
+                No grades yet for this quarter.
+                <br />
+                <span style={{ fontSize: "0.78rem" }}>Top performers will appear here as you encode scores in <b>Class Record</b>.</span>
+              </li>
             ) : (
               top.map((s, i) => {
-                const barClr = s.grade >= passing ? "#22c55e" : "#ef4444";
-                const gradeClr = s.grade >= passing ? "#16a34a" : "#dc2626";
+                // Top Students is a leaderboard, so the bar shows standing in a
+                // calm accent — not pass/fail red (a whole-class-below-passing
+                // quarter otherwise turned this card into a wall of red). The
+                // pass/fail read stays on the grade itself, with an icon so it
+                // isn't carried by colour alone.
+                const passingGrade = s.grade >= passing;
+                const gradeClr = passingGrade ? "#16a34a" : "#dc2626";
                 const rankColors = ["#f59e0b", "#9ca3af", "#cd7f32"];
                 const rankBgs = ["rgba(245,158,11,0.13)", "rgba(156,163,175,0.13)", "rgba(205,127,50,0.13)"];
                 return (
@@ -1085,11 +1116,14 @@ export default function DashboardPage() {
                         <div style={{ fontSize: "0.87rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
                         <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: 3 }}>{s.section}</div>
                         <div style={{ height: 4, background: "var(--border-color)", borderRadius: 3, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${Math.min(s.grade, 100)}%`, background: barClr, borderRadius: 3 }} />
+                          <div style={{ height: "100%", width: `${Math.min(s.grade, 100)}%`, background: "var(--accent-blue, #3b82f6)", borderRadius: 3 }} />
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontWeight: 800, fontSize: "0.93rem", color: gradeClr, flexShrink: 0 }}>{s.grade}%</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 800, fontSize: "0.93rem", color: gradeClr, flexShrink: 0 }}>
+                      <i className={`fa-solid ${passingGrade ? "fa-circle-check" : "fa-circle-exclamation"}`} style={{ fontSize: "0.72rem" }} />
+                      {s.grade}%
+                    </span>
                   </li>
                 );
               })
