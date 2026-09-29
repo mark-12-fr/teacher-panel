@@ -630,6 +630,97 @@
             border-bottom: 1px solid var(--border-color);
         }
 
+        /* Facilitators card — one row per facilitator: avatar + name/section on top,
+           then the "submitted today" checklist (components/FaciChecklist) across the
+           full row. The checklist is a grid of tiles whose column count follows the
+           ROW's width (container query), not the screen's, so it fits every layout of
+           the card: 2 across on a phone, 3 in the dashboard grid, 6 on a wide card. */
+        .faci-row {
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 9px 12px;
+            align-items: center;
+            padding: 12px 5px;
+            cursor: pointer;
+            container-type: inline-size;
+        }
+        .faci-head { min-width: 0; }
+        .faci-checks {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+        @container (max-width: 250px) {
+            .faci-checks { grid-template-columns: minmax(0, 1fr); }
+        }
+        @container (min-width: 400px) {
+            .faci-checks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @container (min-width: 810px) {
+            .faci-checks { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+        }
+        .faci-note {
+            grid-column: 2;
+            justify-self: start;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--hover-bg);
+        }
+        .faci-check {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            padding: 6px 9px 6px 8px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            background: var(--hover-bg);
+        }
+        .faci-check svg {
+            flex: none;
+            width: 15px;
+            height: 15px;
+        }
+        .faci-check-txt {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+            line-height: 1.2;
+        }
+        .faci-check-label,
+        .faci-check-sub {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .faci-check-label { font-size: 0.72rem; font-weight: 700; }
+        .faci-check-sub { font-size: 0.64rem; font-weight: 500; opacity: 0.85; }
+        .faci-check.done {
+            color: #15803d;
+            background: rgba(22, 163, 74, 0.12);
+        }
+        .faci-check.done .faci-check-sub { font-weight: 600; opacity: 0.9; }
+        .faci-check.done .tick { stroke: #fff; }
+        [data-theme="dark"] .faci-check.done {
+            color: #4ade80;
+            background: rgba(34, 197, 94, 0.14);
+        }
+        [data-theme="dark"] .faci-check.done .tick { stroke: #0b1f14; }
+        .faci-check-vh {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
         .delete-btn {
             color: #ef4444;
             cursor: pointer;
