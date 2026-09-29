@@ -3,6 +3,7 @@ dashboard.py — profile, schedules, notices, notes (the dashboard board).
 =======================================================================
 All rows are keyed to the authenticated teacher (profiles.id / user_id).
 """
+import asyncio
 from datetime import date as date_cls, datetime, time as time_cls, timezone
 from typing import Optional
 from uuid import UUID
@@ -13,7 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..cache import cache_get, cache_invalidate, cache_key, cache_set
-from ..database import get_db
+from ..database import SessionLocal, get_db
 from ..models import Attendance, ClassRecord, Note, Notice, Profile, Schedule, Section, Student, Subject
 from ..schemas import NoteIn, NoticeIn, ProfileUpdate, ScheduleIn
 from ..security import CurrentTeacher, get_current_teacher
@@ -29,11 +30,113 @@ MAX_PERSONAL_ITEMS = 500
 
 
 # ── Dashboard bulk fetch ────────────────────────────────────────────────────
+async def _in_own_session(work):
+    """Run ``work(session)`` on its OWN database session (its own connection).
+
+    One AsyncSession is one connection and can only run one statement at a time,
+    so queries that should overlap on the wire must each use their own session.
+    """
+    if SessionLocal is None:
+        raise RuntimeError(
+            "DATABASE_URL is not configured. Set it in the environment "
+            "(see backend/.env.example)."
+        )
+    async with SessionLocal() as session:
+        return await work(session)
+
+
+async def _compute_dashboard_bulk(tid: UUID, today: Optional[str]) -> dict:
+    """Build the dashboard payload with ONE round of parallel queries.
+
+    The database work is trivial (~1 ms for the heaviest query on a real 444-student
+    account) — what the dashboard actually waited for was the network: this used
+    to run five queries back to back, and every one is a full round-trip to the
+    database region. Sections, subjects, students, class records and today's
+    attendance are all scoped through sub-selects on the teacher's own sections,
+    so none needs another's result and they can all be in flight at once —
+    about one round-trip instead of five.
+    """
+    section_ids = select(Section.id).where(Section.teacher_id == tid)
+    section_titles = select(Section.title).where(Section.teacher_id == tid)
+
+    async def q_sections(s: AsyncSession) -> list:
+        rows = (
+            await s.execute(
+                select(Section, func.count(Student.id).label("student_count"))
+                .outerjoin(Student, Student.section_id == Section.id)
+                .where(Section.teacher_id == tid)
+                .group_by(Section.id)
+                .order_by(Section.created_at.desc())
+            )
+        ).all()
+        out = []
+        for section, student_count in rows:
+            d = orm_to_dict(section)
+            d["student_count"] = student_count
+            out.append(d)
+        return out
+
+    async def q_subjects(s: AsyncSession) -> list:
+        return orm_list((await s.execute(select(Subject).where(Subject.teacher_id == tid))).scalars().all())
+
+    async def q_students(s: AsyncSession) -> list:
+        return orm_list(
+            (await s.execute(select(Student).where(Student.section_id.in_(section_ids)))).scalars().all()
+        )
+
+    async def q_records(s: AsyncSession) -> list:
+        return orm_list(
+            (await s.execute(select(ClassRecord).where(ClassRecord.section_id.in_(section_ids)))).scalars().all()
+        )
+
+    async def q_attendance(s: AsyncSession) -> list:
+        if not today:
+            return []
+        return orm_list(
+            (
+                await s.execute(
+                    select(Attendance).where(
+                        Attendance.section.in_(section_titles),
+                        Attendance.teacher_id == tid,
+                        Attendance.date == today,
+                    )
+                )
+            ).scalars().all()
+        )
+
+    sections, subjects, students, records, attendance_today = await asyncio.gather(
+        _in_own_session(q_sections),
+        _in_own_session(q_subjects),
+        _in_own_session(q_students),
+        _in_own_session(q_records),
+        _in_own_session(q_attendance),
+    )
+    return {
+        "sections": sections,
+        "subjects": subjects,
+        "students": students,
+        "class_records": records,
+        "attendance_today": attendance_today,
+    }
+
+
+# Single-flight for cache misses: the dashboard refreshes on a poll AND on every
+# realtime event, so when the 30s cache expires several identical requests can
+# land together. Without this each would run its own set of parallel queries and
+# multiply the connection use; with it they share one computation.
+_bulk_inflight: dict = {}
+
+
+async def _compute_and_cache_bulk(ck: str, tid: UUID, today: Optional[str]) -> dict:
+    result = await _compute_dashboard_bulk(tid, today)
+    await cache_set(ck, result, ttl=30)
+    return result
+
+
 @router.get("/dashboard-bulk")
 async def dashboard_bulk(
     today: Optional[str] = Query(default=None, description="dd/mm/yyyy, matches Attendance.date"),
     teacher: CurrentTeacher = Depends(get_current_teacher),
-    db: AsyncSession = Depends(get_db),
 ):
     """Single-request bulk fetch that powers the dashboard.
 
@@ -41,9 +144,9 @@ async def dashboard_bulk(
     attendance, class-records) PER SECTION — up to 3N+2 sequential HTTP
     round-trips to Render for a teacher with N sections. This collapses that
     into a handful of queries scoped across all of the teacher's sections at
-    once. All grade/attendance-rate math still happens on the frontend
-    (lib/grading.ts), unchanged — this endpoint only removes the network
-    overhead of fetching the raw rows.
+    once (run in parallel — see ``_compute_dashboard_bulk``). All grade/attendance-rate
+    math still happens on the frontend (lib/grading.ts), unchanged — this
+    endpoint only removes the network overhead of fetching the raw rows.
     """
     tid = UUID(teacher.id)
 
@@ -52,65 +155,14 @@ async def dashboard_bulk(
     if cached is not None:
         return cached
 
-    section_rows = (
-        await db.execute(
-            select(Section, func.count(Student.id).label("student_count"))
-            .outerjoin(Student, Student.section_id == Section.id)
-            .where(Section.teacher_id == tid)
-            .group_by(Section.id)
-            .order_by(Section.created_at.desc())
-        )
-    ).all()
-    sections = []
-    section_ids = []
-    section_titles = []
-    for section, student_count in section_rows:
-        d = orm_to_dict(section)
-        d["student_count"] = student_count
-        sections.append(d)
-        section_ids.append(section.id)
-        section_titles.append(section.title)
-
-    subjects = orm_list(
-        (await db.execute(select(Subject).where(Subject.teacher_id == tid))).scalars().all()
-    )
-
-    students: list = []
-    records: list = []
-    attendance_today: list = []
-    if section_ids:
-        students = orm_list(
-            (
-                await db.execute(select(Student).where(Student.section_id.in_(section_ids)))
-            ).scalars().all()
-        )
-        records = orm_list(
-            (
-                await db.execute(select(ClassRecord).where(ClassRecord.section_id.in_(section_ids)))
-            ).scalars().all()
-        )
-        if today:
-            attendance_today = orm_list(
-                (
-                    await db.execute(
-                        select(Attendance).where(
-                            Attendance.section.in_(section_titles),
-                            Attendance.teacher_id == tid,
-                            Attendance.date == today,
-                        )
-                    )
-                ).scalars().all()
-            )
-
-    result = {
-        "sections": sections,
-        "subjects": subjects,
-        "students": students,
-        "class_records": records,
-        "attendance_today": attendance_today,
-    }
-    await cache_set(ck, result, ttl=30)
-    return result
+    task = _bulk_inflight.get(ck)
+    if task is None:
+        task = asyncio.ensure_future(_compute_and_cache_bulk(ck, tid, today))
+        _bulk_inflight[ck] = task
+        task.add_done_callback(lambda _t: _bulk_inflight.pop(ck, None))
+    # shield(): if THIS client disconnects mid-request the shared computation
+    # keeps going for the other waiters instead of being cancelled with it.
+    return await asyncio.shield(task)
 
 
 # ── Profile ─────────────────────────────────────────────────────────────────
