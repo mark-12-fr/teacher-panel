@@ -65,7 +65,8 @@ export default function NotificationBell() {
     if (inFlight.current || isOffline()) return;
     inFlight.current = true;
     try {
-      const r = await apiGet<{ items: Item[]; unread: number }>("/api/notifications?limit=20");
+      // No auto-retry: this polls every 45s anyway, so the next tick IS the retry.
+      const r = await apiGet<{ items: Item[]; unread: number }>("/api/notifications?limit=20", { retries: 0 });
       setItems(r.items || []);
       setUnread(r.unread || 0);
     } catch {
@@ -78,7 +79,9 @@ export default function NotificationBell() {
   // Poll while the tab is visible; refresh straight away when it becomes
   // visible again so a teacher returning to the tab sees the badge at once.
   useEffect(() => {
-    load();
+    // The badge isn't needed for first paint, and this request used to race the
+    // page's own data on a cold open — give the page a 2.5s head start.
+    const firstLoad = setTimeout(load, 2500);
     let timer: ReturnType<typeof setInterval> | null = null;
     const start = () => {
       if (timer === null) timer = setInterval(load, POLL_MS);
@@ -101,6 +104,7 @@ export default function NotificationBell() {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("focus", load);
     return () => {
+      clearTimeout(firstLoad);
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", load);

@@ -86,6 +86,19 @@ export function useCachedData<T>(
     fetchIdRef.current++;
   };
 
+  // Self-heal on reconnect: when the browser regains connectivity, re-fetch so
+  // a page that failed (or is showing an old snapshot) fills in by itself — no
+  // manual reload. Always calls the latest `refresh` closure via a ref.
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  useEffect(() => {
+    const onOnline = () => {
+      if (mountedRef.current) refreshRef.current();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
+
   useEffect(() => {
     mountedRef.current = true;
     // If no cached data, must fetch (loading stays true)

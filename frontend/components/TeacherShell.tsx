@@ -210,18 +210,18 @@ export default function TeacherShell({
   // ── Server heartbeat + warmup ─────────────────────────────────────────────
   useEffect(() => {
     if (!ready) return;
-    autoEnablePush();
+    let cancelled = false;
     const warmup = async () => {
       // Warm up the API server + fill the Redis caches in ONE parallel burst
       // instead of a sequential ping→sections→subjects→school-year chain — on
       // a cold server that was up to 4 serial round-trips before the page's
       // own fetches could hit warm caches.
       await Promise.allSettled([
-        apiGet("/api/ping").catch(() => {}),
-        apiGet("/api/sections").catch(() => {}),
-        apiGet("/api/subjects").catch(() => {}),
+        apiGet("/api/ping", { retries: 0 }).catch(() => {}),
+        apiGet("/api/sections", { retries: 0 }).catch(() => {}),
+        apiGet("/api/subjects", { retries: 0 }).catch(() => {}),
         // Fetch active school year
-        apiGet<any>("/api/active-school-year")
+        apiGet<any>("/api/active-school-year", { retries: 0 })
           .then((r) => {
             if (r?.school_year) {
               setSchoolYear(r.school_year);
@@ -231,15 +231,39 @@ export default function TeacherShell({
           .catch(() => {}),
       ]);
     };
-    warmup();
-    // Heartbeat every 1 second — keeps Render server always warm
-    let cancelled = false;
-    (async function beat() {
+    // Non-critical startup work (cache warm-up, push registration) used to fire
+    // at the same instant as the page's OWN data requests, so on a cold open ~9
+    // requests raced for the API and the DB pool. Give the page's data a head
+    // start; these only prime caches for the NEXT page, so a 2.5s delay costs
+    // nothing but frees the critical path.
+    const kickoff = setTimeout(() => {
       if (cancelled) return;
-      try { await fetch(`${API_BASE}/api/ping`) } catch {}
-      if (!cancelled) setTimeout(beat, 1000);
-    })();
-    return () => { cancelled = true; };
+      autoEnablePush();
+      warmup();
+    }, 2500);
+    // Keep-alive ping. It used to fire every SECOND (3,600 requests/hour per
+    // tab, hidden tabs included). Every 30s while the tab is visible — and a slow
+    // 4-minute tick when hidden — keeps the API just as warm at ~1% of the load.
+    let beatTimer: ReturnType<typeof setTimeout> | undefined;
+    const beat = () => {
+      if (cancelled) return;
+      fetch(`${API_BASE}/api/ping`).catch(() => {});
+      beatTimer = setTimeout(beat, document.visibilityState === "visible" ? 30000 : 240000);
+    };
+    beatTimer = setTimeout(beat, 30000);
+    const onVisible = () => {
+      // Returning to the tab: ping right away and restart the cadence.
+      if (document.visibilityState !== "visible" || cancelled) return;
+      if (beatTimer) clearTimeout(beatTimer);
+      beat();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearTimeout(kickoff);
+      if (beatTimer) clearTimeout(beatTimer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [ready]);
 
   if (!ready) return <div className="teacher-page" />;
