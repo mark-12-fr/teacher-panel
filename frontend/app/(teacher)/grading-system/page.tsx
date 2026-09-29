@@ -276,86 +276,104 @@ export default function GradingSystemPage() {
         <div className="modal-overlay" style={{ display: "flex" }}>
           <div className="modal-content">
             <h4 style={{ marginBottom: 16, color: "var(--text-dark)" }}>{editingId ? "Edit Subject" : "Add Subject"}</h4>
-            <input type="text" className="modal-input" placeholder="Subject Name (e.g. APP 006: Practical Research 2)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <p style={{ margin: "4px 2px 10px", fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-              Set the weight (%) of each grading component. Written Work + Performance Tasks + Exam must total 100%.
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              {([
-                ["Written Work", "ww", "#3b82f6"],
-                ["Performance Tasks", "pt", "#8b5cf6"],
-                ["Exam", "exam", "#f59e0b"],
-              ] as const).map(([label, key, color]) => (
-                <div key={key}>
-                  <label style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>{label}</label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      type="number"
-                      className="modal-input"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={(form as any)[key]}
-                      onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) || 0 })}
-                      style={{ margin: 0, paddingRight: 28 }}
-                    />
-                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", fontWeight: 600 }}>%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div
-              style={{
-                margin: "12px 0",
-                padding: "9px 12px",
-                borderRadius: 8,
-                fontSize: "0.84rem",
-                fontWeight: 600,
-                textAlign: "center",
-                background: totalOk ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
-                color: totalOk ? "#059669" : "#dc2626",
-              }}
-            >
-              <i className={`fa-solid ${totalOk ? "fa-circle-check" : "fa-triangle-exclamation"}`} /> Components total: {total}%
-              {totalOk ? " — looks good" : " — must equal 100%"}
-            </div>
-            <label style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Passing Grade</label>
-            <div style={{ position: "relative" }}>
-              <input type="number" className="modal-input" min={0} max={100} step={1} value={form.passing} onChange={(e) => setForm({ ...form, passing: Number(e.target.value) || 0 })} style={{ paddingRight: 28 }} />
-              <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", fontWeight: 600 }}>%</span>
+            <div>
+              <label className="subj-label" htmlFor="subj-name">Subject name</label>
+              <input
+                id="subj-name"
+                type="text"
+                className="subj-input is-text"
+                placeholder="e.g. APP 006: Practical Research 2"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
             </div>
 
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-color, rgba(125,125,125,0.2))" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
-                Perfect Score / Total Possible <span style={{ fontWeight: 400 }}>(optional — blank = score out of 100)</span>
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <div className="subj-section">
+              <div className="subj-section-head">
+                <span className="subj-section-title">Grade weights</span>
+                <span className={`subj-total ${totalOk ? "ok" : "bad"}`}>
+                  <i className={`fa-solid ${totalOk ? "fa-circle-check" : "fa-triangle-exclamation"}`} />
+                  Total {total}%{totalOk ? "" : " · must be 100%"}
+                </span>
+              </div>
+              <div className="subj-grid">
+                {([
+                  ["Written Work", "ww"],
+                  ["Perf. Tasks", "pt"],
+                  ["Exam", "exam"],
+                ] as const).map(([label, key]) => (
+                  <div key={key}>
+                    <label className="subj-col-label" htmlFor={`subj-${key}`}>{label}</label>
+                    <div className="subj-input-wrap">
+                      <input
+                        id={`subj-${key}`}
+                        type="number"
+                        className="subj-input has-suffix"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={(form as any)[key]}
+                        onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) || 0 })}
+                      />
+                      <span className="subj-suffix">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="subj-section">
+              <div className="subj-section-head">
+                <span className="subj-section-title">Passing grade</span>
+              </div>
+              <div className="subj-grid">
+                <div className="subj-input-wrap">
+                  <input
+                    id="subj-passing"
+                    aria-label="Passing grade"
+                    type="number"
+                    className="subj-input has-suffix"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={form.passing}
+                    onChange={(e) => setForm({ ...form, passing: Number(e.target.value) || 0 })}
+                  />
+                  <span className="subj-suffix">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="subj-section subj-divided">
+              <div className="subj-section-head">
+                <span className="subj-section-title">
+                  Total possible score <span className="subj-optional">· optional</span>
+                </span>
+              </div>
+              <div className="subj-grid">
                 {([
                   ["Written Work", "wwTotal"],
                   ["Perf. Tasks", "ptTotal"],
-                  ["Exam (AT+QE)", "examTotal"],
+                  ["Exam", "examTotal"],
                 ] as const).map(([lbl, key]) => (
                   <div key={key}>
-                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>{lbl}</label>
+                    <label className="subj-col-label" htmlFor={`subj-${key}`}>{lbl}</label>
                     <input
+                      id={`subj-${key}`}
                       type="number"
-                      className="modal-input"
+                      className="subj-input"
                       min={1}
                       step={1}
                       placeholder="/100"
                       value={(form as any)[key]}
                       onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                      style={{ margin: 0 }}
                     />
                   </div>
                 ))}
               </div>
-              <p style={{ margin: "6px 2px 0", fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-                e.g. set Written Work to <strong>190</strong> to grade it as (Modules + Activities) ÷ 190 × 100.
-              </p>
             </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
               <button onClick={() => setModal(false)} style={{ flex: 1, padding: 12, borderRadius: 8, border: "none", cursor: "pointer", background: "var(--input-bg)", color: "var(--text-dark)", fontWeight: 500 }}>Cancel</button>
               <button onClick={save} disabled={saving} style={{ flex: 2, background: "#3b82f6", color: "white", padding: 12, borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>
                 {saving ? "Saving..." : editingId ? "Update" : "Save"}

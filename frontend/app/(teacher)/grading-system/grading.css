@@ -556,6 +556,125 @@
             color: var(--text-dark);
         }
 
+        /* ── Add / Edit Subject modal layout ─────────────────────────────────
+           Scoped (.subj-*) so nothing else on the page is touched. Every field is
+           one fixed height on a 3-column grid, labels never wrap (a wrapped label
+           used to push its input out of line), and the % sits centred inside its
+           own input box. */
+        .subj-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .subj-section { margin-top: 18px; }
+
+        .subj-divided {
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .subj-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            margin-bottom: 8px;
+        }
+
+        .subj-section-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .subj-optional {
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            opacity: 0.85;
+        }
+
+        .subj-total {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .subj-total.ok  { background: rgba(16, 185, 129, 0.14); color: #059669; }
+        .subj-total.bad { background: rgba(239, 68, 68, 0.14);  color: #dc2626; }
+
+        .subj-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .subj-col-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .subj-input-wrap { position: relative; }
+
+        .subj-input {
+            display: block;
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            background: var(--input-bg);
+            color: var(--text-dark);
+            box-sizing: border-box;
+            -moz-appearance: textfield;
+            appearance: textfield;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        /* The browser's spinner arrows sat on top of the % suffix. */
+        .subj-input::-webkit-outer-spin-button,
+        .subj-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .subj-input.is-text { font-weight: 500; }
+        .subj-input.has-suffix { padding-right: 30px; }
+        .subj-input::placeholder { font-weight: 500; color: var(--text-muted); opacity: 0.7; }
+        .subj-input:focus {
+            border-color: var(--accent-blue, #3b82f6);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+        }
+
+        .subj-suffix {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
 
         .toast-notification {
             visibility: hidden;
