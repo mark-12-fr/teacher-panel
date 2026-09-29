@@ -9,6 +9,7 @@ import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/gra
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
 import { Skel, SkeletonStatCard } from "@/components/Skeleton";
+import FaciAvatar from "@/components/FaciAvatar";
 
 // College terms carry no 1–4 digit, so the plain digit-strip below collapsed
 // Prelim / Midterm / Final all into "1" — piling every college term's data into
@@ -59,6 +60,7 @@ interface TopStudent {
 interface FaciStatus {
   id: string;
   name: string;
+  avatar: string | null;
   section: string;
   subject: string;
   lastLogin: string | null;
@@ -394,6 +396,7 @@ export default function DashboardPage() {
           return {
             id: String(f.id),
             name: f.full_name || "Facilitator",
+            avatar: typeof f.avatar_url === "string" && f.avatar_url ? f.avatar_url : null,
             section: f.section || "—",
             subject: f.subject || "",
             lastLogin: f.last_login ?? null,
@@ -1214,9 +1217,9 @@ export default function DashboardPage() {
                     key={f.id}
                     onClick={() => { window.location.href = "/facilitators"; }}
                     title="Open the Facilitators page"
-                    style={{ padding: "8px 5px", alignItems: "center", gap: 10, cursor: "pointer" }}
+                    style={{ padding: "8px 5px", alignItems: "center", gap: 12, cursor: "pointer" }}
                   >
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: seen.isActive ? "#22c55e" : "#9ca3af", flexShrink: 0 }} title={seen.isActive ? "Active" : "Inactive"} />
+                    <FaciAvatar name={f.name} src={f.avatar} size={42} active={seen.isActive} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                         <span style={{ fontSize: "0.87rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
