@@ -56,6 +56,12 @@ class Facilitator(Base):
     last_login = Column(TIMESTAMP(timezone=True), nullable=True)
     status = Column(Text, nullable=True)
     password = Column(Text, nullable=True)  # bcrypt hash
+    # When this facilitator last submitted each thing, e.g.
+    # {"module": "2026-09-29T02:14:05Z", "attendance": "..."} (keys: module,
+    # activity, at, pt, exam, attendance). Written only by the DB trigger
+    # track_faci_submission (backend/sql/005_faci_submission_checks.sql); the
+    # dashboard shows a check when a stamp falls on the teacher's current day.
+    last_submitted = Column(JSONB, nullable=True, server_default=sa_text("'{}'::jsonb"))
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
 
 

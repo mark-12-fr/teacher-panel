@@ -10,6 +10,7 @@ import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
 import { Skel, SkeletonStatCard } from "@/components/Skeleton";
 import FaciAvatar from "@/components/FaciAvatar";
+import FaciChecklist, { pickSubmitted, startOfToday, type FaciSubmitted } from "@/components/FaciChecklist";
 
 // College terms carry no 1–4 digit, so the plain digit-strip below collapsed
 // Prelim / Midterm / Final all into "1" — piling every college term's data into
@@ -55,8 +56,9 @@ interface TopStudent {
 }
 
 // One facilitator's snapshot for the dashboard "Facilitators" card: whether
-// they're active, and whether they've finished encoding this quarter's scores
-// and today's attendance for their section.
+// they're active, and what they have submitted (module / activity / AT / PT /
+// exam / attendance — the raw timestamps, so "today" is judged when the card
+// renders and a stale snapshot never shows yesterday's checks).
 interface FaciStatus {
   id: string;
   name: string;
@@ -65,11 +67,11 @@ interface FaciStatus {
   subject: string;
   lastLogin: string | null;
   hasSection: boolean;
+  college: boolean;
   total: number;
   graded: number;
   ungraded: number;
-  scoresComplete: boolean;
-  attendanceTaken: boolean;
+  submitted: FaciSubmitted;
   needsAttention: boolean;
 }
 
@@ -160,6 +162,25 @@ export default function DashboardPage() {
   const [theme, setTheme] = useState<string>(() =>
     typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
   );
+
+  // Start of the teacher's current calendar day. The Facilitators card judges
+  // "submitted today" against it at render time, so the checks reset by
+  // themselves at midnight even if the tab stays open (the visibility check
+  // covers a laptop that slept through midnight).
+  const [dayStart, setDayStart] = useState(startOfToday);
+  useEffect(() => {
+    const sync = () =>
+      setDayStart((prev) => {
+        const s = startOfToday();
+        return s === prev ? prev : s;
+      });
+    const id = setInterval(sync, 60000);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
 
   const [clock, setClock] = useState({ time: "", date: "" });
   const [toast, setToast] = useState<{ show: boolean; msg: string; err: boolean }>({ show: false, msg: "", err: false });
@@ -282,11 +303,11 @@ export default function DashboardPage() {
     // lowest preview) and the click-the-dot "all students" modal.
     const qStudents: Record<string, any[]> = { "1": [], "2": [], "3": [], "4": [] };
     const allScores: TopStudent[] = [];
-    // Per-section encoding snapshot (keyed by section title, which is how a
-    // facilitator row references its section): roster size, how many students
-    // have this active quarter's scores in, and whether attendance was taken
-    // today. Feeds the "Facilitators" card below.
-    const sectionStatus: Record<string, { total: number; graded: number; attToday: number }> = {};
+    // Per-section snapshot (keyed by section title, which is how a facilitator
+    // row references its section): roster size, how many students have this
+    // active quarter's scores in, and whether it's a college section. Feeds the
+    // "Facilitators" card below.
+    const sectionStatus: Record<string, { total: number; graded: number; college: boolean }> = {};
     let facilitatorStatus: FaciStatus[] = [];
     // The single quarter the "Sections at a Glance" averages were computed
     // from (null → mixed quarters or a college section: no badge shown).
@@ -371,13 +392,18 @@ export default function DashboardPage() {
           }
         });
 
-        sectionStatus[String(s.title)] = { total: students.length, graded: sectionGraded, attToday: attendance.length };
+        sectionStatus[String(s.title)] = {
+          total: students.length,
+          graded: sectionGraded,
+          college: String(s.school_level || "").toLowerCase() === "college",
+        };
       });
 
       // Build the "Facilitators" card: for each facilitator, is she active, and
-      // has she finished this quarter's scores + today's attendance for her
-      // section? Both completion states show as per-row chips; the attention
-      // flag itself is driven by activity + grades (see needsAttention below).
+      // what has she submitted? The per-row checklist (Module / Activity / AT /
+      // PT / Exam / Attendance) reads the timestamps the database stamps on the
+      // facilitator each time she submits; the attention flag itself is driven
+      // by activity + grades (see needsAttention below).
       facilitatorStatus = facilitators
         .map((f: any) => {
           const seen = getLastSeenText(f.last_login);
@@ -386,12 +412,10 @@ export default function DashboardPage() {
           const total = hasSection ? st.total : 0;
           const graded = hasSection ? st.graded : 0;
           const ungraded = Math.max(0, total - graded);
-          const scoresComplete = hasSection && total > 0 && ungraded === 0;
-          const attendanceTaken = hasSection && st.attToday > 0;
           const scoresPending = hasSection && total > 0 && ungraded > 0;
           // "Needs attention" = inactive, no assigned section, or students still
-          // ungraded this quarter. Attendance completion is shown per-row (chip)
-          // but doesn't flag here, so no-class days don't mark everyone.
+          // ungraded this quarter. Today's submissions are shown per-row (the
+          // checklist) but don't flag here, so no-class days don't mark everyone.
           const needsAttention = !seen.isActive || !hasSection || scoresPending;
           return {
             id: String(f.id),
@@ -401,11 +425,11 @@ export default function DashboardPage() {
             subject: f.subject || "",
             lastLogin: f.last_login ?? null,
             hasSection,
+            college: hasSection && st.college,
             total,
             graded,
             ungraded,
-            scoresComplete,
-            attendanceTaken,
+            submitted: pickSubmitted(f.last_submitted),
             needsAttention,
           };
         })
@@ -542,6 +566,7 @@ export default function DashboardPage() {
   useEffect(() => {
     let channel: any;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     (async () => {
       let uid: string | null = null;
       try {
@@ -549,7 +574,14 @@ export default function DashboardPage() {
         uid = data.session?.user?.id ?? null;
       } catch {}
       if (cancelled || !uid) return;
-      const refresh = () => statsCache.refresh();
+      // One facilitator submit rewrites a whole section — dozens of rows, and
+      // Supabase sends one realtime event per row. Fold the burst into a SINGLE
+      // refresh a moment after the last event (which also lets the backend's
+      // cache invalidation for that same submit land before we re-read).
+      const refresh = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => statsCache.refresh(), 1500);
+      };
       try {
         channel = getSupabase()
           .channel("teacher-dashboard-live")
@@ -569,6 +601,7 @@ export default function DashboardPage() {
     })();
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       try {
         if (channel) getSupabase().removeChannel(channel);
       } catch {}
@@ -1179,7 +1212,7 @@ export default function DashboardPage() {
                 </span>
               ))}
           </div>
-          <ul className="list-container" style={{ maxHeight: 210, overflowY: "auto", padding: 0 }}>
+          <ul className="list-container" style={{ maxHeight: 360, overflowY: "auto", padding: 0 }}>
             {facilitatorStatus.length === 0 ? (
               <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 20 }}>
                 No facilitators yet.
@@ -1187,52 +1220,28 @@ export default function DashboardPage() {
             ) : (
               facilitatorStatus.map((f) => {
                 const seen = getLastSeenText(f.lastLogin);
-                const chip = (label: string, tone: "ok" | "warn" | "muted") => {
-                  const c =
-                    tone === "ok"
-                      ? { fg: "#16a34a", bg: "rgba(22,163,74,0.12)" }
-                      : tone === "warn"
-                      ? { fg: "#d97706", bg: "rgba(217,119,6,0.14)" }
-                      : { fg: "var(--text-muted)", bg: "var(--hover-bg)" };
-                  return (
-                    <span style={{ fontSize: "0.67rem", fontWeight: 700, color: c.fg, background: c.bg, padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{label}</span>
-                  );
-                };
-                const scoresChip = !f.hasSection
-                  ? chip("No section", "muted")
-                  : f.total === 0
-                  ? chip("No students", "muted")
-                  : f.scoresComplete
-                  ? chip("✓ Scores", "ok")
-                  : chip(`Scores ${f.graded}/${f.total}`, "warn");
-                const attnChip =
-                  !f.hasSection || f.total === 0
-                    ? null
-                    : f.attendanceTaken
-                    ? chip("✓ Attendance", "ok")
-                    : chip("Attendance —", "warn");
                 return (
                   <li
-                    className="item-row"
+                    className="item-row faci-row"
                     key={f.id}
                     onClick={() => { window.location.href = "/facilitators"; }}
                     title="Open the Facilitators page"
-                    style={{ padding: "8px 5px", alignItems: "center", gap: 12, cursor: "pointer" }}
                   >
                     <FaciAvatar name={f.name} src={f.avatar} size={42} active={seen.isActive} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="faci-head">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                         <span style={{ fontSize: "0.87rem", fontWeight: 600, color: "var(--text-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                         <span style={{ fontSize: "0.68rem", color: seen.isActive ? "#16a34a" : "var(--text-muted)", fontWeight: seen.isActive ? 700 : 500, flexShrink: 0, whiteSpace: "nowrap" }}>{seen.text}</span>
                       </div>
-                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 5 }}>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>
                         {f.section}{f.subject ? ` · ${f.subject}` : ""}
                       </div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {scoresChip}
-                        {attnChip}
-                      </div>
                     </div>
+                    {!f.hasSection || f.total === 0 ? (
+                      <span className="faci-note">{!f.hasSection ? "No section" : "No students"}</span>
+                    ) : (
+                      <FaciChecklist submitted={f.submitted} college={f.college} dayStart={dayStart} />
+                    )}
                   </li>
                 );
               })
