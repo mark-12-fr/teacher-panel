@@ -1,15 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Chart, registerables } from "chart.js";
+// Type-only: the Chart.js library itself is loaded lazily (see `ChartCtor`).
+import type { Chart } from "chart.js";
 import { apiGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 import { setSubjectConfigs, finalGrade, weightsFor, passingFor } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { useCachedData } from "@/hooks/use-cached-data";
 import { Skel, SkeletonStatCard } from "@/components/Skeleton";
-
-Chart.register(...registerables);
 
 // College terms carry no 1–4 digit, so the plain digit-strip below collapsed
 // Prelim / Midterm / Final all into "1" — piling every college term's data into
@@ -180,6 +179,21 @@ export default function DashboardPage() {
   // coloured by this-quarter health.
   const pieRef = useRef<HTMLCanvasElement>(null);
   const pieChartRef = useRef<Chart<"doughnut", number[], string> | null>(null);
+  // Chart.js is ~75 kB gzipped — more than the rest of the dashboard's code put
+  // together. Loading it lazily, AFTER first paint, lets the stat tiles, rankings
+  // and facilitator list render without waiting for it; the two canvases show a
+  // skeleton until the chunk arrives (usually a fraction of a second), then draw.
+  const [ChartCtor, setChartCtor] = useState<typeof Chart | null>(null);
+  useEffect(() => {
+    let active = true;
+    import("@/lib/chart").then((m) => {
+      // Function form: React would otherwise call the class as a state updater.
+      if (active) setChartCtor(() => m.Chart);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   // Signature of the stats last applied to state, so a poll/realtime refresh
   // that returns identical data doesn't re-set state and redraw the chart.
   const lastAppliedSig = useRef<string>("");
@@ -222,15 +236,26 @@ export default function DashboardPage() {
     let bulkAttToday: any[] = [];
     let facilitators: any[] = [];
     const today = `${String(new Date().getDate()).padStart(2, "0")}/${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`;
+    // Requests the <head> script (lib/early-fetch.ts) already started before this
+    // JS even downloaded. One-shot and freshness-guarded; every failure inside it
+    // resolves to null, in which case the normal request below runs as before.
+    const w = window as any;
+    const earlyRaw = w.__earlyDash;
+    w.__earlyDash = undefined;
+    const early = earlyRaw && Date.now() - earlyRaw.t < 20000 ? earlyRaw : null;
     // The facilitator roster isn't part of dashboard-bulk; fetch it alongside
     // (in parallel) for the "Facilitators" card. Its failure is non-fatal — the
     // rest of the dashboard still renders.
-    const faciPromise = apiGet(`/api/facilitators`).catch(() => ({ facilitators: [] }));
+    const faciPromise = (early ? (early.faci as Promise<any>) : Promise.resolve(null))
+      .then((r) => r ?? apiGet(`/api/facilitators`))
+      .catch(() => ({ facilitators: [] }));
     try {
       // One request instead of the old 1 (sections) + 1 (subjects) + 3 PER
       // SECTION (students/attendance/records) fan-out — the backend already
       // scopes everything to this teacher in a handful of bulk queries.
-      const bulk = await apiGet(`/api/dashboard-bulk?today=${encodeURIComponent(today)}`);
+      const bulk =
+        (await (early ? (early.bulk as Promise<any>) : Promise.resolve(null))) ??
+        (await apiGet(`/api/dashboard-bulk?today=${encodeURIComponent(today)}`));
       sections = bulk.sections || [];
       subjects = bulk.subjects || [];
       bulkStudents = bulk.students || [];
@@ -470,7 +495,11 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 300000 });
+  // ttl: 0 → ALWAYS revalidate when the dashboard opens (any cached snapshot
+  // still paints instantly first), so Top Students / stats reflect scores
+  // entered since the last visit instead of showing a stale board until the
+  // 30s poll. Exactly one request on open, whether or not a snapshot exists.
+  const statsCache = useCachedData("dash_cache_stats", fetchStats, { ttl: 0 });
 
   // Apply cached data to state
   useEffect(() => {
@@ -549,11 +578,11 @@ export default function DashboardPage() {
   // every 30s while the tab is visible — the backend cache is invalidated by
   // every mutation, so these reads always return the latest data.
   useEffect(() => {
-    // Always fetch fresh when the dashboard opens (cached data shows instantly
-    // first) so Top Students / stats reflect scores entered since the last visit
-    // — without this the 5-min client cache could show a stale board for up to
-    // the 30s poll interval after navigating in.
-    statsCache.refresh();
+    // (The fresh fetch on open now comes from useCachedData itself — see the
+    // `ttl: 0` note where `statsCache` is created. An explicit refresh() here as
+    // well fired a SECOND identical dashboard-bulk request at the same instant;
+    // the newest refresh wins, so the first one's already-finished result was
+    // thrown away and the page waited on the duplicate.)
     const poll = setInterval(() => {
       if (document.visibilityState === "visible") statsCache.refresh();
     }, 30000);
@@ -563,6 +592,7 @@ export default function DashboardPage() {
 
   // ── Chart ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!ChartCtor) return; // Chart.js chunk still loading — this re-runs when it arrives
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -585,7 +615,7 @@ export default function DashboardPage() {
     gradient.addColorStop(0.6, `rgba(${fillRGB}, 0.07)`);
     gradient.addColorStop(1, `rgba(${fillRGB}, 0)`);
 
-    chartRef.current = new Chart(ctx, {
+    chartRef.current = new ChartCtor(ctx, {
       type: "line",
       data: {
         labels: ["Q1", "Q2", "Q3", "Q4"],
@@ -745,13 +775,14 @@ export default function DashboardPage() {
       chartRef.current = null;
       document.getElementById("dashQTooltip")?.remove();
     };
-  }, [chartData, passing, theme]);
+  }, [chartData, passing, theme, ChartCtor]);
 
   // ── Sections-at-a-glance doughnut ─────────────────────────────────────────
   // One slice per section, sized by roster and coloured with the shared
   // categorical palette (--sec-1..8), so every section stays distinct in any
   // grading state. Section health lives in the legend, not the slice colour.
   useEffect(() => {
+    if (!ChartCtor) return; // Chart.js chunk still loading — this re-runs when it arrives
     const canvas = pieRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -804,7 +835,7 @@ export default function DashboardPage() {
       },
     };
 
-    pieChartRef.current = new Chart(ctx, {
+    pieChartRef.current = new ChartCtor(ctx, {
       type: "doughnut",
       data: {
         labels: withStudents.map((s) => s.title),
@@ -872,7 +903,7 @@ export default function DashboardPage() {
       pieChartRef.current?.destroy();
       pieChartRef.current = null;
     };
-  }, [sectionOverview, passing, theme]);
+  }, [sectionOverview, passing, theme, ChartCtor]);
 
   // ── Cache helpers (write-through to localStorage) ─────────────────────────
   // ── Optimistic CRUD handlers ──────────────────────────────────────────────
@@ -998,7 +1029,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div style={{ position: "relative", height: 230, width: "100%" }}>
-            {firstLoad ? <Skel width="100%" height="100%" radius={10} /> : <canvas ref={canvasRef} />}
+            {firstLoad || !ChartCtor ? <Skel width="100%" height="100%" radius={10} /> : <canvas ref={canvasRef} />}
           </div>
         </div>
 
@@ -1023,7 +1054,7 @@ export default function DashboardPage() {
             <>
               {pieSections.length > 0 ? (
                 <div style={{ position: "relative", height: 190, marginBottom: 6 }}>
-                  {firstLoad ? <Skel width="100%" height="100%" radius={10} /> : <canvas ref={pieRef} />}
+                  {firstLoad || !ChartCtor ? <Skel width="100%" height="100%" radius={10} /> : <canvas ref={pieRef} />}
                 </div>
               ) : (
                 <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center", padding: "28px 0 20px" }}>No students enrolled yet.</div>

@@ -19,7 +19,30 @@ export class ApiError extends Error {
 interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: any;
   auth?: boolean; // default true
+  /**
+   * Extra attempts for an idempotent GET/HEAD that fails transiently (network
+   * blip, timeout, 502/503/504 while the API restarts). Default 3, 0 disables.
+   * Writes are NEVER retried automatically — a lost response could double-apply.
+   */
+  retries?: number;
+  /** Per-attempt timeout for GET/HEAD in ms (default 30s, 0 disables). */
+  timeoutMs?: number;
 }
+
+// Backoff between GET retries (with a little jitter): ~7s in total, enough to
+// ride out a Railway restart / cold start without the teacher touching reload.
+const RETRY_DELAYS_MS = [800, 2000, 4500];
+// Gateway statuses that mean "the API is momentarily unavailable", not "your
+// request is wrong". 4xx and plain 500s are real answers and are never retried.
+const TRANSIENT_STATUS = new Set([502, 503, 504]);
+const DEFAULT_GET_TIMEOUT_MS = 30000;
+
+export const isTransientStatus = (status: number) => TRANSIENT_STATUS.has(status);
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const withJitter = (ms: number) => ms + Math.round(Math.random() * ms * 0.25);
+// Offline is not transient: fail fast so the stale-snapshot / offline-queue
+// fallbacks kick in immediately instead of after ~7s of pointless retrying.
+const isOfflineNow = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
 // Single-flight access-token lookup. On first open the shell warmup, the page's
 // own fetches, the notification poll, push setup and the theme handler can all
@@ -44,7 +67,13 @@ function accessToken(): Promise<string | null> {
 }
 
 export async function api<T = any>(path: string, options: ApiOptions = {}): Promise<T> {
-  const { body, auth = true, headers: extra, ...rest } = options;
+  const { body, auth = true, headers: extra, retries, timeoutMs, ...rest } = options;
+  const method = String(rest.method || "GET").toUpperCase();
+  const idempotent = method === "GET" || method === "HEAD";
+  const maxRetries = idempotent ? Math.max(0, Math.min(retries ?? RETRY_DELAYS_MS.length, RETRY_DELAYS_MS.length)) : 0;
+  const attemptTimeout = idempotent ? (timeoutMs ?? DEFAULT_GET_TIMEOUT_MS) : 0;
+  const callerSignal = rest.signal;
+
   // Only declare a JSON media type when there IS a body. Sending
   // Content-Type: application/json on body-less requests (GET/DELETE) marks
   // them as non-simple, which is an extra reason for the browser to CORS
@@ -55,33 +84,66 @@ export async function api<T = any>(path: string, options: ApiOptions = {}): Prom
     const token = await accessToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  let payload: any = null;
-  const text = await res.text();
-  if (text) {
+  const payloadBody = body !== undefined ? JSON.stringify(body) : undefined;
+
+  for (let attempt = 0; ; attempt++) {
+    const canRetry = attempt < maxRetries && !isOfflineNow();
+    // Bound each GET attempt so a hung connection turns into a retry instead of
+    // a page that spins forever. Skipped when the caller supplied its own signal.
+    let controller: AbortController | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (attemptTimeout > 0 && !callerSignal) {
+      controller = new AbortController();
+      timer = setTimeout(() => controller!.abort(), attemptTimeout);
+    }
     try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = text;
-    }
-  }
-  if (!res.ok) {
-    if (res.status === 401 && typeof window !== "undefined") {
-      const last = sessionStorage.getItem("redirect_to_login_at");
-      const now = Date.now();
-      if (!last || now - Number(last) > 5000) {
-        sessionStorage.setItem("redirect_to_login_at", String(now));
-        window.location.replace("/login");
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...rest,
+        headers,
+        body: payloadBody,
+        signal: controller ? controller.signal : callerSignal,
+      });
+      let payload: any = null;
+      const text = await res.text();
+      if (text) {
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = text;
+        }
       }
+      if (!res.ok) {
+        // The API is restarting / overloaded: wait a moment and ask again.
+        if (canRetry && TRANSIENT_STATUS.has(res.status)) {
+          await sleep(withJitter(RETRY_DELAYS_MS[attempt]));
+          continue;
+        }
+        if (res.status === 401 && typeof window !== "undefined") {
+          const last = sessionStorage.getItem("redirect_to_login_at");
+          const now = Date.now();
+          if (!last || now - Number(last) > 5000) {
+            sessionStorage.setItem("redirect_to_login_at", String(now));
+            window.location.replace("/login");
+          }
+        }
+        const message = (payload && (payload.detail || payload.error)) || `Request failed (${res.status})`;
+        throw new ApiError(String(message), res.status, payload);
+      }
+      return payload as T;
+    } catch (err) {
+      // A real answer from the server (4xx/5xx) or a caller-initiated abort is final.
+      if (err instanceof ApiError || callerSignal?.aborted) throw err;
+      // Otherwise it is a network-level failure (fetch rejected, body cut off,
+      // or our own timeout aborted it): transient, so retry while we can.
+      if (canRetry) {
+        await sleep(withJitter(RETRY_DELAYS_MS[attempt]));
+        continue;
+      }
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-    const message = (payload && (payload.detail || payload.error)) || `Request failed (${res.status})`;
-    throw new ApiError(String(message), res.status, payload);
   }
-  return payload as T;
 }
 
 export const apiGet = <T = any>(p: string, o: ApiOptions = {}) => api<T>(p, { ...o, method: "GET" });
@@ -147,8 +209,10 @@ export async function cachedGet<T = any>(key: string | null, path: string, opts?
     // still renders cached data instead of an error screen (like the faci panel).
     // A real HTTP error (the server DID respond — 4xx/5xx, incl. the 401 →
     // /login redirect) is an ApiError and is rethrown so genuine failures still
-    // surface; only network-level failures (fetch rejected) fall back to cache.
-    if (key !== null && !(err instanceof ApiError)) {
+    // surface. Network-level failures (fetch rejected) AND gateway-unavailable
+    // statuses (502/503/504 — the API is restarting, after api() already retried
+    // it) fall back to the last snapshot, so the page keeps showing data.
+    if (key !== null && (!(err instanceof ApiError) || isTransientStatus(err.status))) {
       const stale = readCache<T>(key);
       if (stale !== undefined) return stale.v;
     }
