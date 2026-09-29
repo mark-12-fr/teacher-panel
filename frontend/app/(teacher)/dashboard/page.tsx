@@ -1050,11 +1050,6 @@ export default function DashboardPage() {
                 <span className="chart-badge chart-badge-sem"><i className="fa-regular fa-calendar" style={{ fontSize: "0.65rem" }} /> {semLabel}</span>
                 <span className="chart-badge chart-badge-qtr"><i className="fa-solid fa-layer-group" style={{ fontSize: "0.65rem" }} /> {qtrLabel}</span>
                 <span className="chart-badge chart-badge-pass">{passing}% Passing</span>
-                {/* Color key so the green/red used across the dashboard is unambiguous. */}
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 600 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />passing
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block", marginLeft: 6 }} />below {passing}%
-                </span>
               </div>
             </div>
             {overallAvg != null && (
