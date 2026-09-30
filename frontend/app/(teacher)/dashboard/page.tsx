@@ -1147,9 +1147,9 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="dash-card bottom-card-lg">
+        <div className="dash-card bottom-card-lg top-students-card">
           <h4 style={{ marginBottom: 15 }}>Top Students</h4>
-          <ul className="list-container" style={{ maxHeight: 200, overflowY: "auto", padding: 0 }}>
+          <ul className="list-container top-students-list">
             {top.length === 0 ? (
               <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 14, lineHeight: 1.55, padding: "0 14px", listStyle: "none" }}>
                 <i className="fa-regular fa-clipboard" style={{ display: "block", fontSize: "1.5rem", marginBottom: 8, opacity: 0.45 }} />
@@ -1193,7 +1193,7 @@ export default function DashboardPage() {
           </ul>
         </div>
 
-        <div className="dash-card bottom-card-lg">
+        <div className="dash-card bottom-card-lg faci-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
             <h4 style={{ margin: 0 }}>Facilitators</h4>
             {facilitatorStatus.length > 0 &&
@@ -1207,7 +1207,8 @@ export default function DashboardPage() {
                 </span>
               ))}
           </div>
-          <ul className="list-container" style={{ maxHeight: 360, overflowY: "auto", padding: 0 }}>
+          <div className="faci-list-wrap">
+          <ul className="list-container faci-list">
             {facilitatorStatus.length === 0 ? (
               <li style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 20 }}>
                 No facilitators yet.
@@ -1242,6 +1243,7 @@ export default function DashboardPage() {
               })
             )}
           </ul>
+          </div>
         </div>
       </div>
 

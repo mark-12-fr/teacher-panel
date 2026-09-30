@@ -721,6 +721,45 @@
             white-space: nowrap;
         }
 
+        /* Bottom row: Top Students and Facilitators share one row on wide screens, so
+           the row's height has to come from ONE of them. Top Students sets it: its 5
+           rows show in full (no inner scrollbar hiding #1) and share any spare height.
+           The Facilitators list fills its card and scrolls INSIDE it, so a long roster
+           can never stretch the row and leave a big empty gap under Top Students. */
+        .top-students-card,
+        .faci-card {
+            display: flex;
+            flex-direction: column;
+        }
+        .top-students-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+        .top-students-list > .item-row {
+            flex: 1 1 auto;
+            max-height: 92px;
+        }
+        .faci-list-wrap {
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 330px;
+            margin-top: 10px;
+        }
+        .faci-list {
+            position: absolute;
+            inset: 0;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+        }
+        @media (max-width: 1024px) {
+            .faci-list-wrap { min-height: 400px; }
+        }
+
         .delete-btn {
             color: #ef4444;
             cursor: pointer;
