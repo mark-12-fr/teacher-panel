@@ -485,6 +485,99 @@
             background: var(--btn-delete-hover);
         }
 
+        /* Row actions: a ⋮ button opening Edit / Delete — the same menu as the Section
+           cards (section.css .dropdown-menu), with its own class names because page CSS
+           is global. The menu is position:fixed so the table's scroll box can't clip it. */
+        .fac-menu-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .fac-menu-btn:hover,
+        .fac-menu-btn.open {
+            background: rgba(100, 116, 139, 0.16);
+            color: var(--text-dark);
+        }
+
+        [data-theme="dark"] .fac-menu-btn:hover,
+        [data-theme="dark"] .fac-menu-btn.open {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .fac-menu-btn:focus-visible {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+        }
+
+        .fac-menu {
+            position: fixed;
+            z-index: 1500;
+            width: 140px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: facMenuIn 0.2s ease-in-out;
+        }
+
+        @keyframes facMenuIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fac-menu-item {
+            width: 100%;
+            text-align: left;
+            padding: 12px 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            transition: background 0.2s;
+        }
+
+        .fac-menu-item:hover,
+        .fac-menu-item:focus-visible {
+            background: var(--hover-bg);
+            outline: none;
+        }
+
+        .fac-menu-item.delete {
+            color: #ef4444;
+        }
+
+        .fac-menu-item.delete:hover,
+        .fac-menu-item.delete:focus-visible {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        [data-theme="dark"] .fac-menu-item.delete:hover,
+        [data-theme="dark"] .fac-menu-item.delete:focus-visible {
+            background: #451a1a;
+            color: #ef4444;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .fac-menu { animation: none; }
+        }
+
 
         .fab-add-btn {
             position: fixed;
