@@ -57,6 +57,40 @@ export default function FacilitatorsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
 
+  // Row actions menu (⋮ → Edit / Delete), styled like the Section cards' menu.
+  // Rendered once and fixed to the viewport: the table sits in a horizontal-scroll
+  // container, which would clip a dropdown opened on the last rows.
+  const [menu, setMenu] = useState<{ f: any; top: number; left: number } | null>(null);
+  const MENU_W = 140, MENU_H = 84;
+
+  function toggleMenu(e: React.MouseEvent<HTMLButtonElement>, f: any) {
+    e.stopPropagation();
+    if (menu?.f.id === f.id) { setMenu(null); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    // Left-aligned with the button; near the right edge, right-aligned instead.
+    const left = Math.max(8, r.left + MENU_W <= window.innerWidth - 8 ? r.left : r.right - MENU_W);
+    const below = r.bottom + 4;
+    // Open upwards when there isn't room under the button (last rows).
+    const top = below + MENU_H > window.innerHeight - 8 ? r.top - MENU_H - 4 : below;
+    setMenu({ f, top, left });
+  }
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(null); };
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [menu]);
+
   function showToast(msg: string, err = false) {
     setToast({ show: true, msg, err });
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 3000);
@@ -302,10 +336,16 @@ export default function FacilitatorsPage() {
                       </div>
                     </td>
                     <td>
-                      <div className="action-btns">
-                        <button className="action-btn edit" onClick={() => openEdit(f)}>Edit</button>
-                        <button className="action-btn delete" onClick={() => setDeleteTarget({ id: f.id, name: f.full_name })}>Delete</button>
-                      </div>
+                      <button
+                        className={`fac-menu-btn${menu?.f.id === f.id ? " open" : ""}`}
+                        onClick={(e) => toggleMenu(e, f)}
+                        aria-label={`Actions for ${f.full_name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={menu?.f.id === f.id}
+                        title="Actions"
+                      >
+                        <i className="fa-solid fa-ellipsis-vertical" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -314,6 +354,17 @@ export default function FacilitatorsPage() {
           </tbody>
         </table>
       </div>
+
+      {menu && (
+        <div className="fac-menu" role="menu" style={{ top: menu.top, left: menu.left }} onClick={(e) => e.stopPropagation()}>
+          <button role="menuitem" className="fac-menu-item" onClick={() => { const f = menu.f; setMenu(null); openEdit(f); }}>
+            <i className="fa-solid fa-pen" /> Edit
+          </button>
+          <button role="menuitem" className="fac-menu-item delete" onClick={() => { const f = menu.f; setMenu(null); setDeleteTarget({ id: f.id, name: f.full_name }); }}>
+            <i className="fa-solid fa-trash" /> Delete
+          </button>
+        </div>
+      )}
 
       <button className="fab-add-btn" title="Assign New Facilitator" onClick={openAdd}>
         <i className="fa-solid fa-plus" style={{ fontSize: 22 }} />
