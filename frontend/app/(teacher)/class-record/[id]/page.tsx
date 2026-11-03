@@ -969,8 +969,34 @@ export default function ClassRecordGridPage() {
       const teacherName = section?.advisor || section?.teacher || "";
       const rows: any[][] = [];
 
-      // Row 1: Section — Subject
-      rows.push([`${sectionName} — ${subjectName}`]);
+      // Record for the export is the VIEWED quarter's own row only. A legacy
+      // pre-quarter-tagging row (quarter = null) belongs to Q1 / college Prelim,
+      // so it must never leak Q1 scores into a Q2+ download.
+      const recForExport = (sid: string) => {
+        const exact = records.find(
+          (r) => r.student_id === sid && String(r.quarter) === String(viewQuarter),
+        );
+        if (exact) return exact;
+        const legacyTerm = college ? legacyNumFor(String(viewQuarter), viewSemester) : null;
+        if (legacyTerm) {
+          const legacy = records.find(
+            (r) => r.student_id === sid && String(r.quarter) === legacyTerm,
+          );
+          if (legacy) return legacy;
+        }
+        const firstTerm = college ? String(viewQuarter) === "Prelim" : String(viewQuarter) === "1";
+        if (!firstTerm) return null;
+        return (
+          records.find(
+            (r) =>
+              r.student_id === sid &&
+              (r.quarter === null || r.quarter === undefined || r.quarter === ""),
+          ) || null
+        );
+      };
+
+      // Row 1: Section — Subject — Quarter
+      rows.push([`${sectionName} — ${subjectName} — ${qLabel(viewQuarter)}`]);
       // Row 2: SSP Advisor
       rows.push([teacherName ? `SSP Advisor: ${teacherName}` : ""]);
       // Row 3: Empty row
@@ -993,18 +1019,21 @@ export default function ClassRecordGridPage() {
 
       // Student rows
       students.forEach((s, idx) => {
-        const rec = recForView(s.id);
+        const rec = recForExport(s.id);
 
-        // Build Modules & Activities list (e.g., "M1, M2, M3, A1, A2")
+        // Build Modules & Activities list using the SAME fields and numbering the
+        // grid shows for this quarter: Q2 modules continue from Q1 (e.g. M16..M25)
+        // and activities restart at 1 (A1..A5). MODULES / ACTIVITIES already
+        // respect the viewed quarter's +/- column counts and the Q2 caps.
         const moduleList: string[] = [];
         const activityList: string[] = [];
         if (rec) {
-          for (let i = 1; i <= 15; i++) {
-            if (isFilled(rec[`module_${i}`])) moduleList.push(`M${i}`);
-          }
-          for (let i = 1; i <= 10; i++) {
-            if (isFilled(rec[`activity_${i}`])) activityList.push(`A${i}`);
-          }
+          MODULES.forEach((f, i) => {
+            if (isFilled(rec[f])) moduleList.push(`M${moduleOffset + i + 1}`);
+          });
+          ACTIVITIES.forEach((f, i) => {
+            if (isFilled(rec[f])) activityList.push(`A${activityOffset + i + 1}`);
+          });
         }
         const modulesStr = moduleList.join(", ");
         const activitiesStr = activityList.join(", ");
@@ -1038,9 +1067,9 @@ export default function ClassRecordGridPage() {
       await writeStyledSheet(rows, {
         sheetName: sectionName || "Class Record",
         headerRow: 3,
-        fileName: `Class_Record_${sectionName.replace(/\s+/g, "_")}.xlsx`,
+        fileName: `Class_Record_${sectionName.replace(/\s+/g, "_")}_${qLabel(viewQuarter)}.xlsx`,
       });
-      showToast("Class Record exported successfully!");
+      showToast(`Class Record (${qLabel(viewQuarter)}) exported successfully!`);
     } catch (e: any) {
       showToast("Export failed: " + (e?.message || e), true);
     }
