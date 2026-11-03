@@ -235,6 +235,96 @@ export function finalGrade(record: any, subjectName: string): number {
   return transmute(ig);
 }
 
+// ── Semester aggregation ───────────────────────────────────────────────────
+
+/** One learner's semester totals, aggregated from that semester's quarter records. */
+export interface SemesterSummary {
+  initial: number; // average of the quarters' Initial Grades, 2 decimals
+  quarterly: number; // average of the quarters' Quarterly Grades, rounded
+  rawWW: number;
+  rawPT: number;
+  rawQE: number;
+  wwPct: number;
+  ptPct: number;
+  examPct: number;
+  quarters: number; // how many quarters contributed
+}
+
+const quarterKey = (q: any): string => String(q ?? 0).replace(/[^1-4]/g, "") || "0";
+const untaggedQuarter = (q: any): boolean => q === null || q === undefined || q === "";
+
+/** True when at least one score field is filled (0 counts as a score). */
+function hasAnyScore(rec: any): boolean {
+  for (const k in rec || {}) {
+    const isScore = k.indexOf("module_") === 0 || k.indexOf("activity_") === 0 || k.indexOf("pt_") === 0 || k === "at" || k === "qe";
+    if (!isScore) continue;
+    const v = rec[k];
+    if (v !== null && v !== undefined && v !== "") return true;
+  }
+  return false;
+}
+
+/** One semester's figures for one learner, built from that semester's quarter
+ *  records. The semestral grade is the average of the quarter grades the learner
+ *  actually has — DepEd's Final Semestral Grade is ROUND(AVERAGE(q1, q2)), never
+ *  a grade computed by merging the two quarters' raw score fields. Raw component
+ *  scores are summed for display; component percentages are averaged.
+ *
+ *  A quarter counts when at least one score field is filled (a filled 0 is a
+ *  real score — same rule as the class record and the DepEd export). Legacy
+ *  records with no quarter tag belong to Q1 of the 1st Sem only. Returns null
+ *  when none of the requested quarters has a record with scores. */
+export function semesterSummary(
+  records: any[],
+  quarters: string[],
+  subjectName: string,
+): SemesterSummary | null {
+  const parts: { initial: number; quarterly: number; comp: ComponentScores }[] = [];
+  for (const q of quarters) {
+    const rec =
+      records.find((r) => quarterKey(r.quarter) === q) ||
+      (q === "1" ? records.find((r) => untaggedQuarter(r.quarter)) : undefined);
+    if (!rec || !hasAnyScore(rec)) continue;
+    parts.push({
+      initial: initialGrade(rec, subjectName),
+      quarterly: finalGrade(rec, subjectName),
+      comp: componentScores(rec, subjectName),
+    });
+  }
+  if (!parts.length) return null;
+
+  let initial = 0;
+  let quarterly = 0;
+  let rawWW = 0;
+  let rawPT = 0;
+  let rawQE = 0;
+  let wwPct = 0;
+  let ptPct = 0;
+  let examPct = 0;
+  for (const p of parts) {
+    initial += p.initial;
+    quarterly += p.quarterly;
+    rawWW += p.comp.rawWW;
+    rawPT += p.comp.rawPT;
+    rawQE += p.comp.rawQE;
+    wwPct += p.comp.wwPct;
+    ptPct += p.comp.ptPct;
+    examPct += p.comp.examPct;
+  }
+  const n = parts.length;
+  return {
+    initial: round2(initial / n),
+    quarterly: Math.round(quarterly / n),
+    rawWW,
+    rawPT,
+    rawQE,
+    wwPct: wwPct / n,
+    ptPct: ptPct / n,
+    examPct: examPct / n,
+    quarters: n,
+  };
+}
+
 // ── In-progress detection ──────────────────────────────────────────────────
 
 /** True when every weighted component has been given, so initialGrade() is

@@ -3,14 +3,16 @@
 // Per-section Class Performance analytics (ported from performance(2).html):
 // stat cards, three Chart.js charts (per-quarter trend, grade distribution,
 // average per component), and a searchable/filterable/sortable ranking table,
-// plus Excel export and Print. Grades use the shared grading.ts logic (same as
-// the dashboard, class record, and faci panel) so numbers match everywhere.
+// plus Excel export and Print. The ranking is one figure per semester — 1st Sem
+// combines Q1+Q2, 2nd Sem combines Q3+Q4 — so a new semester starts from zero.
+// Grades use the shared grading.ts logic (same as the dashboard, class record,
+// and faci panel) so numbers match everywhere.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Chart, registerables } from "chart.js";
 import { apiGet, cachedGet } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
-import { setSubjectConfigs, passingFor, finalGrade, initialGrade, componentScores } from "@/lib/grading";
+import { setSubjectConfigs, passingFor, finalGrade, initialGrade, componentScores, semesterSummary } from "@/lib/grading";
 import { usePageMeta } from "@/lib/page-meta";
 import { writeStyledSheet } from "@/lib/export";
 import { Skel, SkeletonDashWrap, SkeletonTableRows } from "@/components/Skeleton";
@@ -34,7 +36,13 @@ const qSortKey = (q: any, college?: boolean) =>
   college ? COLLEGE_TERMS.indexOf(String(q || "Prelim")) : Number(qNorm(q));
 const termLabel = (q: string, college?: boolean) => (college ? q : ordinal(q));
 
-type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; initial_grade: number; has_data: boolean; ww: number; pt: number; qe: number; exam: number };
+/** Human label for the ranking's scope, e.g. "1st Sem — Q1 + Q2". */
+const semesterLabel = (sem: string) => {
+  const qs = SEMESTER_QUARTERS[sem] || ["1", "2"];
+  return `${sem} — ${qs.map((q) => `Q${q}`).join(" + ")}`;
+};
+
+type Row = { full_name: string; written_works: number; perf_task: number; quarterly_exam: number; final_grade: number; initial_grade: number; has_data: boolean; ww: number; pt: number; exam: number };
 type SortKey = "rank" | "name" | "ww" | "pt" | "qe" | "grade";
 
 export default function PerformanceDetailPage() {
@@ -131,6 +139,8 @@ export default function PerformanceDetailPage() {
   const subject = section?.subject || "";
   const semester = section?.semester || "1st Sem";
   const college = section?.school_level === "College";
+  // The ranking is one figure per semester for SHS; college still merges its terms.
+  const rankingScope = college ? "All terms" : semesterLabel(semester);
   const passing = useMemo(() => (ready ? passingFor(subject) : 75), [ready, subject]);
 
   // ── Derive per-student rows + aggregate stats (mirrors loadPerformanceData) ──
@@ -138,22 +148,15 @@ export default function PerformanceDetailPage() {
     const qBuckets: Record<string, { t: number; c: number }> = college
       ? { Prelim: { t: 0, c: 0 }, Midterm: { t: 0, c: 0 }, Final: { t: 0, c: 0 } }
       : { "1": { t: 0, c: 0 }, "2": { t: 0, c: 0 }, "3": { t: 0, c: 0 }, "4": { t: 0, c: 0 } };
+    // The ranking is one figure per semester: 1st Sem = Q1 + Q2, 2nd Sem = Q3 + Q4.
+    // The trend chart below still keeps each quarter's own grade.
+    const semQuarters = SEMESTER_QUARTERS[semester] || ["1", "2"];
 
     const rows: Row[] = students.map((student) => {
       const studentRecords = records
         .filter((r) => r.student_id === student.id)
         .sort((a, b) => qSortKey(a.quarter, college) - qSortKey(b.quarter, college));
-      const merged = studentRecords.reduce((acc: any, curr: any) => {
-        Object.keys(curr).forEach((k) => {
-          if (filled(curr[k])) acc[k] = curr[k];
-        });
-        return acc;
-      }, {});
 
-      const final = finalGrade(merged, subject);
-      const initGrade = Math.round(initialGrade(merged, subject) * 100) / 100;
-
-      const comp = componentScores(merged, subject);
       // Per-quarter trend: each quarter's own record, only if it has a real score.
       studentRecords.forEach((rec) => {
         let hasScore = false;
@@ -172,6 +175,38 @@ export default function PerformanceDetailPage() {
         }
       });
 
+      if (!college) {
+        // Never mix the two quarters' raw fields: each quarter keeps its own
+        // grade, and the semester grade is their average (DepEd's Final
+        // Semestral Grade). Raw components are summed for the table columns.
+        const sem = semesterSummary(studentRecords, semQuarters, subject);
+        return {
+          full_name: student.full_name || "No Name",
+          written_works: sem ? sem.rawWW : 0,
+          perf_task: sem ? sem.rawPT : 0,
+          quarterly_exam: sem ? sem.rawQE : 0,
+          final_grade: sem ? sem.quarterly : 0,
+          initial_grade: sem ? sem.initial : 0,
+          has_data: !!sem,
+          ww: sem ? sem.wwPct : 0,
+          pt: sem ? sem.ptPct : 0,
+          exam: sem ? sem.examPct : 0,
+        };
+      }
+
+      // College keeps the existing term-merged snapshot: Prelim/Midterm/Final do
+      // not map to the school year's Q1–Q4 quarters.
+      const merged = studentRecords.reduce((acc: any, curr: any) => {
+        Object.keys(curr).forEach((k) => {
+          if (filled(curr[k])) acc[k] = curr[k];
+        });
+        return acc;
+      }, {});
+
+      const final = finalGrade(merged, subject);
+      const initGrade = Math.round(initialGrade(merged, subject) * 100) / 100;
+
+      const comp = componentScores(merged, subject);
       let hasData = false;
       for (const k in merged) {
         if ((k.startsWith("module_") || k.startsWith("activity_") || k.startsWith("pt_") || k === "at" || k === "qe") && filled(merged[k]) && Number(merged[k]) > 0) {
@@ -180,7 +215,7 @@ export default function PerformanceDetailPage() {
         }
       }
 
-      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, initial_grade: initGrade, has_data: hasData, ww: comp.ww, pt: comp.pt, qe: comp.qe, exam: comp.exam };
+      return { full_name: student.full_name || "No Name", written_works: comp.rawWW, perf_task: comp.rawPT, quarterly_exam: comp.rawQE, final_grade: final, initial_grade: initGrade, has_data: hasData, ww: comp.ww, pt: comp.pt, exam: comp.exam };
     });
 
     let totalGrade = 0;
@@ -210,7 +245,7 @@ export default function PerformanceDetailPage() {
     });
 
     return { rows, stats: { totalGrade, passed, highest, lowest, totalWW, totalPT, totalExam, dist, qBuckets, scored } };
-  }, [students, records, subject, passing, college]);
+  }, [students, records, subject, passing, college, semester]);
 
   const stats = perf.stats;
   // ── Charts ──────────────────────────────────────────────────────────────────
@@ -364,7 +399,7 @@ export default function PerformanceDetailPage() {
       const sectionLabel = section?.title || "Section";
       const out: any[][] = [];
       out.push([`Class Performance — ${sectionLabel}`]);
-      out.push([`${termLabel(qNorm(section?.quarter) === "0" ? "1" : qNorm(section?.quarter), college)}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
+      out.push([`${rankingScope}  |  Generated: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`]);
       out.push([]);
       out.push(["Rank", "Student Name", "Modules", "Performance Task", "Quarterly Exam", "Initial Grade", "Quarterly Grade"]);
       tableRows.forEach((s, i) => out.push([i + 1, String(s.full_name || ""), s.written_works || 0, s.perf_task || 0, s.quarterly_exam || 0, s.initial_grade || 0, s.final_grade || 0]));
@@ -456,7 +491,10 @@ export default function PerformanceDetailPage() {
 
       <div className="table-card">
         <div className="table-card-header">
-          <h3>All Students Ranking</h3>
+          <div className="table-heading">
+            <h3>All Students Ranking</h3>
+            <p>{rankingScope}</p>
+          </div>
           <div className="table-controls">
             <input type="text" className="table-search" placeholder="Search student..." value={tableState.search} onChange={(e) => setTableState((s) => ({ ...s, search: e.target.value }))} />
             {(["all", "pass", "fail", "top10"] as const).map((f) => (

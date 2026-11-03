@@ -539,8 +539,9 @@ export default function ClassRecordGridPage() {
   );
 
   // One card per quarter for the grade-breakdown modal: each quarter's OWN
-  // record only (never merged across quarters, unlike the Performance page's
-  // single "current" snapshot) so a genuine Q1→Q2→Q3→Q4 progression shows.
+  // record only (never merged across quarters) so a genuine Q1→Q2→Q3→Q4
+  // progression shows. The Performance page instead averages the two quarters
+  // of the section's semester into one semestral grade.
   // A pre-quarter-tagging legacy record (quarter is null) has no quarter of its
   // own, so it's shown under Q1 — the one existing fallback recForView() also
   // uses — rather than appearing (identically) under all four cards.
