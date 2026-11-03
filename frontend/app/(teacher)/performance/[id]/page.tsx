@@ -508,28 +508,22 @@ export default function PerformanceDetailPage() {
           <table>
             <thead>
               <tr>
-                {([
-                  ["rank", "Rank"],
-                  ["name", "Student Name"],
-                  ["ww", "Modules"],
-                  ["pt", "Perf. Task"],
-                  ["qe", "Quarterly Exam"],
-                  ["grade", "Initial Grade"],
-                  ["grade", "Quarterly Grade"],
-                ] as [SortKey, string][]).map(([k, label], i) => (
-                  <th key={k + i} className={`sortable${tableState.sortKey === k ? " active" : ""}`} onClick={() => toggleSort(k)}>
-                    {label} <span className="sort-arrow">{arrow(k)}</span>
-                  </th>
-                ))}
+                <th>Rank</th>
+                <th className={`sortable${tableState.sortKey === "name" ? " active" : ""}`} onClick={() => toggleSort("name")}>
+                  Student Name <span className="sort-arrow">{arrow("name")}</span>
+                </th>
+                <th className={`sortable${tableState.sortKey === "grade" ? " active" : ""}`} onClick={() => toggleSort("grade")}>
+                  Points <span className="sort-arrow">{arrow("grade")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {!ready ? (
-                <SkeletonTableRows rows={6} cols={7} />
+                <SkeletonTableRows rows={6} cols={3} />
               ) : perf.rows.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
+                <tr><td colSpan={3} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students assigned to this section yet.</td></tr>
               ) : tableRows.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students match the current filter.</td></tr>
+                <tr><td colSpan={3} style={{ textAlign: "center", color: "var(--text-muted)" }}>No students match the current filter.</td></tr>
               ) : (
                 tableRows.map((s, index) => {
                   const rank = index + 1;
@@ -538,10 +532,6 @@ export default function PerformanceDetailPage() {
                     <tr key={s.full_name + index}>
                       <td><span className={`rank-badge ${rankClass}`}>{rank}</span></td>
                       <td>{s.full_name}</td>
-                      <td>{s.written_works || 0}</td>
-                      <td>{s.perf_task || 0}</td>
-                      <td>{s.quarterly_exam || 0}</td>
-                      <td>{s.initial_grade || 0}</td>
                       <td><strong>{s.final_grade || 0}</strong></td>
                     </tr>
                   );
