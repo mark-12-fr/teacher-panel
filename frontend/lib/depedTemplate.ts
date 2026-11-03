@@ -10,7 +10,9 @@
 // page, and the Final Semestral Grade sheet is filled for Q2/Q4.
 //
 // Only the SELECTED quarter is visible: Q1/Q3 hide 2ND + Final, Q2/Q4 hide 1ST.
-// The other quarter's raw scores are never written into the file.
+// The other quarter's raw scores are never written into the file. The second
+// semester renames the semester tabs 1ST→3RD / 2ND→4TH so the tab the teacher
+// sees carries the real quarter number.
 //
 // Fill map (per learner, one row each — see STUDENT_ROWS below):
 //   INPUT DATA   B/C/D/E = learner's name (drives the 1ST/2ND/Final sheets)
@@ -113,6 +115,31 @@ function setSheetHidden(xml: string, sheetName: string, hidden: boolean): string
     if (/\/>$/.test(cleaned)) return cleaned.replace(/\s*\/>$/, ' state="hidden"/>');
     return cleaned.replace(/>$/, ' state="hidden">');
   });
+}
+
+/** Rename a worksheet tab AND rewrite every formula that points at it. Excel
+ *  stores cross-sheet references by name ("'1ST'!G11"), so editing only the
+ *  <sheet name> entry would leave the template's own lookups pointing at a sheet
+ *  that no longer exists. Mutates the decoded file map in place. */
+function renameSheetAndRefs(
+  files: Record<string, Uint8Array>,
+  oldName: string,
+  newName: string,
+  strFromU8: (u: Uint8Array) => string,
+  strToU8: (s: string) => Uint8Array,
+): void {
+  const wb = strFromU8(files["xl/workbook.xml"]);
+  files["xl/workbook.xml"] = strToU8(
+    wb.replace(`<sheet name="${oldName}"`, `<sheet name="${newName}"`),
+  );
+  const from = `'${oldName}'!`;
+  const to = `'${newName}'!`;
+  for (const key of Object.keys(files)) {
+    if (!key.startsWith("xl/worksheets/") || !key.endsWith(".xml")) continue;
+    const xml = strFromU8(files[key]);
+    if (!xml.includes(from)) continue;
+    files[key] = strToU8(xml.split(from).join(to));
+  }
 }
 
 /** Sum of every filled `prefix*` field on a record, or null when none is filled
@@ -331,6 +358,14 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   final = setRowHidden(final, DIVIDER_ROW, true);
   STUDENT_ROWS.forEach((row, i) => (final = setRowHidden(final, row, !used(i))));
   files["xl/worksheets/sheet4.xml"] = strToU8(final);
+
+  // The template names its two semester tabs "1ST"/"2ND" (first/second quarter
+  // OF THE SEMESTER). In the second semester those are Q3/Q4, so rename them —
+  // and every formula that points at them — to the quarter actually downloaded.
+  if (secondSem) {
+    renameSheetAndRefs(files, "1ST", "3RD", strFromU8, strToU8);
+    renameSheetAndRefs(files, "2ND", "4TH", strFromU8, strToU8);
+  }
 
   return zipSync(files, { level: 6 });
 }
