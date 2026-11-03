@@ -1,18 +1,25 @@
 // ── depedTemplate.ts — fill the official DepEd SHS E-Class-Record ─────────────
 // The teacher enters scores in the app; this drops those scores into the exact
 // official DepEd class-record workbook (public/deped-class-record-template.xlsx)
-// so the teacher only has to VIEW the filled form. We write only the raw score
-// inputs, the student names and a few header fields; every Total / Percentage /
-// Weighted / Initial / Quarterly grade is left to the workbook's own formulas
-// (the file is flagged to recalculate on open), and the logos, weights and
-// transmutation table are the template's, untouched.
+// so the teacher only has to VIEW the filled form. We write the raw score inputs,
+// the student names and a few header fields; the Total / Percentage / Weighted
+// columns stay the workbook's own formulas (the file is flagged to recalculate on
+// open), and the logos, weights and transmutation table are the template's,
+// untouched. The Initial Grade (AL) and Quarterly Grade (AM) are written from the
+// app's own grading (lib/grading.ts) so the form always matches the class-record
+// page, and the Final Semestral Grade sheet is filled for Q2/Q4.
+//
+// Only the SELECTED quarter is visible: Q1/Q3 hide 2ND + Final, Q2/Q4 hide 1ST.
+// The other quarter's raw scores are never written into the file.
 //
 // Fill map (per learner, one row each — see STUDENT_ROWS below):
 //   INPUT DATA   B/C/D/E = learner's name (drives the 1ST/2ND/Final sheets)
 //   1ST  (Q1/Q3) G = Σ modules, H = Σ activities, T = Σ performance tasks,
-//                AG = Achievement Test, AH = Quarterly Exam
+//                AG = Achievement Test, AH = Quarterly Exam, AL/AM = grades
 //   2ND  (Q2/Q4) same columns, second quarter of the semester
-// Everything else in the workbook is a formula and recomputes from these.
+//   Final Semestral Grade  F = Q1/Q3 grade, N = Q2/Q4 grade, V/Z = average/remark
+
+import { finalGrade, initialGrade } from "./grading";
 
 const TEMPLATE_URL = "/deped-class-record-template.xlsx";
 
@@ -86,6 +93,28 @@ function setTabSelected(xml: string, selected: boolean): string {
   });
 }
 
+/** Read a numeric cell's cached value. Returns null for a missing/blank/text cell. */
+function getCellNumber(xml: string, ref: string): number | null {
+  const m = xml.match(new RegExp(`<c r="${ref}"[^>]*>\\s*<v>([^<]+)</v>`));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return isFinite(n) ? n : null;
+}
+
+/** Show or hide one worksheet by name in xl/workbook.xml. The official workbook
+ *  ships every quarter's tab, but a download must show only the selected quarter
+ *  (+ the Final Semestral Grade sheet in Q2/Q4), so the rest are hidden. */
+function setSheetHidden(xml: string, sheetName: string, hidden: boolean): string {
+  const nameAttr = `name="${sheetName}"`;
+  return xml.replace(/<sheet\b[^>]*>/g, (tag) => {
+    if (!tag.includes(nameAttr)) return tag;
+    const cleaned = tag.replace(/\sstate="(?:hidden|veryHidden)"/g, "");
+    if (!hidden) return cleaned;
+    if (/\/>$/.test(cleaned)) return cleaned.replace(/\s*\/>$/, ' state="hidden"/>');
+    return cleaned.replace(/>$/, ' state="hidden">');
+  });
+}
+
 /** Sum of every filled `prefix*` field on a record, or null when none is filled
  *  (blank must stay blank so the template's COUNT()=0 → empty Total, not a 0). */
 function sumFields(rec: Record<string, any>, prefix: string): number | null {
@@ -140,6 +169,23 @@ function scoreCells(rec: Record<string, any>): {
   };
 }
 
+/** The class-record page's grade for one quarter, or null when the learner has no
+ *  scores at all (the page shows "—" there, so the sheet stays blank too).
+ *  `initial` = Initial Grade (2 decimals), `quarterly` = transmuted Quarterly Grade. */
+function quarterGrade(
+  rec: Record<string, any> | undefined,
+  subjectName: string,
+): { initial: number; quarterly: number } | null {
+  if (!rec) return null;
+  const c = scoreCells(rec);
+  if (c.G === null && c.H === null && c.T === null && c.AG === null && c.AH === null) return null;
+  const ig = initialGrade(rec, subjectName);
+  return {
+    initial: Math.round(ig * 100) / 100,
+    quarterly: finalGrade(rec, subjectName),
+  };
+}
+
 /** Build the filled DepEd class-record workbook as xlsx bytes. */
 export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uint8Array> {
   const { unzipSync, zipSync, strToU8, strFromU8 } = await import("fflate");
@@ -158,6 +204,10 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   const semLabel = secondSem ? "2ND" : "1ST";
   const sheetPath = secondQ ? "xl/worksheets/sheet3.xml" : "xl/worksheets/sheet2.xml";
   const activeTab = secondQ ? 2 : 1; // workbook order: INPUT DATA, 1ST, 2ND, …
+  // Q2 needs Q1's grade on the Final sheet, Q4 needs Q3's (the second semester
+  // reuses the 1ST/2ND tabs as its first/second quarter).
+  const pairedQuarter = secondQ ? (secondSem ? "3" : "1") : null;
+  const subjectName = opts.subject || "";
 
   if ((opts.students || []).length > STUDENT_ROWS.length) {
     // Surface, don't silently drop, a roster larger than the template supports.
@@ -171,13 +221,13 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   // Strict quarter match. Legacy pre-tagging rows (quarter = null) belong to the
   // first quarter of 1st Sem only — mirroring the grid's own fallback — so they
   // can never leak into Q2/Q4.
-  const recFor = (sid: string) => {
+  const recForQuarter = (sid: string, quarter: string) => {
     const rows = opts.records || [];
     const exact = rows.find(
-      (r) => String(r.student_id) === String(sid) && String(r.quarter) === selectedQuarter,
+      (r) => String(r.student_id) === String(sid) && String(r.quarter) === quarter,
     );
     if (exact) return exact;
-    if (selectedQuarter === "1") {
+    if (quarter === "1") {
       return rows.find(
         (r) =>
           String(r.student_id) === String(sid) &&
@@ -186,6 +236,7 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
     }
     return undefined;
   };
+  const recFor = (sid: string) => recForQuarter(sid, selectedQuarter);
 
   // ── INPUT DATA sheet: header + learner names (the other sheets pull these) ──
   let input = strFromU8(files["xl/worksheets/sheet1.xml"]);
@@ -202,15 +253,34 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
 
   // ── Only the selected quarter: 1ST (sheet2) or 2ND (sheet3) ─────────────────
   let xml = strFromU8(files[sheetPath]);
+
+  // The official template's 2ND sheet ships with BLANK "HIGHEST POSSIBLE SCORE"
+  // cells (G11/H11/T11), so its Written Work / Performance Task percentages stay
+  // empty and every Initial/Quarterly Grade formula resolves to "". Copy the 1ST
+  // sheet's values so the component columns compute like the first quarter's.
+  if (secondQ) {
+    const first = strFromU8(files["xl/worksheets/sheet2.xml"]);
+    for (const ref of ["G11", "H11", "T11"]) {
+      const v = getCellNumber(first, ref);
+      if (v !== null) xml = setCell(xml, ref, v);
+    }
+  }
+
   students.forEach((s, i) => {
     const row = STUDENT_ROWS[i];
-    const c = scoreCells(recFor(s.id) || {});
+    const rec = recFor(s.id);
+    const c = scoreCells(rec || {});
+    const grade = quarterGrade(rec, subjectName);
     xml = setCell(xml, "A" + row, i + 1); // one continuous 1..N numbering
     xml = setCell(xml, "G" + row, c.G);
     xml = setCell(xml, "H" + row, c.H);
     xml = setCell(xml, "T" + row, c.T);
     xml = setCell(xml, "AG" + row, c.AG);
     xml = setCell(xml, "AH" + row, c.AH);
+    // AL/AM come from the app's grading, so the form shows the same Initial and
+    // Quarterly Grade as the class-record page. No scores → blank cells.
+    xml = setCell(xml, "AL" + row, grade ? grade.initial : null);
+    xml = setCell(xml, "AM" + row, grade ? grade.quarterly : null);
   });
   // Hide the FEMALE divider and every unused learner row → no stray data on the
   // divider, no trailing blank rows.
@@ -218,9 +288,14 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   STUDENT_ROWS.forEach((row, i) => (xml = setRowHidden(xml, row, !used(i))));
   files[sheetPath] = strToU8(xml);
 
-  // Open the workbook on the quarter that was actually filled, and make sure the
-  // other quarter's sheet is not marked as the selected tab.
-  files["xl/workbook.xml"] = strToU8(setActiveTab(strFromU8(files["xl/workbook.xml"]), activeTab));
+  // Open the workbook on the quarter that was actually filled, and show ONLY the
+  // tabs that belong to it: Q1/Q3 = 1ST, Q2/Q4 = 2ND + Final Semestral Grade.
+  let wb = strFromU8(files["xl/workbook.xml"]);
+  wb = setSheetHidden(wb, "1ST", secondQ);
+  wb = setSheetHidden(wb, "2ND", !secondQ);
+  wb = setSheetHidden(wb, "Final Semestral Grade", !secondQ);
+  wb = setActiveTab(wb, activeTab);
+  files["xl/workbook.xml"] = strToU8(wb);
   files["xl/worksheets/sheet2.xml"] = strToU8(
     setTabSelected(strFromU8(files["xl/worksheets/sheet2.xml"]), !secondQ),
   );
@@ -228,10 +303,30 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
     setTabSelected(strFromU8(files["xl/worksheets/sheet3.xml"]), secondQ),
   );
 
-  // ── Final Semestral Grade (sheet4): grades flow in by formula, so just tidy —
-  //    renumber, and hide the MALE/FEMALE labels plus the unused rows. ──────────
+  // ── Final Semestral Grade (sheet4): only in Q2/Q4. Its formulas point at the
+  //    other quarter's sheet, which is hidden and deliberately unfilled (no raw
+  //    scores may travel with the download), so write the paired quarter's grade
+  //    as a value and let the average/remark cells compute from it. ────────────
   let final = strFromU8(files["xl/worksheets/sheet4.xml"]);
-  students.forEach((_s, i) => (final = setCell(final, "A" + STUDENT_ROWS[i], i + 1)));
+  students.forEach((s, i) => {
+    const row = STUDENT_ROWS[i];
+    final = setCell(final, "A" + row, i + 1);
+    if (!secondQ || !pairedQuarter) return;
+    const paired = quarterGrade(recForQuarter(s.id, pairedQuarter), subjectName);
+    const current = quarterGrade(recFor(s.id), subjectName);
+    if (!paired || !current) {
+      final = setCell(final, "F" + row, null);
+      final = setCell(final, "N" + row, null);
+      final = setCell(final, "V" + row, null);
+      final = setCell(final, "Z" + row, null);
+      return;
+    }
+    const semestral = Math.round((paired.quarterly + current.quarterly) / 2);
+    final = setCell(final, "F" + row, paired.quarterly);
+    final = setCell(final, "N" + row, current.quarterly);
+    final = setCell(final, "V" + row, semestral);
+    final = setCell(final, "Z" + row, semestral >= 75 ? "PASSED" : "FAILED", { string: true });
+  });
   final = setRowHidden(final, FINAL_MALE_LABEL_ROW, true);
   final = setRowHidden(final, DIVIDER_ROW, true);
   STUDENT_ROWS.forEach((row, i) => (final = setRowHidden(final, row, !used(i))));
