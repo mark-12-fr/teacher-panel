@@ -36,6 +36,7 @@ export interface DepedFillOptions {
   students: DepedStudent[];
   records: Array<Record<string, any>>; // every class-record row for the section
   semester: string; // "1st Sem" | "2nd Sem"
+  quarter?: string; // DB quarter to export ("1".."4"); defaults to the semester's first
   subject?: string;
   sectionTitle?: string;
   teacherName?: string;
@@ -66,6 +67,22 @@ function setRowHidden(xml: string, rownum: number, hidden: boolean): string {
   return xml.replace(new RegExp(`<row r="${rownum}"((?:[^>/]*?))>`), (_m, attrs) => {
     const cleaned = attrs.replace(/\shidden="1"/g, "");
     return `<row r="${rownum}"${cleaned}${hidden ? ' hidden="1"' : ""}>`;
+  });
+}
+
+/** Open the workbook on a given tab (`activeTab` index on <workbookView>). */
+function setActiveTab(xml: string, index: number): string {
+  return xml.replace(/<workbookView\b([^>]*?)(\/?)>/, (_m, attrs, selfClose) => {
+    const cleaned = attrs.replace(/\sactiveTab="\d+"/g, "");
+    return `<workbookView${cleaned} activeTab="${index}"${selfClose}>`;
+  });
+}
+
+/** Mark one worksheet's <sheetView> as the selected tab (or clear it). */
+function setTabSelected(xml: string, selected: boolean): string {
+  return xml.replace(/<sheetView\b([^>]*?)(\/?)>/, (_m, attrs, selfClose) => {
+    const cleaned = attrs.replace(/\stabSelected="\d+"/g, "");
+    return `<sheetView${cleaned}${selected ? ' tabSelected="1"' : ""}${selfClose}>`;
   });
 }
 
@@ -131,11 +148,16 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   if (!res.ok) throw new Error("Could not load the DepEd template file.");
   const files = unzipSync(new Uint8Array(await res.arrayBuffer()));
 
-  // A DepEd workbook is one semester = two quarters. 1st Sem → DB quarters 1 & 2
-  // (1ST/2ND sheets); 2nd Sem → 3 & 4. S8 shows which semester it is.
-  const secondSem = opts.semester === "2nd Sem";
-  const dbQuarters = secondSem ? ["3", "4"] : ["1", "2"];
+  // A DepEd workbook is one semester = two quarters, but only the SELECTED
+  // quarter is ever written — a Q2 download can never carry Q1 scores (or the
+  // reverse). DB quarter 1/2 = 1st Sem (1ST/2ND sheets); 3/4 = 2nd Sem.
+  const selectedQuarter =
+    String(opts.quarter ?? (opts.semester === "2nd Sem" ? "3" : "1")).replace(/[^1-4]/g, "") || "1";
+  const secondSem = selectedQuarter === "3" || selectedQuarter === "4";
+  const secondQ = selectedQuarter === "2" || selectedQuarter === "4";
   const semLabel = secondSem ? "2ND" : "1ST";
+  const sheetPath = secondQ ? "xl/worksheets/sheet3.xml" : "xl/worksheets/sheet2.xml";
+  const activeTab = secondQ ? 2 : 1; // workbook order: INPUT DATA, 1ST, 2ND, …
 
   if ((opts.students || []).length > STUDENT_ROWS.length) {
     // Surface, don't silently drop, a roster larger than the template supports.
@@ -146,10 +168,24 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   const students = opts.students || [];
   const used = (i: number) => i < students.length;
 
-  const recFor = (sid: string, q: string) =>
-    (opts.records || []).find(
-      (r) => String(r.student_id) === String(sid) && String(r.quarter) === q,
+  // Strict quarter match. Legacy pre-tagging rows (quarter = null) belong to the
+  // first quarter of 1st Sem only — mirroring the grid's own fallback — so they
+  // can never leak into Q2/Q4.
+  const recFor = (sid: string) => {
+    const rows = opts.records || [];
+    const exact = rows.find(
+      (r) => String(r.student_id) === String(sid) && String(r.quarter) === selectedQuarter,
     );
+    if (exact) return exact;
+    if (selectedQuarter === "1") {
+      return rows.find(
+        (r) =>
+          String(r.student_id) === String(sid) &&
+          (r.quarter === null || r.quarter === undefined || r.quarter === ""),
+      );
+    }
+    return undefined;
+  };
 
   // ── INPUT DATA sheet: header + learner names (the other sheets pull these) ──
   let input = strFromU8(files["xl/worksheets/sheet1.xml"]);
@@ -164,25 +200,33 @@ export async function buildDepedClassRecord(opts: DepedFillOptions): Promise<Uin
   });
   files["xl/worksheets/sheet1.xml"] = strToU8(input);
 
-  // ── 1ST (sheet2) and 2ND (sheet3): the raw score inputs per quarter ─────────
-  ["xl/worksheets/sheet2.xml", "xl/worksheets/sheet3.xml"].forEach((path, qi) => {
-    let xml = strFromU8(files[path]);
-    students.forEach((s, i) => {
-      const row = STUDENT_ROWS[i];
-      const c = scoreCells(recFor(s.id, dbQuarters[qi]) || {});
-      xml = setCell(xml, "A" + row, i + 1); // one continuous 1..N numbering
-      xml = setCell(xml, "G" + row, c.G);
-      xml = setCell(xml, "H" + row, c.H);
-      xml = setCell(xml, "T" + row, c.T);
-      xml = setCell(xml, "AG" + row, c.AG);
-      xml = setCell(xml, "AH" + row, c.AH);
-    });
-    // Hide the FEMALE divider and every unused learner row → no stray data on the
-    // divider, no trailing blank rows.
-    xml = setRowHidden(xml, DIVIDER_ROW, true);
-    STUDENT_ROWS.forEach((row, i) => (xml = setRowHidden(xml, row, !used(i))));
-    files[path] = strToU8(xml);
+  // ── Only the selected quarter: 1ST (sheet2) or 2ND (sheet3) ─────────────────
+  let xml = strFromU8(files[sheetPath]);
+  students.forEach((s, i) => {
+    const row = STUDENT_ROWS[i];
+    const c = scoreCells(recFor(s.id) || {});
+    xml = setCell(xml, "A" + row, i + 1); // one continuous 1..N numbering
+    xml = setCell(xml, "G" + row, c.G);
+    xml = setCell(xml, "H" + row, c.H);
+    xml = setCell(xml, "T" + row, c.T);
+    xml = setCell(xml, "AG" + row, c.AG);
+    xml = setCell(xml, "AH" + row, c.AH);
   });
+  // Hide the FEMALE divider and every unused learner row → no stray data on the
+  // divider, no trailing blank rows.
+  xml = setRowHidden(xml, DIVIDER_ROW, true);
+  STUDENT_ROWS.forEach((row, i) => (xml = setRowHidden(xml, row, !used(i))));
+  files[sheetPath] = strToU8(xml);
+
+  // Open the workbook on the quarter that was actually filled, and make sure the
+  // other quarter's sheet is not marked as the selected tab.
+  files["xl/workbook.xml"] = strToU8(setActiveTab(strFromU8(files["xl/workbook.xml"]), activeTab));
+  files["xl/worksheets/sheet2.xml"] = strToU8(
+    setTabSelected(strFromU8(files["xl/worksheets/sheet2.xml"]), !secondQ),
+  );
+  files["xl/worksheets/sheet3.xml"] = strToU8(
+    setTabSelected(strFromU8(files["xl/worksheets/sheet3.xml"]), secondQ),
+  );
 
   // ── Final Semestral Grade (sheet4): grades flow in by formula, so just tidy —
   //    renumber, and hide the MALE/FEMALE labels plus the unused rows. ──────────

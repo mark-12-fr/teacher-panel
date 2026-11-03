@@ -1047,8 +1047,8 @@ export default function ClassRecordGridPage() {
   }
 
   // Fill the official DepEd SHS E-Class-Record workbook (logos, formulas and
-  // transmutation table intact) with the entered scores — both quarters of the
-  // active semester — so the teacher just opens it and views the finished form.
+  // transmutation table intact) with the SELECTED quarter only, so the download
+  // always matches the quarter the teacher is viewing.
   async function exportDepedForm() {
     if (loading || students.length === 0) {
       showToast(
@@ -1061,19 +1061,22 @@ export default function ClassRecordGridPage() {
     }
     try {
       showToast("Generating DepEd form...");
+      const quarter = String(viewQuarter);
+      console.log("Downloading DepEd form for quarter:", quarter, "semester:", viewSemester);
       const teacherName =
         (typeof localStorage !== "undefined" && localStorage.getItem("cached_user_name")) || "";
       const bytes = await buildDepedClassRecord({
         students,
         records,
-        semester: currentSemester,
+        semester: viewSemester,
+        quarter,
         subject: section?.subject || "",
         sectionTitle: section?.title || "",
         teacherName,
       });
       const safe = (section?.title || "Section").replace(/\s+/g, "_");
-      downloadXlsx(bytes, `DepEd_Class_Record_${safe}.xlsx`);
-      showToast("DepEd form generated!");
+      downloadXlsx(bytes, `DepEd_Class_Record_${safe}_Q${quarter}.xlsx`);
+      showToast(`DepEd form generated for ${qLabel(quarter)}!`);
     } catch (e: any) {
       showToast("DepEd form failed: " + (e?.message || e), true);
     }
